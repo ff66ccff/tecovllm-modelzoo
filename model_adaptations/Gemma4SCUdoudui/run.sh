@@ -13,11 +13,12 @@ UTIL="${GEMMA_UTIL:-0.92}"
 # Bind the reviewed implementation before vLLM constructs its attention
 # classes. No vendor package is modified and no model weights are copied.
 export GEMMA4_OVERLAY=1
+export VLLM_DISABLE_COMPILE_CACHE=1
 export PYTHONPATH="${SCRIPT_DIR}/overlay:${SCRIPT_DIR}/runtime${PYTHONPATH:+:${PYTHONPATH}}"
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"
 
-exec vllm serve "${GEMMA_PATH}" \
+exec /home/py312/bin/python -m vllm.entrypoints.cli.main serve "${GEMMA_PATH}" \
     --served-model-name Gemma-4-12B-it \
     --tensor-parallel-size "${GEMMA_TP_SIZE:-2}" \
     --gpu-memory-utilization "${UTIL}" \

@@ -1,0 +1,450 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-05",
+  "hypothesis": "public launcher official-CI parsing enabler; runtime algorithm unchanged",
+  "baseline_public_head": "1b1a1ead3b6291c91318f681158c7df0948d47d6",
+  "official_model_pr": "https://github.com/Tecorigin/tecovllm-modelzoo/pull/6",
+  "passed": true,
+  "focused": {
+    "baseline_contract_rejected": true,
+    "baseline_parser": {
+      "model_name": "InternVL3_5-8B",
+      "model_path": null,
+      "port": 8000,
+      "host": "\"${INTERNVL_HOST:-0.0.0.0}\""
+    },
+    "candidate_parser": {
+      "model_name": "InternVL3_5-8B",
+      "model_path": "/gpfs/model/OpenGVLab/InternVL3_5-8B",
+      "port": 8002,
+      "host": "0.0.0.0"
+    },
+    "mock_cases": [
+      {
+        "name": "default",
+        "argv": [
+          "/home/py312/bin/python",
+          "-m",
+          "vllm.entrypoints.openai.api_server",
+          "--model",
+          "/gpfs/model/OpenGVLab/InternVL3_5-8B",
+          "--served-model-name",
+          "InternVL3_5-8B",
+          "--dtype",
+          "float16",
+          "--tensor-parallel-size",
+          "2",
+          "--gpu-memory-utilization",
+          "0.85",
+          "--max-model-len",
+          "4096",
+          "--limit-mm-per-prompt",
+          "{\"image\": 1}",
+          "--trust-remote-code",
+          "--no-enable-prefix-caching",
+          "--no-enable-chunked-prefill",
+          "--host",
+          "0.0.0.0",
+          "--port",
+          "8002"
+        ],
+        "baseline_argv_identical": true,
+        "passed": true
+      },
+      {
+        "name": "environment",
+        "argv": [
+          "/home/py312/bin/python",
+          "-m",
+          "vllm.entrypoints.openai.api_server",
+          "--model",
+          "/readonly/alt/model",
+          "--served-model-name",
+          "InternVL3_5-8B",
+          "--dtype",
+          "float16",
+          "--tensor-parallel-size",
+          "2",
+          "--gpu-memory-utilization",
+          "0.85",
+          "--max-model-len",
+          "4096",
+          "--limit-mm-per-prompt",
+          "{\"image\": 1}",
+          "--trust-remote-code",
+          "--no-enable-prefix-caching",
+          "--no-enable-chunked-prefill",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "18002"
+        ],
+        "baseline_argv_identical": true,
+        "passed": true
+      },
+      {
+        "name": "model-root",
+        "argv": [
+          "/home/py312/bin/python",
+          "-m",
+          "vllm.entrypoints.openai.api_server",
+          "--model",
+          "/readonly/root/OpenGVLab/InternVL3_5-8B",
+          "--served-model-name",
+          "InternVL3_5-8B",
+          "--dtype",
+          "float16",
+          "--tensor-parallel-size",
+          "2",
+          "--gpu-memory-utilization",
+          "0.85",
+          "--max-model-len",
+          "4096",
+          "--limit-mm-per-prompt",
+          "{\"image\": 1}",
+          "--trust-remote-code",
+          "--no-enable-prefix-caching",
+          "--no-enable-chunked-prefill",
+          "--host",
+          "0.0.0.0",
+          "--port",
+          "8002"
+        ],
+        "baseline_argv_identical": true,
+        "passed": true
+      },
+      {
+        "name": "trailing-cli",
+        "argv": [
+          "/home/py312/bin/python",
+          "-m",
+          "vllm.entrypoints.openai.api_server",
+          "--model",
+          "/gpfs/model/OpenGVLab/InternVL3_5-8B",
+          "--served-model-name",
+          "InternVL3_5-8B",
+          "--dtype",
+          "float16",
+          "--tensor-parallel-size",
+          "2",
+          "--gpu-memory-utilization",
+          "0.85",
+          "--max-model-len",
+          "4096",
+          "--limit-mm-per-prompt",
+          "{\"image\": 1}",
+          "--trust-remote-code",
+          "--no-enable-prefix-caching",
+          "--no-enable-chunked-prefill",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "18002",
+          "--port",
+          "19002",
+          "--host",
+          "localhost",
+          "--max-num-seqs",
+          "4"
+        ],
+        "baseline_argv_identical": true,
+        "passed": true
+      }
+    ],
+    "device_execution": false,
+    "passed": true
+  },
+  "official_parser_source_sha256": {
+    "run_ci.py": "36faf79a55770111bd32478b34e20592bd0a84e3b1d5f15bb0dd84e8ea8097c7",
+    "result_analyse.py": "647c6dfa0c26b4a2c7eb46d76bef2199ff642883ffc4b926f9ef94d9c9f6bedd"
+  },
+  "model": {
+    "passed": true,
+    "requests": [
+      {
+        "label": "text_0",
+        "token_ids": [
+          693,
+          776,
+          78285,
+          62019,
+          525,
+          7565,
+          304,
+          5257,
+          5043,
+          11,
+          2670,
+          3162,
+          4401,
+          11,
+          5662,
+          6832,
+          11,
+          323,
+          12344,
+          3412,
+          11,
+          369,
+          3807,
+          7966,
+          1447,
+          16,
+          13,
+          3070,
+          62339,
+          323,
+          18954,
+          95518
+        ],
+        "reference_match": true,
+        "seconds": 6.8305840809771325
+      },
+      {
+        "label": "text_1",
+        "token_ids": [
+          693,
+          776,
+          78285,
+          62019,
+          525,
+          7565,
+          304,
+          5257,
+          5043,
+          11,
+          2670,
+          3162,
+          4401,
+          11,
+          5662,
+          6832,
+          11,
+          323,
+          12344,
+          3412,
+          11,
+          369,
+          3807,
+          7966,
+          1447,
+          16,
+          13,
+          3070,
+          62339,
+          323,
+          18954,
+          95518
+        ],
+        "reference_match": true,
+        "seconds": 6.574340301012853
+      },
+      {
+        "label": "image",
+        "token_ids": [
+          785,
+          2168,
+          4933,
+          2326,
+          52484,
+          20816,
+          25,
+          264,
+          2518,
+          9334,
+          11,
+          264,
+          6303,
+          12671,
+          11,
+          323,
+          264,
+          6176,
+          21495,
+          13,
+          8886,
+          6083,
+          374,
+          12460,
+          304,
+          1894,
+          323,
+          1352,
+          11,
+          14064,
+          6770,
+          52484
+        ],
+        "reference_match": true,
+        "seconds": 7.021562597015873
+      }
+    ],
+    "all_32_reference_ids_match": true,
+    "worker_peak": {
+      "results": [
+        {
+          "current_device": 0,
+          "per_device": {
+            "0": {
+              "max_alloc_gib": 12.664,
+              "cur_alloc_gib": 11.682,
+              "max_reserved_gib": 13.027
+            },
+            "1": {
+              "max_alloc_gib": 0.0,
+              "cur_alloc_gib": 0.0,
+              "max_reserved_gib": 0.0
+            }
+          }
+        },
+        {
+          "current_device": 1,
+          "per_device": {
+            "0": {
+              "max_alloc_gib": 0.0,
+              "cur_alloc_gib": 0.0,
+              "max_reserved_gib": 0.0
+            },
+            "1": {
+              "max_alloc_gib": 12.664,
+              "cur_alloc_gib": 11.682,
+              "max_reserved_gib": 13.027
+            }
+          }
+        }
+      ]
+    },
+    "image_fixture_sha256": "e12eca8c2e71ba05c396feffede049396c6b66085dc561c100f6c4de1fe56276",
+    "image_archive_commit": "3c116e7be1b6c4170f159fc926efcd4974df656c",
+    "own_service_released": true,
+    "card_after_no_process": true,
+    "performance_claim": false,
+    "raw_logs_path": "logs/internvl3_5-8b/public-ci-20261005"
+  },
+  "unchanged_runtime_test_blobs": [
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/__init__.py",
+      "git_blob": "a5d906ae7c6cfef96c491bf27e445aaa58cc76f7",
+      "sha256": "46b713a9a5a053e9a58a10662fa1c3c751ea998296f9fa15c4da9c4f3983dd96"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/block_attention/__init__.py",
+      "git_blob": "a97dccffc2bd86b4f0e271f6357d0cc47fab7667",
+      "sha256": "6dcf946ec6dc494ca947ba1ddc6d511523a5131a1f4d60ce643d61e4cf6be939"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/block_attention/op.py",
+      "git_blob": "bd4e7d483096142a8dc8c6d7ed85bf2d27d13eba",
+      "sha256": "d1e37d2bbc89f8a3a4759494da8003a744f0d0622d1c335edd053c283e7c4755"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/flash_attn_varlen/__init__.py",
+      "git_blob": "04b0b727fedefb40dc7a0564b268daf7aa229f48",
+      "sha256": "f415fbe8a92c93bd755b91b834bb865ca8238da4f1d39c2024e2eeac040ffe4d"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/flash_attn_varlen/op.py",
+      "git_blob": "1b9b198aff1289551cc73ee8a73562a5b80ba405",
+      "sha256": "91ad6a16359591258ce91e94ef54c915896ff80dee07c3d14ab22a3c5435bbca"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/peak_probe.py",
+      "git_blob": "6337cdf9c393276cd04f26f19c0377afd21a757d",
+      "sha256": "69320bc5ec10a40f73d9d5e5de221ee4ef8e6995dc64e4259086bfdca0189356"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/prefill_attention/__init__.py",
+      "git_blob": "d9b51fc59c1284f91443f716922ee042979d0e5a",
+      "sha256": "daf371462eae012e5b63bb3aa120f7f9a2ef0372bfc7502b11f64a6c6023127a"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/prefill_attention/op.py",
+      "git_blob": "19730c075ce5e5a8e9e6b5c2196b420bab37c860",
+      "sha256": "31645f11708b50535476b3b5ec4ea01ea6578ea00f3fe7d82765041b94af2201"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/receipt.py",
+      "git_blob": "60604f12345f98b91a27eb5ae46ebc3118e7efed",
+      "sha256": "0bfd2455d0e549f33b404f9d598b62c6f6d693d355f17c1121e941846edc2845"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/reshape_and_cache/__init__.py",
+      "git_blob": "8b4427a4c06a9c2205f3513766ad14bdd4812e63",
+      "sha256": "d3e389e757dce9fc699343c2b6e6e87ab159dae6b602eb12eec22dc90e0a97a3"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/reshape_and_cache/op.py",
+      "git_blob": "840abbeefcac5757c4e4e64995adf08498737f26",
+      "sha256": "5e2cc27c610ace16bb8c3fd5644cdf49942facb7ec4edd320ee0d1c14e3f9021"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/rms_norm/__init__.py",
+      "git_blob": "1e4eeec9fb04fbb696b1a5eb8c0af7c9821f97b7",
+      "sha256": "994768a52a79ef6bd2b08fea7f87146e3f6438d6e9eb188e79b990d26a2e3eb1"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/rms_norm/op.py",
+      "git_blob": "9d99a61dcc5b510d2b80cc036f872cd3e545875a",
+      "sha256": "f790b86715d97e510d5e3b6cff56baa1089adb812345206918dfce99e3a13423"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/rotary/README.md",
+      "git_blob": "40fd4807c1fa5f37890e6d4f66b6ffe971ee817a",
+      "sha256": "92d2165287d8f37b83bad076d86d0227f0a515eb07e317d39c874e0e0d15894e"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/rotary/__init__.py",
+      "git_blob": "6142037a3bcb84f9c95d01d6616665932ce922f5",
+      "sha256": "12989820ea051f1bf73036685b6188e3c5f4f09af7c96b186ba460db38fdb728"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/rotary/op.py",
+      "git_blob": "259d4ef8f63bb2a9c41ede40ef6c606f62c1ea4b",
+      "sha256": "de939610862d9d16666e8a3157f51e14115ffa95c3d801108f9a51b4163dbcb5"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/runtime/overlay/sitecustomize.py",
+      "git_blob": "9ab02093f64ec56526f5d448e52bf47e71566028",
+      "sha256": "ae0bb38b8d2e8a52cd73b58d27cbed3ef2f7e4ff0fb106d77c93749ee1a12ba1"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/tests/test_model_binding.py",
+      "git_blob": "8d6b77c10a9620d7f3d092ae5bf46e919049febf",
+      "sha256": "2af88ec9b9ba60990de7bde60d294b2a2057c90a270bdfed7463e5f4549c30ee"
+    },
+    {
+      "path": "model_adaptations/InternVL3_5SCUdoudui/tests/verify_vendor_rope.py",
+      "git_blob": "22f7edb1095df12b1447f76f47c93fcaf5105e72",
+      "sha256": "1c148fb34aef922b793bcc50efbe8b2c36451d4cc1358949abcfc5e5829de2ce"
+    }
+  ],
+  "source_sha256": {
+    "README.md": "af01fcff94557c4f73288cbde4d9e20d0274e4ecb46c11b6387987637bfce32a",
+    "run.sh": "51d2b26fc122c764ff213efe8cd187c2d73708cce6f793003fde3561031caa0e",
+    "runtime/custom_ops/__init__.py": "46b713a9a5a053e9a58a10662fa1c3c751ea998296f9fa15c4da9c4f3983dd96",
+    "runtime/custom_ops/block_attention/__init__.py": "6dcf946ec6dc494ca947ba1ddc6d511523a5131a1f4d60ce643d61e4cf6be939",
+    "runtime/custom_ops/block_attention/op.py": "d1e37d2bbc89f8a3a4759494da8003a744f0d0622d1c335edd053c283e7c4755",
+    "runtime/custom_ops/flash_attn_varlen/__init__.py": "f415fbe8a92c93bd755b91b834bb865ca8238da4f1d39c2024e2eeac040ffe4d",
+    "runtime/custom_ops/flash_attn_varlen/op.py": "91ad6a16359591258ce91e94ef54c915896ff80dee07c3d14ab22a3c5435bbca",
+    "runtime/custom_ops/peak_probe.py": "69320bc5ec10a40f73d9d5e5de221ee4ef8e6995dc64e4259086bfdca0189356",
+    "runtime/custom_ops/prefill_attention/__init__.py": "daf371462eae012e5b63bb3aa120f7f9a2ef0372bfc7502b11f64a6c6023127a",
+    "runtime/custom_ops/prefill_attention/op.py": "31645f11708b50535476b3b5ec4ea01ea6578ea00f3fe7d82765041b94af2201",
+    "runtime/custom_ops/receipt.py": "0bfd2455d0e549f33b404f9d598b62c6f6d693d355f17c1121e941846edc2845",
+    "runtime/custom_ops/reshape_and_cache/__init__.py": "d3e389e757dce9fc699343c2b6e6e87ab159dae6b602eb12eec22dc90e0a97a3",
+    "runtime/custom_ops/reshape_and_cache/op.py": "5e2cc27c610ace16bb8c3fd5644cdf49942facb7ec4edd320ee0d1c14e3f9021",
+    "runtime/custom_ops/rms_norm/__init__.py": "994768a52a79ef6bd2b08fea7f87146e3f6438d6e9eb188e79b990d26a2e3eb1",
+    "runtime/custom_ops/rms_norm/op.py": "f790b86715d97e510d5e3b6cff56baa1089adb812345206918dfce99e3a13423",
+    "runtime/custom_ops/rotary/README.md": "92d2165287d8f37b83bad076d86d0227f0a515eb07e317d39c874e0e0d15894e",
+    "runtime/custom_ops/rotary/__init__.py": "12989820ea051f1bf73036685b6188e3c5f4f09af7c96b186ba460db38fdb728",
+    "runtime/custom_ops/rotary/op.py": "de939610862d9d16666e8a3157f51e14115ffa95c3d801108f9a51b4163dbcb5",
+    "runtime/overlay/sitecustomize.py": "ae0bb38b8d2e8a52cd73b58d27cbed3ef2f7e4ff0fb106d77c93749ee1a12ba1",
+    "tests/test_model_binding.py": "2af88ec9b9ba60990de7bde60d294b2a2057c90a270bdfed7463e5f4549c30ee",
+    "tests/verify_vendor_rope.py": "1c148fb34aef922b793bcc50efbe8b2c36451d4cc1358949abcfc5e5829de2ce",
+    "validation/rope_model_20261004.json": "ba9ba1b2b294118be341d6c51e0786dcb49cddbe7c012f71585ddf762d47e8f6"
+  },
+  "unrun_gates": {
+    "full_official_ci": "Not run: official dataset/baseline evaluation/performance extraction workflow was not executed. Only unchanged parse_run_sh was called; greedy32 is not official task accuracy.",
+    "new_performance_benchmark": "Not run: unchanged exec argv and computational runtime; no speed claim.",
+    "new_steady_state": "Not run: unchanged kernels/model algorithm; prior RoPE steady-state evidence is not attributed to launcher changes."
+  }
+}

@@ -10,6 +10,14 @@ copy is required.
 MODEL_ROOT=/gpfs/model bash model_adaptations/InternVL3_5SCUdoudui/run.sh
 ```
 
+The public command is `vllm serve /gpfs/model/OpenGVLab/InternVL3_5-8B` with
+host `0.0.0.0` and port `8002`, so the official `parse_run_sh` reads the actual
+defaults. A shell-local `vllm` function resolves the model, first host flag and
+first port flag from the existing initialization environment, then executes
+the same vendor Python `vllm.entrypoints.openai.api_server` entry. Extra CLI
+arguments remain last, preserving their override order. No global binary or
+vendor package is changed.
+
 The default contract uses FP16, tensor parallel size 2, an explicit port,
 `--trust-remote-code`, `--no-enable-prefix-caching`, and
 `--no-enable-chunked-prefill`. The launcher sources `/opt/tecoai/setvars.sh`

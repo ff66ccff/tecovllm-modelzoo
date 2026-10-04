@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "backend": "vllm-sdaa",
+  "topic": "runtime/minicpm-public-compile",
+  "stage": "v1_official_compiler_export",
+  "target_op": "official RMSNorm/cache/paged flash model bindings",
+  "attempt_type": "enabler",
+  "hypothesis": "opaque torch.library boundaries restore default compiled public startup",
+  "goal": "publish default-compiler-compatible official model binding without new kernels",
+  "status": "pass",
+  "result_classification": "neutral_enabler",
+  "components": [
+    "official opaque mutation/Fake registrations",
+    "initialization bindings",
+    "fatal startup guard"
+  ],
+  "dependencies": [
+    "existing official tecoops wheel"
+  ],
+  "baseline_stage": "PR4 d7c3ee8 eager public entry",
+  "allowed_changes": [
+    "official binding",
+    "startup contract",
+    "portable tests"
+  ],
+  "forbidden_changes": [
+    "kernel math",
+    "cache ABI/layout",
+    "packages and weights",
+    "fast_attention",
+    "performance claims"
+  ],
+  "source_baseline_commit": "80a9292729ad5e3d5441e546493cc8b030a29a40",
+  "public_baseline_commit": "d7c3ee8441326ca6b76ff545ae9da5592ed75b32",
+  "python": "/usr/local/python/bin/python3.12",
+  "versions": {
+    "torch": "2.12.0a0+git0d62256",
+    "torch-sdaa": "20260623.8.51.dev0+gitd942f23",
+    "vllm": "0.20.2.dev0+g132765e35.d20260728.empty",
+    "transformers": "4.57.6",
+    "tecoops": "0.0.0",
+    "tecovllm": "0.0.0.dev0+git91a9100cfef1ece189494d227125717d7636989a"
+  },
+  "configuration": {
+    "dtype": "float16",
+    "tensor_parallel_size": 1,
+    "logical_device": 2,
+    "max_model_len": 2048,
+    "compiler": "default VLLM_COMPILE SDAA eager backend; persistent cache disabled",
+    "torch_compile_disable": false,
+    "enforce_eager": false,
+    "prefix_caching": false,
+    "chunked_prefill": true
+  },
+  "verified_shapes": [
+    "RMS4x1536 and residual",
+    "HND block32 cache slots1,33,-1,3",
+    "Hq16/Hkv2/D128 causal paged prefill seq8/16",
+    "real 24-layer MiniCPM greedy32"
+  ],
+  "commands": [
+    "/home/py312/bin/python -S tests/test_compile_safe_cpu.py",
+    "/home/py312/bin/python -S tests/test_startup_failure.py",
+    "SDAA_VISIBLE_DEVICES=0 /home/py312/bin/python tests/test_compile_safe_sdaa.py",
+    "bash run.sh (TP1/FP16/maxlen2048)",
+    "/home/py312/bin/python tests/verify_model.py --expected validation/baseline_token_ids.json --steady300 --concurrency"
+  ],
+  "correctness": {
+    "python_api": "pass",
+    "optest": "no new UAL; portable model-binding reference checks pass",
+    "fake_zero_raw_calls": true,
+    "fullgraph_backend_eager": true,
+    "mock_startup_cases": 9,
+    "real_sdaa_raw_opaque_compiled_bitexact": true,
+    "rms_reference_max_abs": 0.0019044876,
+    "rms_add_reference_max_abs": 0.0034418106,
+    "flash_reference_max_abs": 0.001953125,
+    "reference_max_abs_tolerance": 0.05,
+    "cache_written_skipped_and_untouched_bits": true,
+    "residual_sum_bits": true,
+    "model_responses": 482,
+    "all32_reference_ids_match": true,
+    "prompt": "Explain why reproducible benchmarks matter.",
+    "expected_token_ids": [
+      1974,
+      10300,
+      1759,
+      1773,
+      3211,
+      280,
+      14335,
+      2442,
+      304,
+      280,
+      1187,
+      468,
+      3622,
+      35,
+      1974,
+      52424,
+      1759,
+      1773,
+      2351,
+      374,
+      285,
+      7335,
+      304,
+      1356,
+      3095,
+      35,
+      1974,
+      45656,
+      1759,
+      1773,
+      1848,
+      310
+    ],
+    "concurrency": [
+      4,
+      8
+    ],
+    "steady_seconds": 302.2419557760004,
+    "steady_rounds": 108,
+    "steady_requests": 468,
+    "steady_errors": 0
+  },
+  "worker_before": {
+    "pid": 110698,
+    "rank": 0,
+    "rms_class": "TecoopsRMSNorm",
+    "attention_forward": "sdaa_block_attention_forward",
+    "call_counts": {
+      "tecoops.rms_norm": 147
+    },
+    "weight_devices": [
+      "sdaa:0"
+    ],
+    "weight_dtypes": [
+      "torch.float16"
+    ],
+    "peak_allocated_gib": 13.761231422424316,
+    "peak_reserved_gib": 13.94140625,
+    "source_sha256": {
+      "/root/tmpwork/minicpm-public-compile-20261004/candidate/model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/compile_safe.py": "d9f9e1003343940778199ecf671a49e125ee20429f5e85d88c2256577049500f",
+      "/root/tmpwork/minicpm-public-compile-20261004/candidate/model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/receipt.py": "b7c087108714df85504a9149bfb583fdd6721bb07db7c0181ff078ec37c737d5"
+    }
+  },
+  "worker_after": {
+    "pid": 110698,
+    "rank": 0,
+    "rms_class": "TecoopsRMSNorm",
+    "attention_forward": "sdaa_block_attention_forward",
+    "call_counts": {
+      "tecoops.rms_norm": 179389,
+      "tecoops.reshape_and_cache": 87792,
+      "tecoops.flash_attn_varlen_func": 4464
+    },
+    "weight_devices": [
+      "sdaa:0"
+    ],
+    "weight_dtypes": [
+      "torch.float16"
+    ],
+    "peak_allocated_gib": 13.761231422424316,
+    "peak_reserved_gib": 13.94140625,
+    "source_sha256": {
+      "/root/tmpwork/minicpm-public-compile-20261004/candidate/model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/compile_safe.py": "d9f9e1003343940778199ecf671a49e125ee20429f5e85d88c2256577049500f",
+      "/root/tmpwork/minicpm-public-compile-20261004/candidate/model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/receipt.py": "b7c087108714df85504a9149bfb583fdd6721bb07db7c0181ff078ec37c737d5"
+    }
+  },
+  "actual_abi_count_delta": {
+    "tecoops.rms_norm": 179242,
+    "tecoops.reshape_and_cache": 87792,
+    "tecoops.flash_attn_varlen_func": 4464
+  },
+  "peak_allocated_gib": 13.761231422424316,
+  "peak_reserved_gib": 13.94140625,
+  "performance_claim": false,
+  "new_kernel": false,
+  "official_accuracy_claim": false,
+  "full_32768_context_claim": false,
+  "long_chunked_prefill_claim": false,
+  "current_upstream_head_wheel_equivalence_proven": false,
+  "services_released": true,
+  "failures": [
+    "original CPU -S venv-prefix fixture and auto backend import failures",
+    "temporary old 5D cache fixture rejected by placement assertion; actual ABI is HND4D",
+    "temporary shell extra + argument rejected before serving",
+    "diagnostic RPC used unavailable generic vllm block_attn module"
+  ],
+  "failure_root_cause": "test/diagnostic fixtures; candidate operator math unchanged",
+  "fix": "vendor purelib/autoload isolation, exact4D ABI fixture, shell template repair, vendor block_attn import",
+  "learned_rules": [
+    "allow_in_graph alone does not provide FakeTensor opacity",
+    "Use actual installed C++ ABI and independent cache placement checks",
+    "Fatal sitecustomize failures must stop the main entrypoint",
+    "Git blob LF differs from Windows archive conversion"
+  ],
+  "executable_asts_preserved_after_licensing": [
+    "tests/test_compile_safe_cpu.py",
+    "tests/test_startup_failure.py",
+    "tests/test_compile_safe_sdaa.py",
+    "tests/verify_model.py",
+    "runtime/custom_ops/__init__.py",
+    "runtime/custom_ops/compile_safe.py",
+    "runtime/custom_ops/receipt.py",
+    "runtime/overlay/sitecustomize.py",
+    "runtime/custom_ops/block_attention/__init__.py",
+    "runtime/custom_ops/block_attention/op.py",
+    "runtime/custom_ops/flash_attn_varlen/__init__.py",
+    "runtime/custom_ops/flash_attn_varlen/op.py",
+    "runtime/custom_ops/reshape_and_cache/__init__.py",
+    "runtime/custom_ops/reshape_and_cache/op.py",
+    "runtime/custom_ops/rms_norm/__init__.py",
+    "runtime/custom_ops/rms_norm/op.py"
+  ],
+  "delivery": {
+    "test_commands": "pass",
+    "sha256": {
+      "README.md": "6ecd5dc1d320b890a62d82a5d459bb3b4548fb7b7c2ad7fe28f701357940e487",
+      "run.sh": "31a66005310be6dfc650f51aa8ecc7230d7cf7047b3ea0f032236d8db9276d29",
+      ".gitattributes": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9",
+      "tests/test_compile_safe_cpu.py": "ec2103c35629ec0fe630ee8236e1b7c879cc65467e334237803d34f6656d03c5",
+      "tests/test_startup_failure.py": "2a5f3c142e0be0f996b797731875beeadc6243c41bcf7b7335cce7b93a9d90f3",
+      "tests/test_compile_safe_sdaa.py": "655702ec8624d524f441eb315a5df7c82a4b17b20d234971a621c7ce6d6ac1f8",
+      "tests/verify_model.py": "043f29da50284e1f4b984659f090cf897e4e852afe305e859275515757f5ad09",
+      "validation/baseline_token_ids.json": "4ef499f06bbe15877520fdd007b9de0a530bfa4c0821f1fb7bf08f6ac9c65b3c",
+      "runtime/custom_ops/__init__.py": "dd131e04e1d2d7ee1cc337108664abce72921fa3fa22aa035680b6f847698d63",
+      "runtime/custom_ops/compile_safe.py": "665604ef27fa3f38f278650aa1f2465648e3bceb4e04cdd7cc852691c3f5ee10",
+      "runtime/custom_ops/receipt.py": "a9fe01d4b571eb219289ba618e23fb8ccf69d3b9be9d6a4ee304421f1b35b0a9",
+      "runtime/overlay/sitecustomize.py": "45970ad2bea38567ad61ce9ed432a37bb68c3595fc9a88af709e509ea4661ac8",
+      "runtime/custom_ops/block_attention/__init__.py": "23e9948acd5c9190fb61ba6469f7ee62cffa9d2bfc4e8960e166444ea11f285c",
+      "runtime/custom_ops/block_attention/op.py": "8b88b24a7500098535679c728a0856da5d354eecce3fd911f0fd509838230ec9",
+      "runtime/custom_ops/flash_attn_varlen/__init__.py": "71ed796ab9613a1bfb4aa43848f96b7373ff7dbd01d0e823921f5015d9a3e2a0",
+      "runtime/custom_ops/flash_attn_varlen/op.py": "6de7485cda1125e28d2257940fb44ae3eacee75e6b6c5aed6545d969a4aa4650",
+      "runtime/custom_ops/reshape_and_cache/__init__.py": "ca4deb4ff9ccdfa708a1daec6d69c7fded3bfe1910010535942cabc58618885b",
+      "runtime/custom_ops/reshape_and_cache/op.py": "9df4535a4f270670bc600cc6da4cf2544a3783f97abfa1af9786435cf28fe70d",
+      "runtime/custom_ops/rms_norm/__init__.py": "a9e2b7aa6e79b817410e6d2820d818f47bc0b9fb90ed672757d5bfe64a7c984d",
+      "runtime/custom_ops/rms_norm/op.py": "5ab4a5b555bbca49783dfbb6eee76f328758505ede5140bd9973dd451571f7e0"
+    },
+    "source_files": 20,
+    "no_binaries_or_weights": true
+  }
+}

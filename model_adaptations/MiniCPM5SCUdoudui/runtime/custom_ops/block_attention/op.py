@@ -1,3 +1,28 @@
+# BSD 3-Clause License Copyright (c) 2023, Tecorigin Co., Ltd. All rights
+# reserved.
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+# Neither the name of the copyright holder nor the names of its contributors
+# may be used to endorse or promote products derived from this software
+# without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
 """SDAA BlockAttention operator framework adaptation.
 
 Provides in-repo implementation for BlockAttentionImpl.forward to bridge
@@ -9,8 +34,13 @@ vLLM V1 attention execution to vendor C++ kernels:
 from typing import Optional
 import torch
 
-from custom_ops.flash_attn_varlen.op import sdaa_flash_attn_varlen_func
-from custom_ops.reshape_and_cache.op import sdaa_reshape_and_cache
+from custom_ops.compile_safe import official_ops
+
+_OFFICIAL_OPS = official_ops()
+if _OFFICIAL_OPS is None:
+    raise RuntimeError("Official compile-safe bindings must be registered before BlockAttention import")
+_reshape_and_cache = _OFFICIAL_OPS.reshape_and_cache
+_flash_attn_varlen = _OFFICIAL_OPS.flash_attn_varlen_func
 
 
 def sdaa_block_attention_forward(
@@ -49,7 +79,7 @@ def sdaa_block_attention_forward(
 
     # Cache new key/value entries into paged KV blocks
     if key is not None and value is not None and attn_metadata.slot_mapping is not None:
-        sdaa_reshape_and_cache(
+        _reshape_and_cache(
             key,
             value,
             key_cache,
@@ -70,7 +100,7 @@ def sdaa_block_attention_forward(
 
     if attn_metadata.max_query_len > 1:
         # Prefill uses the official teco-ops paged-cache flash ABI.
-        sdaa_flash_attn_varlen_func(
+        _flash_attn_varlen(
             query[:num_actual_tokens].contiguous(),
             key_cache,
             value_cache,

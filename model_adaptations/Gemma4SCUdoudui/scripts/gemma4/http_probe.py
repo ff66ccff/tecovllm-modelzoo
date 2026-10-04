@@ -65,7 +65,7 @@ def completions(base: str, prompt: str, max_tokens: int, temperature: float = 0.
     return post(
         f"{base}/v1/completions",
         {
-            "model": "Gemma-4-12B-it",
+            "model": "gemma-4-12B-it",
             "prompt": prompt,
             "max_tokens": max_tokens,
             "temperature": temperature,
@@ -83,7 +83,7 @@ def ttft_stream(base: str, prompt: str, max_tokens: int) -> tuple[float, int]:
     import urllib.request as u
 
     payload = json.dumps({
-        "model": "Gemma-4-12B-it", "prompt": prompt, "max_tokens": max_tokens,
+        "model": "gemma-4-12B-it", "prompt": prompt, "max_tokens": max_tokens,
         "temperature": 0.0, "top_p": 1.0, "top_k": -1, "seed": 0,
         "stream": True, "return_token_ids": True,
     }).encode()

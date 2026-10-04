@@ -1,0 +1,350 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-05",
+  "status": "pass",
+  "attempt_type": "enabler",
+  "hypothesis": "A real literal default command satisfies official static parsing and keeps the accepted model math",
+  "source_branch": "model/gemma-4-12b-it",
+  "source_baseline_commit": "10cf861a81df8d8e2010b155db266790c5cf1e9c",
+  "official_ci_baseline": "bb01120f4682eb1e720e089ee84fc687636d4207",
+  "official_pr": "https://github.com/Tecorigin/tecovllm-modelzoo/pull/3",
+  "python_realpath": "/usr/local/python/bin/python3.12",
+  "parser": {
+    "status": "pass",
+    "old": {
+      "error": "ValueError(\"--served-model-name \u5fc5\u987b\u4e3a {'Hy-MT2-1.8B', 'gemma-4-12B-it', 'MiniCPM5-1B', 'InternVL3_5-8B'}\uff0c\u5b9e\u9645: Gemma-4-12B-it\")"
+    },
+    "candidate": {
+      "model_name": "gemma-4-12B-it",
+      "model_path": "/gpfs/model/google/gemma-4-12B-it",
+      "port": 8003,
+      "host": "0.0.0.0"
+    },
+    "official_parser_unchanged": true,
+    "official_full_ci_executed": false
+  },
+  "argv": {
+    "passed": true,
+    "official_parser": {
+      "model_name": "gemma-4-12B-it",
+      "model_path": "/gpfs/model/google/gemma-4-12B-it",
+      "host": "0.0.0.0",
+      "port": 8003
+    },
+    "mock_cases": [
+      {
+        "name": "default",
+        "argv": [
+          "/home/py312/bin/python",
+          "-m",
+          "vllm.entrypoints.cli.main",
+          "serve",
+          "/gpfs/model/google/gemma-4-12B-it",
+          "--served-model-name",
+          "gemma-4-12B-it",
+          "--tensor-parallel-size",
+          "2",
+          "--gpu-memory-utilization",
+          "0.92",
+          "--max-model-len",
+          "2048",
+          "--max-num-batched-tokens",
+          "2048",
+          "--trust-remote-code",
+          "--no-enable-prefix-caching",
+          "--no-enable-chunked-prefill",
+          "--hf-overrides",
+          "{\"architectures\":[\"Gemma4ForCausalLM\"]}",
+          "--dtype",
+          "float16",
+          "--host",
+          "0.0.0.0",
+          "--port",
+          "8003"
+        ],
+        "passed": true
+      },
+      {
+        "name": "environment",
+        "argv": [
+          "/home/py312/bin/python",
+          "-m",
+          "vllm.entrypoints.cli.main",
+          "serve",
+          "/readonly/alternate/model",
+          "--served-model-name",
+          "gemma-4-12B-it",
+          "--tensor-parallel-size",
+          "2",
+          "--gpu-memory-utilization",
+          "0.92",
+          "--max-model-len",
+          "2048",
+          "--max-num-batched-tokens",
+          "2048",
+          "--trust-remote-code",
+          "--no-enable-prefix-caching",
+          "--no-enable-chunked-prefill",
+          "--hf-overrides",
+          "{\"architectures\":[\"Gemma4ForCausalLM\"]}",
+          "--dtype",
+          "float16",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "18003"
+        ],
+        "passed": true
+      },
+      {
+        "name": "model-root",
+        "argv": [
+          "/home/py312/bin/python",
+          "-m",
+          "vllm.entrypoints.cli.main",
+          "serve",
+          "/readonly/root/google/gemma-4-12B-it",
+          "--served-model-name",
+          "gemma-4-12B-it",
+          "--tensor-parallel-size",
+          "2",
+          "--gpu-memory-utilization",
+          "0.92",
+          "--max-model-len",
+          "2048",
+          "--max-num-batched-tokens",
+          "2048",
+          "--trust-remote-code",
+          "--no-enable-prefix-caching",
+          "--no-enable-chunked-prefill",
+          "--hf-overrides",
+          "{\"architectures\":[\"Gemma4ForCausalLM\"]}",
+          "--dtype",
+          "float16",
+          "--host",
+          "0.0.0.0",
+          "--port",
+          "8003"
+        ],
+        "passed": true
+      },
+      {
+        "name": "trailing-cli",
+        "argv": [
+          "/home/py312/bin/python",
+          "-m",
+          "vllm.entrypoints.cli.main",
+          "serve",
+          "/gpfs/model/google/gemma-4-12B-it",
+          "--served-model-name",
+          "gemma-4-12B-it",
+          "--tensor-parallel-size",
+          "2",
+          "--gpu-memory-utilization",
+          "0.92",
+          "--max-model-len",
+          "2048",
+          "--max-num-batched-tokens",
+          "2048",
+          "--trust-remote-code",
+          "--no-enable-prefix-caching",
+          "--no-enable-chunked-prefill",
+          "--hf-overrides",
+          "{\"architectures\":[\"Gemma4ForCausalLM\"]}",
+          "--dtype",
+          "float16",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "18003",
+          "--host",
+          "localhost",
+          "--port",
+          "19003",
+          "--max-num-seqs",
+          "4"
+        ],
+        "passed": true
+      }
+    ],
+    "device_execution": false,
+    "intentional_default_changes": [
+      "served name casing",
+      "default port 8003",
+      "validated context 2048"
+    ]
+  },
+  "model": {
+    "runs": [
+      {
+        "run": 0,
+        "token_ids": [
+          107,
+          101,
+          818,
+          7217,
+          7412,
+          3730,
+          1547,
+          529,
+          496,
+          20284,
+          2760,
+          121707,
+          19389,
+          236764,
+          1298,
+          20532,
+          57583,
+          529,
+          26808,
+          568,
+          9503,
+          532,
+          39261,
+          236768,
+          659,
+          29892,
+          528,
+          784,
+          15232,
+          684,
+          506,
+          22112
+        ],
+        "text": "\nThe sky appears blue because of a phenomenon called Rayleigh scattering, where shorter wavelengths of sunlight (blue and violet) are scattered in all directions by the gases",
+        "finish_reason": "length",
+        "num_tokens": 32,
+        "seconds": 13.4305,
+        "usage": {
+          "prompt_tokens": 11,
+          "total_tokens": 43,
+          "completion_tokens": 32,
+          "prompt_tokens_details": null
+        }
+      },
+      {
+        "run": 1,
+        "token_ids": [
+          107,
+          101,
+          818,
+          7217,
+          7412,
+          3730,
+          1547,
+          529,
+          496,
+          20284,
+          2760,
+          121707,
+          19389,
+          236764,
+          1298,
+          20532,
+          57583,
+          529,
+          26808,
+          568,
+          9503,
+          532,
+          39261,
+          236768,
+          659,
+          29892,
+          528,
+          784,
+          15232,
+          684,
+          506,
+          22112
+        ],
+        "text": "\nThe sky appears blue because of a phenomenon called Rayleigh scattering, where shorter wavelengths of sunlight (blue and violet) are scattered in all directions by the gases",
+        "finish_reason": "length",
+        "num_tokens": 32,
+        "seconds": 13.1777,
+        "usage": {
+          "prompt_tokens": 11,
+          "total_tokens": 43,
+          "completion_tokens": 32,
+          "prompt_tokens_details": null
+        }
+      }
+    ],
+    "identical": true,
+    "passed": true,
+    "reference_equal": true,
+    "models": {
+      "object": "list",
+      "data": [
+        {
+          "id": "gemma-4-12B-it",
+          "object": "model",
+          "created": 1791147313,
+          "owned_by": "vllm",
+          "root": "/gpfs/model/google/gemma-4-12B-it",
+          "parent": null,
+          "max_model_len": 2048,
+          "permission": [
+            {
+              "id": "modelperm-9c33346595e7e487",
+              "object": "model_permission",
+              "created": 1791147313,
+              "allow_create_engine": false,
+              "allow_sampling": true,
+              "allow_logprobs": true,
+              "allow_search_indices": false,
+              "allow_view": true,
+              "allow_fine_tuning": false,
+              "organization": "*",
+              "group": null,
+              "is_blocking": false
+            }
+          ]
+        }
+      ]
+    },
+    "prompt": "Explain in one sentence why the sky appears blue.",
+    "launcher_sha256": "5947cc921237106aff9949c5616c2ef875806bc53afc645e86b867d757da1f00",
+    "default_context": 2048,
+    "port": 8003,
+    "performance_claim": false
+  },
+  "focused": {
+    "cpu_fake_fullgraph_loader": "pass",
+    "selected_initialization_fail_closed_cases": 2,
+    "syntax": "pass",
+    "diff_check": "pass"
+  },
+  "configuration": {
+    "context": 2048,
+    "port": 8003,
+    "dtype": "float16",
+    "tp": 2,
+    "physical_logical_mask": "2,3",
+    "default_compiler": true,
+    "default_math": true,
+    "host_override": "127.0.0.1"
+  },
+  "performance_claim": false,
+  "own_services_released": true,
+  "changed_source_sha256": {
+    "README.md": "b94cd071210aef755b09b271fc80d8a89859752659b2dc446c72d55ea3358104",
+    "run.sh": "5947cc921237106aff9949c5616c2ef875806bc53afc645e86b867d757da1f00",
+    "scripts/gemma4/http_probe.py": "33533650c805ab298405cfb790649b0aeb2e0a69408f30136c990d7e0c259e27"
+  },
+  "log_sha256": {
+    "model.json": "b371816f1ddb3a764d0cd469d426dcd56cb18a8bb5c31133421f553db808c851",
+    "argv.log": "f5b253ed5bcd369889da3bc9425cf0d170847c538ab5cc2434b4c494d6c9dbb5",
+    "cpu_fake.log": "c4503b4ab03dbaa5ef53082f33c87ea2913e940e6dd97fa46ee543159bb252ca",
+    "startup.log": "b4683335a35dc7422d3c3d75d8d261c6b3ca4a718e396a60e7529809fedd49b5",
+    "service.log": "1544577515f2ef680b862055b99dd9f84f9af82fa0ae76f8cb5bd1f657868a71",
+    "card_after.txt": "2a7a6f0142c2b22393a2d1c0925f62ee596a757fc9c11588ca1a2c681350d975"
+  },
+  "unexecuted": [
+    "full official task accuracy",
+    "official 2K/4K/8K/16K performance suite",
+    "multimodal evaluation"
+  ],
+  "reason": "This launcher repair is validated on the accepted 2048-token profile; no full competition CI result is claimed."
+}

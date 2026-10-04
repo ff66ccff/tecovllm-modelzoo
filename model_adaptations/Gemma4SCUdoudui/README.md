@@ -18,6 +18,13 @@ b=model_adaptations/Gemma4SCUdoudui
 bash "$b/run.sh"
 ```
 
+The default is the validated 2048-token profile on port 8003, with served
+name `gemma-4-12B-it`. The actual literal serve command is accepted by the
+unmodified official `tools/ci_pipline/run_ci.py`; environment overrides
+are resolved once before the vendor entrypoint. Parser validation covers
+startup metadata, while official accuracy and the full performance suite
+remain pending.
+
 The entry locks `/home/py312/bin/python` and `VLLM_DISABLE_COMPILE_CACHE=1`.
 It uses FP16, automatic KV-cache dtype, TP2, disabled prefix caching and chunked
 prefill, and the installed default `VLLM_COMPILE` mode with its SDAA eager
@@ -73,7 +80,7 @@ PYTHONPATH="$b/runtime" /home/py312/bin/python \
   "$b/op_learning/attention/gemma-d512-model/verify_operator.py" operator.json
 # Against the separately started selected server:
 /home/py312/bin/python "$b/op_learning/attention/gemma-d512-model/verify_model.py" \
-  --base http://127.0.0.1:8000 --out model.json --steady 300 --concurrency
+  --base http://127.0.0.1:8003 --out model.json --steady 300 --concurrency
 ```
 
 `validation/runtime_20261004.json` freezes source identities and results. Eight
@@ -98,7 +105,14 @@ driver/runtime 3.2.0 (custom DNN 3.2.1a0).
 
 This is temporary text regression evidence. Official task accuracy and current
 head owner CI remain pending. Full 8192-token generation and multimodal inputs
-are untested. The 302-second gate uses the prior frozen isolated core; the fresh
-public build has focused and greedy32 validation. Installed teco-ops wheel
+are untested. The original 302-second gate uses the prior frozen isolated core.
+`validation/runtime_20261005.json` adds a separate fresh public build: all
+eight operator cases and 83 greedy32 responses pass, including 306.875936
+seconds / 65 steady requests. Both workers load its recorded core digest.
+Fresh same-input timings are math 13.153049603 / 13.290304534 / 13.146468690
+seconds (median 13.153049603) and selected D512 13.006247967 / 13.010500995 /
+13.060514411 (median 13.010500995), a 1.084% reduction for this fixed case.
+This repeats the combined path comparison; it does not isolate a PR or
+establish an independent packaging speedup. Installed teco-ops wheel
 equivalence to current upstream heads is not inferred from its version string.
 Code retains the included BSD notices and the originating repository licenses.

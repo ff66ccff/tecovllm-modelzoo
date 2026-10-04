@@ -13,12 +13,12 @@ export PATH="/home/py312/bin:${PATH}"
 export SDAA_ENABLE_COREDUMP_ON_EXCEPTION=0
 export MODEL_ROOT=/gpfs/model
 export GEMMA_TP_SIZE=2 GEMMA_UTIL=0.92
-export GEMMA_MAX_MODEL_LEN=2048 GEMMA_MAX_BATCHED_TOKENS=2048
+export GEMMA_MAX_MODEL_LEN=2304 GEMMA_MAX_BATCHED_TOKENS=2304
 b=model_adaptations/Gemma4SCUdoudui
 bash "$b/run.sh"
 ```
 
-The default is the validated 2048-token profile on port 8003, with served
+The default is the validated 2304-token profile on port 8003, with served
 name `gemma-4-12B-it`. The actual literal serve command is accepted by the
 unmodified official `tools/ci_pipline/run_ci.py`; environment overrides
 are resolved once before the vendor entrypoint. Parser validation covers
@@ -138,3 +138,44 @@ tokenizer initialization. It preserves raw tokenizer.json encoding IDs; config,
 weights and installed source files remain unchanged. This focused client gate
 is not a model smoke, official accuracy, full CI or performance result. Server
 context-budget validation is a separate attempt.
+
+## Official T1 input and output budget
+
+The 2304-token default reserves room for the official 2048-input / 100-output
+T1 case. TP2, FP16, util0.92, attention implementations, full KV layout and
+prefix/chunked flags are unchanged. This is a capacity enabler.
+`validation/ci_budget2304_20261005.json` records eight longer-context D512
+operator cases (maximum absolute error 0.0010442734),
+same-config math/selected controls with four matching greedy32 responses and
+four matching exact-2048-input greedy100 responses, plus five startup argv
+cases. KV capacity is 2855 tokens.
+
+With the explicit client tokenizer overlay, the unchanged official T1 arguments
+and 1K/10-token warmup complete: all ten T1 database rows succeed and return
+100 output tokens. The measured request span is
+457.818861 seconds; total validated steady
+duration is 457.818861 seconds. Four greedy32 responses
+before/after T1 match the committed reference. Both workers load the frozen
+isolated D512 core; owned services are released.
+
+The 2048-profile timings above retain their original scope. Reproduce them by
+setting `GEMMA_MAX_MODEL_LEN=2048 GEMMA_MAX_BATCHED_TOKENS=2048` before launch.
+T1 capacity/stability does not establish a new speedup or official accuracy.
+T2/T3/T4 (4K/8K/16K), multimodal evaluation and owner CI remain pending.
+
+After starting the selected server, reproduce the official warmup and T1
+individually with vendor Python (all request arguments are unchanged):
+
+```bash
+b="$PWD/model_adaptations/Gemma4SCUdoudui"
+for task_shape in 1024:10:1 2048:100:10; do
+  IFS=: read -r task_prompt task_output task_number <<< "$task_shape"
+  GEMMA4_EVAL_TOKENIZER=1 PYTHONPATH="$b/eval_overlay" \
+    /home/py312/bin/python /home/py312/bin/evalscope perf \
+    --model gemma-4-12B-it --url http://127.0.0.1:8003/v1/chat/completions \
+    --api openai --tokenizer-path /gpfs/model/google/gemma-4-12B-it \
+    --dataset random --min-prompt-length "$task_prompt" --max-prompt-length "$task_prompt" \
+    --max-tokens "$task_output" --min-tokens "$task_output" \
+    --extra-args '{"ignore_eos": true}' --parallel 1 --number "$task_number"
+done
+```

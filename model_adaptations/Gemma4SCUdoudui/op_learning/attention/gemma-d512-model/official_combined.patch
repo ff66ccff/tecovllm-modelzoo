@@ -1,0 +1,191 @@
+diff --git a/api/torch_ext.cpp b/api/torch_ext.cpp
+index d1c22af..0857bc5 100644
+--- a/api/torch_ext.cpp
++++ b/api/torch_ext.cpp
+@@ -29,0 +30,2 @@
++#include <cmath>
++#include <limits>
+@@ -114,0 +117,6 @@ void flash_attn_varlen_func_torch(
++    const double max_scale = std::numeric_limits<float>::max();
++    TORCH_CHECK(std::isfinite(softmax_scale) &&
++                softmax_scale >= -max_scale && softmax_scale <= max_scale,
++                "softmax_scale must be finite and representable as float32");
++    const float scale = static_cast<float>(softmax_scale);
++
+@@ -118,9 +126,4 @@ void flash_attn_varlen_func_torch(
+-    // parse q_seq_lens
+-    auto cu_seqlens_q_cpu = cu_seqlens_q.cpu();
+-    auto cu_ptr = cu_seqlens_q_cpu.data_ptr<int>();
+-    auto q_lens_cpu = torch::empty({batch_size}, torch::kInt32);
+-    auto ql_cpu_ptr = q_lens_cpu.data_ptr<int>();
+-    for (int b = 0; b < batch_size; b++) {
+-        ql_cpu_ptr[b] = cu_ptr[b + 1] - cu_ptr[b];
+-    }
+-    auto q_lens = q_lens_cpu.to("sdaa");
++    // PR36: keep query lengths on device and order the launch on the caller's stream.
++    auto q_lens = (
++        cu_seqlens_q.narrow(0, 1, batch_size) -
++        cu_seqlens_q.narrow(0, 0, batch_size)).contiguous();
+@@ -134,0 +138 @@ void flash_attn_varlen_func_torch(
++    tecoopsSetStream(handle, torch::sdaa::getCurrentSDAAStream());
+@@ -150,2 +154,2 @@ void flash_attn_varlen_func_torch(
+-    tecoopsFlashAttention(handle,
+-                          max_seqlen_q, max_seqlen_k, max_block_num,
++    tecoopsFlashAttentionWithScale(handle,
++                          max_seqlen_q, max_seqlen_k, max_block_num, scale,
+diff --git a/setup.py b/setup.py
+index 6a406b6..2c4be0e 100644
+--- a/setup.py
++++ b/setup.py
+@@ -147 +147 @@ if with_torch == "ON":
+-        # Build: WITH_TORCH=ON (produces libteco_ops.so with torch link flags)
++        # Build: WITH_TORCH=ON (produces libteco_gemma_flash.so with torch link flags)
+@@ -171 +171 @@ if with_torch == "ON":
+-        print("libteco_ops.so built successfully!")
++        print("libteco_gemma_flash.so built successfully!")
+@@ -173,2 +173,2 @@ if with_torch == "ON":
+-        teco_ops_lib = os.path.join(teco_lib_dir, "libteco_ops.so")
+-        teco_ops_dest = os.path.join(current_path, "api", "tecoops", "libteco_ops.so")
++        teco_ops_lib = os.path.join(teco_lib_dir, "libteco_gemma_flash.so")
++        teco_ops_dest = os.path.join(current_path, "api", "tecoops", "libteco_gemma_flash.so")
+@@ -176 +176 @@ if with_torch == "ON":
+-        print(f"Copied libteco_ops.so to api/tecoops/")
++        print(f"Copied libteco_gemma_flash.so to api/tecoops/")
+@@ -181 +181 @@ if with_torch == "ON":
+-            "-lteco_ops",
++            "-lteco_gemma_flash",
+diff --git a/teco/CMakeLists.txt b/teco/CMakeLists.txt
+index 8875b22..f04aedf 100644
+--- a/teco/CMakeLists.txt
++++ b/teco/CMakeLists.txt
+@@ -125 +125 @@ else()
+-            -o ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libteco_ops.so
++            -o ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libteco_gemma_flash.so
+diff --git a/teco/interface/include/tecoops.h b/teco/interface/include/tecoops.h
+index 185f551..72edc29 100644
+--- a/teco/interface/include/tecoops.h
++++ b/teco/interface/include/tecoops.h
+@@ -170,0 +171,16 @@ tecoopsStatus_t tecoopsFlashAttention(tecoopsHandle_t handle,
++// Explicit finite scale; the original entry keeps 1/sqrt(head_size).
++tecoopsStatus_t tecoopsFlashAttentionWithScale(tecoopsHandle_t handle,
++                                      int max_seqlen_q, int max_seqlen_k,
++                                      int max_block_num, float softmax_scale, const int *q_seq_lens,
++                                      const int *kv_seq_lens,
++                                      const tecoopsTensorDescriptor_t blockTableDesc,
++                                      const void *blockTable,
++                                      const tecoopsTensorDescriptor_t qDataDesc,
++                                      const void *qData,
++                                      const tecoopsTensorDescriptor_t kCacheDesc,
++                                      const void *kCache,
++                                      const tecoopsTensorDescriptor_t vCacheDesc,
++                                      const void *vCache,
++                                      const tecoopsTensorDescriptor_t oDataDesc,
++                                      void *oData, void *workspace);
++
+diff --git a/teco/interface/ops/flash_attention.cpp b/teco/interface/ops/flash_attention.cpp
+index 9f945ad..4005b74 100644
+--- a/teco/interface/ops/flash_attention.cpp
++++ b/teco/interface/ops/flash_attention.cpp
+@@ -29,0 +30,2 @@
++#include <cmath>
++
+@@ -71 +73 @@ static tecoopsStatus_t flashAttentionCheckArgs(tecoopsHandle_t handle,
+-tecoopsStatus_t tecoopsFlashAttention(tecoopsHandle_t handle,
++tecoopsStatus_t tecoopsFlashAttentionWithScale(tecoopsHandle_t handle,
+@@ -73 +75 @@ tecoopsStatus_t tecoopsFlashAttention(tecoopsHandle_t handle,
+-                                      int max_block_num, const int *q_seq_lens,
++                                      int max_block_num, float softmax_scale, const int *q_seq_lens,
+@@ -90,0 +93,5 @@ tecoopsStatus_t tecoopsFlashAttention(tecoopsHandle_t handle,
++    if (!std::isfinite(softmax_scale)) {
++        ERROR("softmax_scale must be finite\n");
++        return TECOOPS_STATUS_BAD_PARAM;
++    }
++
+@@ -102 +109 @@ tecoopsStatus_t tecoopsFlashAttention(tecoopsHandle_t handle,
+-    args.softmax_scale = 1.0 / sqrtf(double(args.size_per_head));
++    args.softmax_scale = softmax_scale;
+@@ -119,0 +127,26 @@ tecoopsStatus_t tecoopsFlashAttention(tecoopsHandle_t handle,
++
++tecoopsStatus_t tecoopsFlashAttention(tecoopsHandle_t handle,
++                                      int max_seqlen_q, int max_seqlen_k,
++                                      int max_block_num, const int *q_seq_lens,
++                                      const int *kv_seq_lens,
++                                      const tecoopsTensorDescriptor_t blockTableDesc,
++                                      const void *blockTable,
++                                      const tecoopsTensorDescriptor_t qDataDesc,
++                                      const void *qData,
++                                      const tecoopsTensorDescriptor_t kCacheDesc,
++                                      const void *kCache,
++                                      const tecoopsTensorDescriptor_t vCacheDesc,
++                                      const void *vCache,
++                                      const tecoopsTensorDescriptor_t oDataDesc,
++                                      void *oData, void *workspace) {
++    // Keep legacy validation before reading qDataDesc for the default scale.
++    const auto input_error = flashAttentionCheckArgs(handle, kCacheDesc, vCacheDesc);
++    checkTecoopsStatus(input_error);
++    // Preserve the original ABI and its default scale.
++    const float softmax_scale = 1.0f / std::sqrt(float(qDataDesc->dimA[2]));
++    return tecoopsFlashAttentionWithScale(handle,
++        max_seqlen_q, max_seqlen_k, max_block_num, softmax_scale,
++        q_seq_lens, kv_seq_lens, blockTableDesc, blockTable,
++        qDataDesc, qData, kCacheDesc, kCache, vCacheDesc, vCache,
++        oDataDesc, oData, workspace);
++}
+diff --git a/teco/ual/kernel/flash_attention/flash_attention.h b/teco/ual/kernel/flash_attention/flash_attention.h
+index db1486e..cfa8714 100644
+--- a/teco/ual/kernel/flash_attention/flash_attention.h
++++ b/teco/ual/kernel/flash_attention/flash_attention.h
+@@ -34,0 +35,2 @@ __global__ void teco_slave_flash_attention_half(FlashAttentionArgs arg);
++__global__ void teco_slave_flash_attention_half_d256(FlashAttentionArgs arg);
++__global__ void teco_slave_flash_attention_half_d512(FlashAttentionArgs arg);
+diff --git a/teco/ual/kernel/flash_attention/flash_attention.scpp b/teco/ual/kernel/flash_attention/flash_attention.scpp
+index 68f66ad..6718802 100644
+--- a/teco/ual/kernel/flash_attention/flash_attention.scpp
++++ b/teco/ual/kernel/flash_attention/flash_attention.scpp
+@@ -155 +155,2 @@ __device__ void online_softmax_step(
+-__global__ void teco_slave_flash_attention_half(FlashAttentionArgs args) {
++template <int BM>
++__device__ __always_inline void flash_attention_half(FlashAttentionArgs args) {
+@@ -162 +162,0 @@ __global__ void teco_slave_flash_attention_half(FlashAttentionArgs args) {
+-    int BM = 128;   // M block, 128 for ace
+@@ -240 +240 @@ __global__ void teco_slave_flash_attention_half(FlashAttentionArgs args) {
+-                // gemm: Q * K^T = score, using teco_hal matmul M2=128, N2=32
++                // gemm: Q * K^T = score, using teco_hal matmul M2<=128, N2=32
+@@ -393,0 +394,12 @@ __global__ void teco_slave_flash_attention_half(FlashAttentionArgs args) {
++
++__global__ void teco_slave_flash_attention_half(FlashAttentionArgs args) {
++    flash_attention_half<128>(args);
++}
++
++__global__ void teco_slave_flash_attention_half_d256(FlashAttentionArgs args) {
++    flash_attention_half<64>(args);
++}
++
++__global__ void teco_slave_flash_attention_half_d512(FlashAttentionArgs args) {
++    flash_attention_half<32>(args);
++}
+diff --git a/teco/ual/ops/flash_attention/find_flash_attention.cpp b/teco/ual/ops/flash_attention/find_flash_attention.cpp
+index 6eb2663..b89f81c 100644
+--- a/teco/ual/ops/flash_attention/find_flash_attention.cpp
++++ b/teco/ual/ops/flash_attention/find_flash_attention.cpp
+@@ -39,0 +40,6 @@ int findFlashAttentionBranch(const FlashAttentionPatchArgs *args) {
++    if (args->rvargs->size_per_head == 256) {
++        return 1;
++    }
++    if (args->rvargs->size_per_head == 512) {
++        return 2;
++    }
+diff --git a/teco/ual/ops/flash_attention/flash_attention.hpp b/teco/ual/ops/flash_attention/flash_attention.hpp
+index e0bb014..dbe5ee7 100644
+--- a/teco/ual/ops/flash_attention/flash_attention.hpp
++++ b/teco/ual/ops/flash_attention/flash_attention.hpp
+@@ -53,0 +54,4 @@ static const FlashAttentionType::PImplType FlashAttentionAlgos[] = {
++    /* 01 */
++    teco_slave_flash_attention_half_d256,
++    /* 02 */
++    teco_slave_flash_attention_half_d512,
+@@ -59,0 +64,4 @@ static const char *FlashAttentionAlgosDiscription[] = {
++    /* 01 */
++    "teco_slave_flash_attention_half_d256",
++    /* 02 */
++    "teco_slave_flash_attention_half_d512",

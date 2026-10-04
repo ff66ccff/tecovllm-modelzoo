@@ -1,0 +1,548 @@
+{
+  "schema_version": 1,
+  "status": "pass",
+  "stage": "v3_optional_d512_export",
+  "source_runtime_commit": "38c6f9036ccca22a8efe4ad5b711b1a58b8ebdb8",
+  "public_launcher_commit": "4e073ec7a6265367f0f783ded90e38ba16eaa3f6",
+  "hypothesis": "Export the accepted isolated D512 implementation without changing its math",
+  "python": "/usr/local/python/bin/python3.12",
+  "versions": {
+    "torch": "2.12.0a0+git0d62256",
+    "torch-sdaa": "20260623.8.51.dev0+gitd942f23",
+    "vllm": "0.20.2.dev0+g132765e35.d20260728.empty",
+    "transformers": "4.57.6",
+    "tecoops": "0.0.0",
+    "tecovllm": "0.0.0.dev0+git91a9100cfef1ece189494d227125717d7636989a"
+  },
+  "configuration": {
+    "dtype": "float16",
+    "tensor_parallel_size": 2,
+    "logical_devices": [
+      2,
+      3
+    ],
+    "max_model_len": 2048,
+    "max_num_batched_tokens": 2048,
+    "gpu_memory_utilization": 0.92,
+    "compiler": "default VLLM_COMPILE eager backend, cache disabled",
+    "prefix_caching": false,
+    "chunked_prefill": false,
+    "isolated_d512": true
+  },
+  "correctness": {
+    "operator_cases": 8,
+    "max_abs_error": 0.00102996826171875,
+    "fullgraph_and_two_streams": true,
+    "loader_fake_and_constructor_guards": "pass",
+    "public_overlay": "pass",
+    "startup_failure": {
+      "passed": true,
+      "cases": [
+        {
+          "case": "missing_selected_library",
+          "exit_code": 1,
+          "main_unreachable": true
+        },
+        {
+          "case": "incomplete_selection",
+          "exit_code": 1,
+          "main_unreachable": true
+        }
+      ]
+    },
+    "greedy_tokens": 32,
+    "expected_token_ids": [
+      107,
+      101,
+      818,
+      7217,
+      7412,
+      3730,
+      1547,
+      529,
+      496,
+      20284,
+      2760,
+      121707,
+      19389,
+      236764,
+      1298,
+      20532,
+      57583,
+      529,
+      26808,
+      568,
+      9503,
+      532,
+      39261,
+      236768,
+      659,
+      29892,
+      528,
+      784,
+      15232,
+      684,
+      506,
+      22112
+    ],
+    "total_requests": 83,
+    "all_token_ids_equal_baseline": true,
+    "concurrency": [
+      1,
+      4,
+      8
+    ],
+    "steady_seconds": 302.1710148300044,
+    "steady_rounds": 15,
+    "steady_requests": 65,
+    "steady_errors": 0
+  },
+  "performance": {
+    "scope": "fixed 11-token text prompt, greedy32; two warmups followed by three measurements",
+    "prompt": "Explain in one sentence why the sky appears blue.",
+    "baseline_raw_seconds": [
+      13.543720813002437,
+      13.55325854900002,
+      13.569659358006902
+    ],
+    "candidate_raw_seconds": [
+      12.941326798012597,
+      12.76888106399565,
+      12.942871412989916
+    ],
+    "baseline_median_seconds": 13.55325854900002,
+    "candidate_median_seconds": 12.941326798012597,
+    "latency_reduction_percent": 4.5150156973326006
+  },
+  "isolated_loads": [
+    {
+      "extension": "/root/tmpwork/gemma-d512-integration-20261004/api/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+      "extension_sha256": "670f66b8baa68c0d8499a3c28818ca73133b64e0dad77dc06f6607a50c981a95",
+      "core": "/root/tmpwork/gemma-d512-integration-20261004/api/tecoops/libteco_gemma_flash.so",
+      "core_sha256": "e27cdb6dc9d392c0816fb01ad3aac0285ad380d2b05c18864a52e8fea0792c73",
+      "needed": [
+        "libteco_gemma_flash.so",
+        "libc10.so",
+        "libtorch.so",
+        "libtorch_cpu.so",
+        "libtorch_python.so",
+        "libc10_sdaa.so",
+        "libtorch_sdaa.so",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ]
+    },
+    {
+      "extension": "/root/tmpwork/gemma-d512-integration-20261004/api/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+      "extension_sha256": "670f66b8baa68c0d8499a3c28818ca73133b64e0dad77dc06f6607a50c981a95",
+      "core": "/root/tmpwork/gemma-d512-integration-20261004/api/tecoops/libteco_gemma_flash.so",
+      "core_sha256": "e27cdb6dc9d392c0816fb01ad3aac0285ad380d2b05c18864a52e8fea0792c73",
+      "needed": [
+        "libteco_gemma_flash.so",
+        "libc10.so",
+        "libtorch.so",
+        "libtorch_cpu.so",
+        "libtorch_python.so",
+        "libc10_sdaa.so",
+        "libtorch_sdaa.so",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ]
+    },
+    {
+      "extension": "/root/tmpwork/gemma-d512-integration-20261004/api/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+      "extension_sha256": "670f66b8baa68c0d8499a3c28818ca73133b64e0dad77dc06f6607a50c981a95",
+      "core": "/root/tmpwork/gemma-d512-integration-20261004/api/tecoops/libteco_gemma_flash.so",
+      "core_sha256": "e27cdb6dc9d392c0816fb01ad3aac0285ad380d2b05c18864a52e8fea0792c73",
+      "needed": [
+        "libteco_gemma_flash.so",
+        "libc10.so",
+        "libtorch.so",
+        "libtorch_cpu.so",
+        "libtorch_python.so",
+        "libc10_sdaa.so",
+        "libtorch_sdaa.so",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ]
+    },
+    {
+      "extension": "/root/tmpwork/gemma-d512-integration-20261004/api/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+      "extension_sha256": "670f66b8baa68c0d8499a3c28818ca73133b64e0dad77dc06f6607a50c981a95",
+      "core": "/root/tmpwork/gemma-d512-integration-20261004/api/tecoops/libteco_gemma_flash.so",
+      "core_sha256": "e27cdb6dc9d392c0816fb01ad3aac0285ad380d2b05c18864a52e8fea0792c73",
+      "needed": [
+        "libteco_gemma_flash.so",
+        "libc10.so",
+        "libtorch.so",
+        "libtorch_cpu.so",
+        "libtorch_python.so",
+        "libc10_sdaa.so",
+        "libtorch_sdaa.so",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ]
+    },
+    {
+      "extension": "/root/tmpwork/gemma-d512-integration-20261004/api/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+      "extension_sha256": "670f66b8baa68c0d8499a3c28818ca73133b64e0dad77dc06f6607a50c981a95",
+      "core": "/root/tmpwork/gemma-d512-integration-20261004/api/tecoops/libteco_gemma_flash.so",
+      "core_sha256": "e27cdb6dc9d392c0816fb01ad3aac0285ad380d2b05c18864a52e8fea0792c73",
+      "needed": [
+        "libteco_gemma_flash.so",
+        "libc10.so",
+        "libtorch.so",
+        "libtorch_cpu.so",
+        "libtorch_python.so",
+        "libc10_sdaa.so",
+        "libtorch_sdaa.so",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ]
+    }
+  ],
+  "actual_worker_executions": [
+    {
+      "pid": 105634,
+      "query_shape": [
+        1,
+        8,
+        512
+      ],
+      "key_cache_shape": [
+        996,
+        1,
+        32,
+        512
+      ],
+      "value_cache_shape": [
+        996,
+        1,
+        32,
+        512
+      ],
+      "out_shape": [
+        1,
+        8,
+        512
+      ],
+      "dtype": "torch.float16",
+      "device": "sdaa:0",
+      "scale": 1.0,
+      "stream": "<torch_sdaa.backend.Stream device=sdaa:0 sdaa_stream=0x0>"
+    },
+    {
+      "pid": 105635,
+      "query_shape": [
+        1,
+        8,
+        512
+      ],
+      "key_cache_shape": [
+        996,
+        1,
+        32,
+        512
+      ],
+      "value_cache_shape": [
+        996,
+        1,
+        32,
+        512
+      ],
+      "out_shape": [
+        1,
+        8,
+        512
+      ],
+      "dtype": "torch.float16",
+      "device": "sdaa:1",
+      "scale": 1.0,
+      "stream": "<torch_sdaa.backend.Stream device=sdaa:1 sdaa_stream=0x0>"
+    }
+  ],
+  "prepared_sources": {
+    "passed": true,
+    "files": [
+      {
+        "file": "api/torch_ext.cpp",
+        "bytes_identical": true,
+        "identical_after_blank_line_and_trailing_space_normalization": true,
+        "prepared_sha256": "b4548eb117506a35959a40753899a5020f7187e6ef4c09c285486fa4a0413667",
+        "reference_sha256": "b4548eb117506a35959a40753899a5020f7187e6ef4c09c285486fa4a0413667"
+      },
+      {
+        "file": "teco/interface/include/tecoops.h",
+        "bytes_identical": true,
+        "identical_after_blank_line_and_trailing_space_normalization": true,
+        "prepared_sha256": "06a9f00a42035e0290cf28319cf0e29cf9e93a4137b421d22bce0090e3b5ce86",
+        "reference_sha256": "06a9f00a42035e0290cf28319cf0e29cf9e93a4137b421d22bce0090e3b5ce86"
+      },
+      {
+        "file": "teco/interface/ops/flash_attention.cpp",
+        "bytes_identical": false,
+        "identical_after_blank_line_and_trailing_space_normalization": true,
+        "prepared_sha256": "b7960808c0ba345243ddfc7903b14ba84b80137a0770fc8b8c9a072d98009642",
+        "reference_sha256": "0a8eca157c151a1fcb3a22cf25a177ae8289afb242c3223ca8ba98b46c60ae5e"
+      },
+      {
+        "file": "teco/CMakeLists.txt",
+        "bytes_identical": true,
+        "identical_after_blank_line_and_trailing_space_normalization": true,
+        "prepared_sha256": "b42c05af7ddb93573ad9f0f7c841ac4d394ea27f6e1b0b00871b1206193b8405",
+        "reference_sha256": "b42c05af7ddb93573ad9f0f7c841ac4d394ea27f6e1b0b00871b1206193b8405"
+      },
+      {
+        "file": "setup.py",
+        "bytes_identical": true,
+        "identical_after_blank_line_and_trailing_space_normalization": true,
+        "prepared_sha256": "43e33751aefae6a1b58c12ab1d58002a927d2308a5f54921a8d8d0d36ef714d8",
+        "reference_sha256": "43e33751aefae6a1b58c12ab1d58002a927d2308a5f54921a8d8d0d36ef714d8"
+      },
+      {
+        "file": "teco/ual/kernel/flash_attention/flash_attention.h",
+        "bytes_identical": false,
+        "identical_after_blank_line_and_trailing_space_normalization": true,
+        "prepared_sha256": "533125d9d2193a1a5601d717f11752d5061f4836142daa5dcafc564204172382",
+        "reference_sha256": "adfe0f4aa199d5abda68eadfdd11ca7acea747c5decf226014f7daf3a7cd033b"
+      },
+      {
+        "file": "teco/ual/kernel/flash_attention/flash_attention.scpp",
+        "bytes_identical": false,
+        "identical_after_blank_line_and_trailing_space_normalization": true,
+        "prepared_sha256": "70b230b38bdd40ce492a809daf9b1d223608e93f110c2a8a28ae0d169bde1fb5",
+        "reference_sha256": "efcb3f4baee4a8a18e4d36154bbd36c56161b99b49adda2d7391de0b51700000"
+      },
+      {
+        "file": "teco/ual/ops/flash_attention/find_flash_attention.cpp",
+        "bytes_identical": false,
+        "identical_after_blank_line_and_trailing_space_normalization": true,
+        "prepared_sha256": "411a1ea1c9d978bcefdfbaa6d5562647ef8775b9824696a51c758e23f625120f",
+        "reference_sha256": "23facb33d0acdf87f251833fc7b98acfa4d6c62d7584f34914d0024be77881e1"
+      },
+      {
+        "file": "teco/ual/ops/flash_attention/flash_attention.hpp",
+        "bytes_identical": false,
+        "identical_after_blank_line_and_trailing_space_normalization": true,
+        "prepared_sha256": "4403fac5e2480ec52a87ddfa31cc2db6eb50b1094bd8cfbfcd81c55bc7832e68",
+        "reference_sha256": "5469716bbffd0d1302e76bdab04563f6d07f359928a853946dcc042509744d7c"
+      }
+    ],
+    "full_rebuild_repeated": false,
+    "scope": "portable helper reproduced the same functional sources as the already compiled and model-validated isolated core"
+  },
+  "full_rebuild_repeated": true,
+  "services_released": true,
+  "new_kernel": false,
+  "default_d512_selection_changed": false,
+  "official_accuracy_claim": false,
+  "full_8192_context_claim": false,
+  "installed_tecoops_current_pr_head_equivalence_proven": false,
+  "delivery": {
+    "sha256": {
+      "README.md": "7cea0c4aaed1e800fc6034bdd3b9234460e54e801c3a9b250d06d625eb0868d9",
+      "run.sh": "1a0cf574b7d798a50d67b0e6e8b91ae8e57645f243f84367536632ba35ee6a1b",
+      ".gitattributes": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9",
+      "overlay/gemma4_shim.py": "d79c45fcb5961ab05e486ab2bacb4f5e7d8a142cf8ab8ede90f726b463937d6d",
+      "overlay/sitecustomize.py": "f44ac9e33a6f16aae98ab4f80c434dec0d7a9a014b35fb0de991feae9a2cc246",
+      "tests/test_startup_failure.py": "9a15f5ff3e5985e7b62ea9d17c8357d691a96e9324606b4aa0c9aad537c6181d",
+      "runtime/custom_ops/__init__.py": "8b6f5e376cf94fbb8373dbc10c20faa33fb07cead52fd49e0ed04d26b0e38156",
+      "runtime/custom_ops/d512_official.py": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8",
+      "runtime/custom_ops/block_attention/__init__.py": "23e9948acd5c9190fb61ba6469f7ee62cffa9d2bfc4e8960e166444ea11f285c",
+      "runtime/custom_ops/block_attention/op.py": "8bdd46ee17f6ac26b36d5f923069f03761808784117de74a7484e4d9aa457df8",
+      "runtime/custom_ops/prefill_attention/__init__.py": "27919b3373e473dfbbe150dc585edb5920fd7d4a307e6b9b31019e5040518a7b",
+      "runtime/custom_ops/prefill_attention/op.py": "0aea72884f253f761d310a934153b26c6bbf67709678470dae0b0492aac2c631",
+      "runtime/custom_ops/reshape_and_cache/__init__.py": "ca4deb4ff9ccdfa708a1daec6d69c7fded3bfe1910010535942cabc58618885b",
+      "runtime/custom_ops/reshape_and_cache/op.py": "0cfd8aa757412f769e04cc1adaffc9bf53e4997bcd6e44ab154794483b0ee029",
+      "scripts/gemma4/build_d512_official.py": "022a33075979c5580be9fc804ffe43643468345be2e9759b6ab25cef65fd9bd1",
+      "scripts/gemma4/test_d512_official_cpu.py": "537c816acba17fd52034c06a4e591718b48e0c2e54a62bbc37999c4ac5d9d0a1",
+      "scripts/gemma4/http_probe.py": "a5afa5b8da4c7f71f9421e2873b45b52352f078c5c1f0c12f96392aa14c5b040",
+      "scripts/gemma4/test_operator_overlay.py": "375c7e8dafe3cda60270438ef054b6760514f29b08f218c7e595bb9f8a8d2395",
+      "op_learning/attention/gemma-d512-model/official_combined.patch": "c9a970bed3012c44bae0f446c314fa7fc2db2caee7496b03e48cd9f498884abb",
+      "op_learning/attention/gemma-d512-model/verify_operator.py": "611ab88488e019d30fd6f95e8518462ac48f01058eb4f0961b757bfcbc0a2942",
+      "op_learning/attention/gemma-d512-model/verify_model.py": "bf01f84b5e3bfc2a35f841e859da5d09fe3fdf264276a2615b2a3a15ecb551a8",
+      "op_learning/attention/gemma-d512-model/baseline_token_ids.json": "69713a8f224be4802e2593ba31463571877eab19245f084679eca6c46903ada3"
+    },
+    "source_files": 22,
+    "executable_asts_preserved": true
+  },
+  "fresh_public_build": {
+    "provenance": {
+      "official_base": "de27305efed0a17ae926d21d5415d8b915614649",
+      "patch_sha256": "c9a970bed3012c44bae0f446c314fa7fc2db2caee7496b03e48cd9f498884abb",
+      "teco_hal": "/root/thirdparty/teco-hal",
+      "python": "/usr/local/python/bin/python3.12",
+      "output": "/root/tmpwork/gemma-public-d512-build-20261004",
+      "disk_free_bytes_before_build": 1225347072,
+      "extension": "/root/tmpwork/gemma-public-d512-build-20261004/api/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+      "extension_sha256": "8bfa5e38c60c6ff2c1cfc7f2b13f83247dc66d9d7a7a84a1a52b7c74c53e68a9",
+      "core": "/root/tmpwork/gemma-public-d512-build-20261004/api/tecoops/libteco_gemma_flash.so",
+      "core_sha256": "791a7c0b2ebd50e6f09bbafab4505742e9ec10c706b0d28d28e9ef5bd1e03400"
+    },
+    "operator": {
+      "passed": true,
+      "rows": [
+        {
+          "lengths": [
+            33
+          ],
+          "nondefault_stream": false,
+          "compiled_fullgraph_eager": false,
+          "noncontiguous_query": true,
+          "padded_metadata": true,
+          "max_abs_error": 0.0009675025939941406
+        },
+        {
+          "lengths": [
+            33
+          ],
+          "nondefault_stream": true,
+          "compiled_fullgraph_eager": true,
+          "noncontiguous_query": true,
+          "padded_metadata": false,
+          "max_abs_error": 0.0009675025939941406
+        },
+        {
+          "lengths": [
+            65
+          ],
+          "nondefault_stream": false,
+          "compiled_fullgraph_eager": false,
+          "noncontiguous_query": true,
+          "padded_metadata": true,
+          "max_abs_error": 0.0009129047393798828
+        },
+        {
+          "lengths": [
+            65
+          ],
+          "nondefault_stream": true,
+          "compiled_fullgraph_eager": true,
+          "noncontiguous_query": true,
+          "padded_metadata": false,
+          "max_abs_error": 0.0009129047393798828
+        },
+        {
+          "lengths": [
+            1025
+          ],
+          "nondefault_stream": false,
+          "compiled_fullgraph_eager": false,
+          "noncontiguous_query": true,
+          "padded_metadata": true,
+          "max_abs_error": 0.0009565353393554688
+        },
+        {
+          "lengths": [
+            1025
+          ],
+          "nondefault_stream": true,
+          "compiled_fullgraph_eager": true,
+          "noncontiguous_query": true,
+          "padded_metadata": false,
+          "max_abs_error": 0.0009565353393554688
+        },
+        {
+          "lengths": [
+            33,
+            65,
+            1025
+          ],
+          "nondefault_stream": false,
+          "compiled_fullgraph_eager": false,
+          "noncontiguous_query": true,
+          "padded_metadata": true,
+          "max_abs_error": 0.00102996826171875
+        },
+        {
+          "lengths": [
+            33,
+            65,
+            1025
+          ],
+          "nondefault_stream": true,
+          "compiled_fullgraph_eager": true,
+          "noncontiguous_query": true,
+          "padded_metadata": false,
+          "max_abs_error": 0.00102996826171875
+        }
+      ],
+      "global_tecoops_unchanged": "/home/py312/lib/python3.12/site-packages/tecoops/__init__.py",
+      "extension": "/root/tmpwork/gemma-public-d512-build-20261004/api/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+      "max_abs_error": 0.00102996826171875
+    },
+    "greedy32_all_ids_match": true,
+    "worker_receipts": {
+      "results": [
+        {
+          "pid": 107561,
+          "rank": 0,
+          "attention_count": 48,
+          "global_d512_count": 8,
+          "global_decode_names": [
+            "decode_forward"
+          ],
+          "weight_devices": [
+            "sdaa:0"
+          ],
+          "weight_dtypes": [
+            "torch.float16"
+          ],
+          "peak_allocated_gib": 13.744473457336426,
+          "peak_reserved_gib": 14.330078125,
+          "current_allocated_gib": 12.051465511322021,
+          "source_sha256": {
+            "/root/SichuanUniversity_AI_accelerator-gemma/model_adaptations/Gemma4SCUdoudui/runtime/custom_ops/d512_official.py": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8"
+          },
+          "loaded_library_sha256": {
+            "/root/tmpwork/gemma-public-d512-build-20261004/api/tecoops/libteco_gemma_flash.so": "791a7c0b2ebd50e6f09bbafab4505742e9ec10c706b0d28d28e9ef5bd1e03400"
+          }
+        },
+        {
+          "pid": 107562,
+          "rank": 1,
+          "attention_count": 48,
+          "global_d512_count": 8,
+          "global_decode_names": [
+            "decode_forward"
+          ],
+          "weight_devices": [
+            "sdaa:1"
+          ],
+          "weight_dtypes": [
+            "torch.float16"
+          ],
+          "peak_allocated_gib": 13.744473457336426,
+          "peak_reserved_gib": 14.330078125,
+          "current_allocated_gib": 12.051465511322021,
+          "source_sha256": {
+            "/root/SichuanUniversity_AI_accelerator-gemma/model_adaptations/Gemma4SCUdoudui/runtime/custom_ops/d512_official.py": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8"
+          },
+          "loaded_library_sha256": {
+            "/root/tmpwork/gemma-public-d512-build-20261004/api/tecoops/libteco_gemma_flash.so": "791a7c0b2ebd50e6f09bbafab4505742e9ec10c706b0d28d28e9ef5bd1e03400"
+          }
+        }
+      ]
+    },
+    "services_released": true,
+    "steady_repeated": false,
+    "performance_measured": false,
+    "scope": "fresh isolated public build focused correctness and exported greedy32; original core used for 302-second performance/stability gate"
+  },
+  "source_runtime_changed": false,
+  "launcher_pass_through_args": {
+    "change": "append \"$@\" for diagnostic worker receipt",
+    "fresh_greedy32_passed": true,
+    "runtime_math_changed": false
+  }
+}

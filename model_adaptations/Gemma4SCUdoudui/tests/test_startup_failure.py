@@ -23,7 +23,33 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-"""Custom SDAA block attention operator and framework adaptation."""
-from custom_ops.block_attention.op import sdaa_block_attention_forward
+"""The process must not reach main after a selected D512 initialization fails."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
 
-__all__ = ["sdaa_block_attention_forward"]
+bundle = Path(__file__).resolve().parents[1]
+records = []
+for label, extension, digest in (
+    ("missing_selected_library", "/nonexistent/gemma-d512/_torch_ext.cpython-312-loongarch64-linux-gnu.so", "0" * 64),
+    ("incomplete_selection", "/nonexistent/gemma-d512/_torch_ext.cpython-312-loongarch64-linux-gnu.so", None),
+):
+    env = dict(os.environ)
+    env.update(PYTHONPATH=str(bundle / "overlay") + os.pathsep + str(bundle / "runtime"),
+               GEMMA4_OVERLAY="1", GEMMA_D512_OFFICIAL_EXTENSION=extension)
+    if digest is None:
+        env.pop("GEMMA_D512_OFFICIAL_SHA256", None)
+    else:
+        env["GEMMA_D512_OFFICIAL_SHA256"] = digest
+    run = subprocess.run(
+        ["/home/py312/bin/python", "-c", "print('GEMMA_MAIN_REACHED')"],
+        env=env, capture_output=True, text=True, timeout=120,
+    )
+    if run.returncode != 1 or "GEMMA_MAIN_REACHED" in run.stdout:
+        raise AssertionError((label, run.returncode, run.stdout, run.stderr))
+    if "[gemma4-overlay] FAILED:" not in run.stderr:
+        raise AssertionError((label, "missing initialization diagnostic", run.stderr))
+    records.append({"case": label, "exit_code": run.returncode, "main_unreachable": True})
+print(json.dumps({"passed": True, "cases": records}))

@@ -30,4 +30,5 @@ exec /home/py312/bin/python -m vllm.entrypoints.cli.main serve "${GEMMA_PATH}" \
     --hf-overrides '{"architectures":["Gemma4ForCausalLM"]}' \
     --dtype float16 \
     --host "${HOST}" \
-    --port "${PORT}"
+    --port "${PORT}" \
+    "$@"

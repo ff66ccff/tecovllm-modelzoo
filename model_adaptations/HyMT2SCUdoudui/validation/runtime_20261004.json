@@ -1,0 +1,229 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-04",
+  "kind": "existing vendor APIs, compile-safe model/framework integration, no new UAL",
+  "source_branch": "model/hy-mt2-1.8b",
+  "source_commit": "5498e98301a3bae85adcd78a766b8664f14cf68f",
+  "initial_public_reference": "b9b8c476614dfaa416b10194029152f52e563cf2",
+  "entry": "run.sh",
+  "python_entry": "/home/py312/bin/python",
+  "python_realpath": "/usr/local/python/bin/python3.12",
+  "config": {
+    "model_root": "/gpfs/model",
+    "checkpoint": "Tencent-Hunyuan/Hy-MT2-1.8B",
+    "dtype": "float16",
+    "tp": 1,
+    "mask": "0",
+    "util": 0.9,
+    "max_model_len": 8192,
+    "prefix_caching": false,
+    "chunked_prefill": false,
+    "compile_cache_disabled": true,
+    "compiler_mode": "installed SDAA default VLLM_COMPILE with eager backend; no enforce-eager"
+  },
+  "versions": {
+    "torch": "2.12.0a0+git0d62256",
+    "torch_sdaa": "20260623.8.51.dev0+gitd942f23",
+    "vllm": "0.20.2.dev0+g132765e35.d20260728",
+    "driver_runtime": "3.2.0",
+    "custom_dnn": "3.2.1a0"
+  },
+  "tested_source_sha256": {
+    "README.md": "b43161515c20fbfb0d345a9879cddc1699e3e85b142fcd22ccd4cc1e7aea5cef",
+    "run.sh": "a5a5b6df0280ffcd8ca240b815edf78fb8a50434ed333ca3bbdf2fb7ae708f80",
+    "tests/test_cache_guards.py": "a13d7b9758e08baf14aea84d6e1631d5870a29847430cfd587bb5cebaff7eb00",
+    "tests/test_norm_guards.py": "59bf24098900b444916efb1ffe39d1eba7d0af2581bec512e653b3576486e5ac",
+    "tests/test_vllm_attention.py": "8bd1ab7853bc29112712e3097ab94aa7281b8ca9cc46bddfd99fe877484ceeda",
+    "tests/test_vllm_mlp_caller.py": "167c95a0d4206fb03d4e51e820ae4a1d9f4ce1e0c4b35609a957c39f093ec94e",
+    "tests/test_vllm_rms_norm.py": "ba9dc91347bd1967f5928cbdcf8f13ebc76a0316220e584b9a04085de5f39070",
+    "tests/test_vllm_swiglu.py": "8bf47bc3d942c4aa1ae935da8abdeaef9db9369506a4a59e45e023a3dd2c5803",
+    "runtime/custom_ops/__init__.py": "302571efbfbbdd6d4e80c494bac4e4eb56f305665e5373caa3e66f56c1cb2158",
+    "runtime/overlay/sitecustomize.py": "979ca84dbdd3fd9aefa63d17d78901481895da6d4fd6320e4784b9504fceaddc",
+    "runtime/custom_ops/hy_mt2/rmsnorm_fused.py": "1fd311bae72217afa757d27dbf2109f9081dc7383c536e3a4d63aaab646439be",
+    "runtime/custom_ops/hy_mt2/swiglu_fused.py": "07fd6ea7dd4db05da0c40db84d9fe3139b619c29a5f26197bd8b58808dd6f78e",
+    "runtime/custom_ops/hy_mt2/test_rmsnorm_fused.py": "383026dcd786c6c72794b824c0fd0baecdfca2beeaeac85294aec4de1cff840c",
+    "runtime/custom_ops/hy_mt2/test_swiglu_fused.py": "6e67d11dfe7c5dedad3b7da2665002e02d60bea64e2a0f1d7ef5f100cf5a428b",
+    "runtime/custom_ops/hy_mt2/vllm_attention.py": "ce78539e6bc31a272e27de943800ac7fdedea1103ea882dbd40b531107a4d328",
+    "runtime/custom_ops/hy_mt2/vllm_rms_norm.py": "cc686fdd1fb96da3dbc0f464b21a1ad4fd35b3151b157119858933d3362d8d61",
+    "runtime/custom_ops/hy_mt2/vllm_swiglu.py": "27610f7f791ff151143d11641692b67fa06e7b2208e3fcd4a5fa0c58c2c04557",
+    "runtime/custom_ops/hy_mt2/__init__.py": "dcb6b627ae22817f9d18ef3c2339e2515f05fe58092e4a8e0d813a13e0bcbc43"
+  },
+  "worker_source_sha256": {
+    "/home/py312/lib/python3.12/site-packages/vllm/model_executor/models/hunyuan_v1.py": "4f2e83280ff31b0b12d629f0eecab7ad4a32c76b1d8ae1da93d20a27c83238f3",
+    "/home/py312/lib/python3.12/site-packages/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so": "658a3b5e9b64db7e6192deeffa98bd29db3d7919e7a75993a888e242bda3a42f",
+    "/root/SichuanUniversity_AI_accelerator-hy/model_adaptations/HyMT2SCUdoudui/runtime/overlay/sitecustomize.py": "979ca84dbdd3fd9aefa63d17d78901481895da6d4fd6320e4784b9504fceaddc"
+  },
+  "loaded_library_sha256": {
+    "/home/py312/lib/python3.12/site-packages/tecoops/libteco_ops.so": "fe27930e91ce41ccdc2234d4ec9e71951a9539d02cf6cde2902508f58830f27c",
+    "/opt/tecoai/lib64/libtecocustom.so.3.2.1": "f320e36d9a18999ef1c3556877b5c27bec51e7c81392b0da417110b7ae38efae",
+    "/opt/tecoai/lib64/libsdaart.so.3.2.0": "d4c430e19377722599ffc9a1f821986e391c665e5f36da3c5fc461483513e7f7"
+  },
+  "focused": {
+    "rms_cases": 36,
+    "rms_raw_compiled_bitexact": true,
+    "swiglu_cases": 12,
+    "swiglu_raw_compiled_bitexact": true,
+    "swiglu_forced_dynamic_shared_graph": true,
+    "attention_cases": 10,
+    "cache_bits_cpu_oracle": true,
+    "attention_cpu_oracle": "NumPy FP64 einsum optimize=False, explicit bottom-right causal mask",
+    "attention_nrmse_tolerance": 0.00390625,
+    "attention_max_abs_tolerance": 0.06,
+    "mlp_actual_caller_cases": 3,
+    "rms_swiglu_rtol": 0.002,
+    "rms_swiglu_atol": 0.002,
+    "norm_guards_optimized_python": 4,
+    "cache_guards_optimized_python": 2,
+    "missing_dependency_startup_exit": 1,
+    "missing_dependency_main_unreachable": true
+  },
+  "reference": {
+    "baseline": "same attention compatibility, native vLLM RMSNorm and MLP; fresh FP16 real run.sh",
+    "fixed_prompt": "Explain why reproducible benchmarks matter.",
+    "greedy32_ids": [
+      6400,
+      3521,
+      46016,
+      75599,
+      431,
+      9946,
+      1775,
+      890,
+      4909,
+      1970,
+      247,
+      1748,
+      2219,
+      11,
+      9409,
+      100935,
+      11,
+      289,
+      24529,
+      503,
+      280,
+      7198,
+      4211,
+      3148,
+      289,
+      11685,
+      13,
+      5752,
+      665,
+      3892,
+      890,
+      5464
+    ],
+    "export_greedy32_match": true,
+    "concurrency4_8": true,
+    "steady_seconds": 303.19188399999985,
+    "steady_requests": 313,
+    "steady_rounds": 73,
+    "errors": 0,
+    "each_request_all32_ids_match": true,
+    "final_initialization_guard_changes_only": {
+      "initialization_guard_only": true,
+      "executable_forward_ast_unchanged": true,
+      "body_sha256": {
+        "_prefill": "7797f59b6c121b9c6070fec5dbba71b3cf860446c57fc8f04ed68d866fa88de9",
+        "attention_forward": "59f34b1d60fc8107fbf012de2a229974b4ef36d1715e0b9d05f9b111678dc63e"
+      }
+    },
+    "own_services_released": true
+  },
+  "worker": {
+    "norms": 129,
+    "mlps": 32,
+    "attention": 32,
+    "all_weight_devices": [
+      "sdaa:0"
+    ],
+    "all_weight_dtypes": [
+      "torch.float16"
+    ],
+    "peak_allocated_gib": 13.462315082550049
+  },
+  "profile": {
+    "tokens": 4,
+    "trace_sha256": "6b9acd01538d3c38c0053d0b20e8e142072200433f44b6f952b6d45bb20c0ad8",
+    "kernel_count": 5368,
+    "opaque_rms": 260,
+    "opaque_rms_add": 256,
+    "opaque_swiglu": 128,
+    "vendor_cache": 128,
+    "vendor_sdpa_prefill": 32,
+    "vendor_decode_attention": 96,
+    "vendor_kernels": {
+      "teco_slave_rms_norm_fp16(tecoops::ual::args::RmsNormArgs)": 260,
+      "teco_slave_reshape_and_cache_fp16(tecoops::ual::args::ReshapeAndCacheArgs)": 128,
+      "tecocustom::ual::kernel::teco_slave_flash_attention_forward_8_4_32_false_32X_hd256(tecocustom::ual::ops::FlashAttentionForwardArgs)": 32,
+      "teco_slave_rms_norm_fp16_add(tecoops::ual::args::RmsNormArgs)": 256,
+      "tecocustom::ual::kernel::teco_slave_swiglu_activate_forward(tecocustom::ual::ops::SwigluActivateForwardArgs)": 128,
+      "void tecolmk_slave_fused_block_attention_decode<128u, 32u, false, false, false, (tecolmkDataPresion_t)1>(BlockAttentionLayerArgs)": 96
+    },
+    "scope": "execution receipt only; no profile-derived performance comparison"
+  },
+  "failures_and_fixes": [
+    "Original default compile cannot trace raw pybind RMSNorm: mutation/Fake boundary added.",
+    "Original SwiGLU lacks Fake; Fake-only attempt still specializes int seq_lens to2048: Tensor-only boundary preserves marked-dynamic token axis.",
+    "Installed BlockAttention.forward stub fails original/native export: shared existing cache/SDPA/decode integration bound during initialization.",
+    "Torch CPU oracle crashed in OpenBLAS sgemm_oncopy_LOONGSON3R5 at513x513: independent NumPy reduction oracle passed; no global library edits.",
+    "An uncommitted export cleanup removed a needed MLP reshape variable: restored and actual caller3case plus real startup checked.",
+    "Standalone -O cache fixture encountered distributed __new__ requirements: initialization guard isolated and passed without claiming runtime rollback."
+  ],
+  "limits": [
+    "temporary fixed-input regression, not official task accuracy",
+    "no vLLM speedup claim; older HF BF16 SwiGLU3.16% is separate evidence",
+    "known vendor FP16 subnormal flush remains; primitive CPU arithmetic is not generally bitexact",
+    "installed tecoops wheel not proved equivalent to current official PR35/37 heads",
+    "configured8192; full-length8k generation not evaluated"
+  ],
+  "delivery": {
+    "date": "2026-10-04",
+    "status": "remote source committed; local publication pending",
+    "only_license_comments_added_after_validation": true,
+    "all_python_executable_asts_identical": [
+      "runtime/custom_ops/__init__.py",
+      "runtime/custom_ops/hy_mt2/__init__.py",
+      "runtime/custom_ops/hy_mt2/rmsnorm_fused.py",
+      "runtime/custom_ops/hy_mt2/swiglu_fused.py",
+      "runtime/custom_ops/hy_mt2/test_rmsnorm_fused.py",
+      "runtime/custom_ops/hy_mt2/test_swiglu_fused.py",
+      "runtime/custom_ops/hy_mt2/vllm_attention.py",
+      "runtime/custom_ops/hy_mt2/vllm_rms_norm.py",
+      "runtime/custom_ops/hy_mt2/vllm_swiglu.py",
+      "runtime/overlay/sitecustomize.py",
+      "tests/test_cache_guards.py",
+      "tests/test_norm_guards.py",
+      "tests/test_vllm_attention.py",
+      "tests/test_vllm_mlp_caller.py",
+      "tests/test_vllm_rms_norm.py",
+      "tests/test_vllm_swiglu.py"
+    ],
+    "sha256": {
+      "README.md": "b43161515c20fbfb0d345a9879cddc1699e3e85b142fcd22ccd4cc1e7aea5cef",
+      "run.sh": "a5a5b6df0280ffcd8ca240b815edf78fb8a50434ed333ca3bbdf2fb7ae708f80",
+      "tests/test_cache_guards.py": "e2e2cb44d664e1550fa1068cccb47959b61741cf908b94bffdf90f9103c2adc0",
+      "tests/test_norm_guards.py": "a523a28a5cfcee6aca70e017068e9b60d28e158f644569051145d2c6cba61515",
+      "tests/test_vllm_attention.py": "20b522d919d8141d36e33976b2c68479a8381aa78526ee5d7fe1f46776d455e5",
+      "tests/test_vllm_mlp_caller.py": "8e9cf5a2e33959f51104cc968f90aa4ec236d453d7873e0b1e9085193e7845f9",
+      "tests/test_vllm_rms_norm.py": "217fe17262d44cb209f4255c448f42cd6fbadf1ceed20579cac98ccdfd56ee5f",
+      "tests/test_vllm_swiglu.py": "1903d2da40de8eba27fc5ef2585d8f85a008e43cd88a4d585ababf766a6f13d5",
+      "runtime/custom_ops/__init__.py": "d6815bccd514d03fd38bf2eb1c7d4eeb0c96fae100aad29c4954c7d4a53f3dc9",
+      "runtime/overlay/sitecustomize.py": "b544cc41b1db2322849fd6663e7535e51600ab0ddf39037d73d0bf69bd5e1587",
+      "runtime/custom_ops/hy_mt2/rmsnorm_fused.py": "8458b210d25aa83c48e89417cbf07c1cf8266073556b0489f25963377328684d",
+      "runtime/custom_ops/hy_mt2/swiglu_fused.py": "db4dcaddbd31cde40fec611dad66cfe5b6188a917143b501c5c616b85019e062",
+      "runtime/custom_ops/hy_mt2/test_rmsnorm_fused.py": "bd411c2049fee9ecb79fcb7892090248bf1176b189acb7ae1ffd47756f3e9b49",
+      "runtime/custom_ops/hy_mt2/test_swiglu_fused.py": "09f0f632878fb35ab586a7271fcd7c6c691e04add7d14eac598079be64087dd7",
+      "runtime/custom_ops/hy_mt2/vllm_attention.py": "52887849488b0b64fbc9cf78aade256b287f15cbc5b5043f538a92ed0ae472c6",
+      "runtime/custom_ops/hy_mt2/vllm_rms_norm.py": "ab8dac6f0c61b8ea40b0b9e0fc90948d85018569758c4dd8f965c51e406370ee",
+      "runtime/custom_ops/hy_mt2/vllm_swiglu.py": "94e8e64d5d5a643255f29c1f705909b999b79dc761836d7671f816df9096cb75",
+      "runtime/custom_ops/hy_mt2/__init__.py": "4dc7c4138c0c4f94074feeda365315117fb2a0608be09082fb0cf3d6da221e3b"
+    },
+    "remote_atomic_commits": [
+      "c57d6a2bc66d8820dbfab3c22d990ed474a4740f",
+      "740e7b2a46de9407fec24eb33361fdb5548ce9ab",
+      "5498e98301a3bae85adcd78a766b8664f14cf68f"
+    ]
+  }
+}

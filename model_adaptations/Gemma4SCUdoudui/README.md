@@ -116,3 +116,25 @@ This repeats the combined path comparison; it does not isolate a PR or
 establish an independent packaging speedup. Installed teco-ops wheel
 equivalence to current upstream heads is not inferred from its version string.
 Code retains the included BSD notices and the originating repository licenses.
+
+## Evaluation-client tokenizer compatibility
+
+The installed tokenizer API expects a dict for `extra_special_tokens`, while
+this checkpoint supplies a list. Use the explicit client-only overlay before
+starting EvalScope; it reuses the existing normalization function without
+installing model, attention or config overlays:
+
+```bash
+b="$PWD/model_adaptations/Gemma4SCUdoudui"
+GEMMA4_EVAL_TOKENIZER=1 PYTHONPATH="$b/eval_overlay" \
+  bash tools/ci_pipline/speed.sh gemma-4-12B-it \
+  /gpfs/model/google/gemma-4-12B-it 0.0.0.0 8003
+/home/py312/bin/python "$b/tests/verify_eval_tokenizer.py"
+```
+
+Source the SDK and put `/home/py312/bin` first on PATH as in the launch example.
+The client overlay requires explicit activation and changes only process-local
+tokenizer initialization. It preserves raw tokenizer.json encoding IDs; config,
+weights and installed source files remain unchanged. This focused client gate
+is not a model smoke, official accuracy, full CI or performance result. Server
+context-budget validation is a separate attempt.

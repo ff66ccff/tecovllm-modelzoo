@@ -1,0 +1,437 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-05",
+  "status": "pass",
+  "attempt_type": "enabler",
+  "source_branch": "model/hy-mt2-1.8b",
+  "source_baseline_commit": "8031f8096a2c02adffb92c7492facde41df05acf",
+  "official_ci_baseline": "bb01120f4682eb1e720e089ee84fc687636d4207",
+  "official_pr": "https://github.com/Tecorigin/tecovllm-modelzoo/pull/5",
+  "hypothesis": "The actual default serve command satisfies static CI parsing while retaining final vendor argv",
+  "python_realpath": "/usr/local/python/bin/python3.12",
+  "focused": {
+    "passed": true,
+    "baseline_parser": {
+      "model_name": "Hy-MT2-1.8B",
+      "model_path": null,
+      "port": 8000,
+      "host": "\"${HY_MT2_HOST:-0.0.0.0}\""
+    },
+    "candidate_parser": {
+      "model_name": "Hy-MT2-1.8B",
+      "model_path": "/gpfs/model/Tencent-Hunyuan/Hy-MT2-1.8B",
+      "host": "0.0.0.0",
+      "port": 8001
+    },
+    "mock_cases": [
+      {
+        "name": "default",
+        "argv": [
+          "/home/py312/bin/python",
+          "-m",
+          "vllm.entrypoints.cli.main",
+          "serve",
+          "/gpfs/model/Tencent-Hunyuan/Hy-MT2-1.8B",
+          "--served-model-name",
+          "Hy-MT2-1.8B",
+          "--tensor-parallel-size",
+          "1",
+          "--gpu-memory-utilization",
+          "0.90",
+          "--max-model-len",
+          "8192",
+          "--trust-remote-code",
+          "--no-enable-prefix-caching",
+          "--no-enable-chunked-prefill",
+          "--dtype",
+          "float16",
+          "--host",
+          "0.0.0.0",
+          "--port",
+          "8001"
+        ],
+        "baseline_argv_identical": true,
+        "passed": true
+      },
+      {
+        "name": "environment",
+        "argv": [
+          "/home/py312/bin/python",
+          "-m",
+          "vllm.entrypoints.cli.main",
+          "serve",
+          "/readonly/model",
+          "--served-model-name",
+          "Hy-MT2-1.8B",
+          "--tensor-parallel-size",
+          "1",
+          "--gpu-memory-utilization",
+          "0.90",
+          "--max-model-len",
+          "8192",
+          "--trust-remote-code",
+          "--no-enable-prefix-caching",
+          "--no-enable-chunked-prefill",
+          "--dtype",
+          "float16",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "18100"
+        ],
+        "baseline_argv_identical": true,
+        "passed": true
+      },
+      {
+        "name": "model-root",
+        "argv": [
+          "/home/py312/bin/python",
+          "-m",
+          "vllm.entrypoints.cli.main",
+          "serve",
+          "/readonly/root/Tencent-Hunyuan/Hy-MT2-1.8B",
+          "--served-model-name",
+          "Hy-MT2-1.8B",
+          "--tensor-parallel-size",
+          "1",
+          "--gpu-memory-utilization",
+          "0.90",
+          "--max-model-len",
+          "8192",
+          "--trust-remote-code",
+          "--no-enable-prefix-caching",
+          "--no-enable-chunked-prefill",
+          "--dtype",
+          "float16",
+          "--host",
+          "0.0.0.0",
+          "--port",
+          "8001"
+        ],
+        "baseline_argv_identical": true,
+        "passed": true
+      },
+      {
+        "name": "trailing-cli",
+        "argv": [
+          "/home/py312/bin/python",
+          "-m",
+          "vllm.entrypoints.cli.main",
+          "serve",
+          "/gpfs/model/Tencent-Hunyuan/Hy-MT2-1.8B",
+          "--served-model-name",
+          "Hy-MT2-1.8B",
+          "--tensor-parallel-size",
+          "1",
+          "--gpu-memory-utilization",
+          "0.90",
+          "--max-model-len",
+          "8192",
+          "--trust-remote-code",
+          "--no-enable-prefix-caching",
+          "--no-enable-chunked-prefill",
+          "--dtype",
+          "float16",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "18100",
+          "--host",
+          "localhost",
+          "--port",
+          "19100",
+          "--max-num-seqs",
+          "4"
+        ],
+        "baseline_argv_identical": true,
+        "passed": true
+      }
+    ],
+    "device_execution": false,
+    "original_vendor_entrypoint_preserved": true
+  },
+  "model": {
+    "passed": true,
+    "model": "hy",
+    "models": {
+      "object": "list",
+      "data": [
+        {
+          "id": "Hy-MT2-1.8B",
+          "object": "model",
+          "created": 1791147757,
+          "owned_by": "vllm",
+          "root": "/gpfs/model/Tencent-Hunyuan/Hy-MT2-1.8B",
+          "parent": null,
+          "max_model_len": 8192,
+          "permission": [
+            {
+              "id": "modelperm-946c8ba0596e54d0",
+              "object": "model_permission",
+              "created": 1791147757,
+              "allow_create_engine": false,
+              "allow_sampling": true,
+              "allow_logprobs": true,
+              "allow_search_indices": false,
+              "allow_view": true,
+              "allow_fine_tuning": false,
+              "organization": "*",
+              "group": null,
+              "is_blocking": false
+            }
+          ]
+        }
+      ]
+    },
+    "requests": [
+      {
+        "label": "text_0",
+        "request": {
+          "model": "Hy-MT2-1.8B",
+          "max_tokens": 32,
+          "temperature": 0,
+          "top_p": 1,
+          "top_k": -1,
+          "seed": 0,
+          "return_token_ids": true,
+          "messages": [
+            {
+              "role": "user",
+              "content": "Explain why reproducible benchmarks matter."
+            }
+          ]
+        },
+        "response": {
+          "id": "chatcmpl-9d3e1c94a42a6fc8",
+          "object": "chat.completion",
+          "created": 1791147757,
+          "model": "Hy-MT2-1.8B",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "Reproducible benchmarks are crucial because they ensure **reliability, trustworthiness, and validity** in machine learning research and evaluation. Here's why they matter",
+                "refusal": null,
+                "annotations": null,
+                "audio": null,
+                "function_call": null,
+                "tool_calls": [],
+                "reasoning": null
+              },
+              "logprobs": null,
+              "finish_reason": "length",
+              "stop_reason": null,
+              "token_ids": [
+                6400,
+                3521,
+                46016,
+                75599,
+                431,
+                9946,
+                1775,
+                890,
+                4909,
+                1970,
+                247,
+                1748,
+                2219,
+                11,
+                9409,
+                100935,
+                11,
+                289,
+                24529,
+                503,
+                280,
+                7198,
+                4211,
+                3148,
+                289,
+                11685,
+                13,
+                5752,
+                665,
+                3892,
+                890,
+                5464
+              ]
+            }
+          ],
+          "service_tier": null,
+          "system_fingerprint": null,
+          "usage": {
+            "prompt_tokens": 9,
+            "total_tokens": 41,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null
+          },
+          "prompt_logprobs": null,
+          "prompt_token_ids": [
+            120000,
+            120006,
+            55327,
+            3892,
+            86962,
+            75599,
+            5464,
+            13,
+            120007
+          ],
+          "kv_transfer_params": null
+        },
+        "seconds": 3.6610637320263777
+      },
+      {
+        "label": "text_1",
+        "request": {
+          "model": "Hy-MT2-1.8B",
+          "max_tokens": 32,
+          "temperature": 0,
+          "top_p": 1,
+          "top_k": -1,
+          "seed": 0,
+          "return_token_ids": true,
+          "messages": [
+            {
+              "role": "user",
+              "content": "Explain why reproducible benchmarks matter."
+            }
+          ]
+        },
+        "response": {
+          "id": "chatcmpl-beb1934b8706f508",
+          "object": "chat.completion",
+          "created": 1791147761,
+          "model": "Hy-MT2-1.8B",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "Reproducible benchmarks are crucial because they ensure **reliability, trustworthiness, and validity** in machine learning research and evaluation. Here's why they matter",
+                "refusal": null,
+                "annotations": null,
+                "audio": null,
+                "function_call": null,
+                "tool_calls": [],
+                "reasoning": null
+              },
+              "logprobs": null,
+              "finish_reason": "length",
+              "stop_reason": null,
+              "token_ids": [
+                6400,
+                3521,
+                46016,
+                75599,
+                431,
+                9946,
+                1775,
+                890,
+                4909,
+                1970,
+                247,
+                1748,
+                2219,
+                11,
+                9409,
+                100935,
+                11,
+                289,
+                24529,
+                503,
+                280,
+                7198,
+                4211,
+                3148,
+                289,
+                11685,
+                13,
+                5752,
+                665,
+                3892,
+                890,
+                5464
+              ]
+            }
+          ],
+          "service_tier": null,
+          "system_fingerprint": null,
+          "usage": {
+            "prompt_tokens": 9,
+            "total_tokens": 41,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null
+          },
+          "prompt_logprobs": null,
+          "prompt_token_ids": [
+            120000,
+            120006,
+            55327,
+            3892,
+            86962,
+            75599,
+            5464,
+            13,
+            120007
+          ],
+          "kv_transfer_params": null
+        },
+        "seconds": 3.5810573950002436
+      }
+    ],
+    "performance_claim": false,
+    "launcher_sha256": "f2e620d21827c57f075ee1414d7b60f3574b14257f798dd5bcfd1af716a13236",
+    "all_32_reference_ids_match": true
+  },
+  "configuration": {
+    "context": 8192,
+    "dtype": "float16",
+    "tp": 1,
+    "default_compiler": true,
+    "default_model_flags_unchanged": true,
+    "host_override": "127.0.0.1"
+  },
+  "unchanged_source_blobs": {
+    "runtime/custom_ops/__init__.py": "80ef53b4648b60696f1a4e3de9221495f642b5c8",
+    "runtime/custom_ops/hy_mt2/__init__.py": "02c7cc0aaa88d25c9a5043b0e4d304c5afac5aac",
+    "runtime/custom_ops/hy_mt2/rmsnorm_fused.py": "6a712860af805524edd66ee60102372e727f091a",
+    "runtime/custom_ops/hy_mt2/swiglu_fused.py": "c1179ae32deae4c127cf395af995e84a5b9c64d4",
+    "runtime/custom_ops/hy_mt2/test_rmsnorm_fused.py": "c6c27824e5be95492da3876784e561696e157347",
+    "runtime/custom_ops/hy_mt2/test_swiglu_fused.py": "ea868acff64f22b939c720b6ce58062ebfedf473",
+    "runtime/custom_ops/hy_mt2/vllm_attention.py": "107460ada97ec67097ba244bc481857e40d8b83d",
+    "runtime/custom_ops/hy_mt2/vllm_rms_norm.py": "b9c8febcfe4485e4922bc6f552073d5236265e12",
+    "runtime/custom_ops/hy_mt2/vllm_swiglu.py": "c3e7d1701f08a06bef40e00125f9e4557b1011b8",
+    "runtime/overlay/sitecustomize.py": "1c044131fbf91904aa6451415cf3283021d276b6",
+    "tests/test_cache_guards.py": "f84e7b4ac6d2cb0b9e42073ddbb80f2739bd4e52",
+    "tests/test_norm_guards.py": "0ed6555afa3944070e128eb0d978757ff768d67a",
+    "tests/test_vllm_attention.py": "d550ebdcb4987990deedbb66446a11e5daca61c7",
+    "tests/test_vllm_mlp_caller.py": "36c7faef349ed6fea1970bf0360b53a60ba024ac",
+    "tests/test_vllm_rms_norm.py": "569d4733497c273672288b39a3e762b04df926b9",
+    "tests/test_vllm_swiglu.py": "724d9feed8a46691a121080094b2d4d5a1faf753",
+    "validation/runtime_20261004.json": "3d8bb5565bd2954cad8493442055b07fb7e85b55"
+  },
+  "changed_source_sha256": {
+    "run.sh": "f2e620d21827c57f075ee1414d7b60f3574b14257f798dd5bcfd1af716a13236",
+    "README.md": "583d6b4e8a416be4982c0911413f1ea425248ea45fcd77e110c2b31074a9efb3"
+  },
+  "log_sha256": {
+    "model.json": "88a164bc1054df79761a86904518dfeb5b4dcdbecd05c136b55f3f19b76ec1d3",
+    "client.log": "4fada83249addee6e450b2c23e26a0e4dc62d925a9132e6795ea2e2098246695",
+    "service.log": "6a7d971e3dfa2c6e29bc8dcdc1387cb1a188e4fc4c73dc26b86daf50e7fc8cab",
+    "card_after.txt": "b87bd758d984bc23f883dab1a3a65c9c0eb4ba707dbe10a315ab23772d8c0083"
+  },
+  "syntax": "pass",
+  "diff_check": "pass",
+  "own_services_released": true,
+  "performance_claim": false,
+  "unexecuted": [
+    "full official accuracy",
+    "full official performance suite",
+    "long-context request",
+    "new kernel benchmark or steady rerun",
+    "current upstream-head wheel equivalence"
+  ],
+  "reason": "Launcher-only adaptation keeps model/kernel/compile argv and source unchanged; fixed greedy32 validates startup and reference output. Long context is a configured capacity, not a tested long request."
+}

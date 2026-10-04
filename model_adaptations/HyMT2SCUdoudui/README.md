@@ -71,3 +71,20 @@ concurrency/steady requests; full-length8k generation has not been evaluated.
 These tests do not establish official task accuracy or a vLLM speedup. The
 installed tecoops wheel has not been proved equivalent to current official
 PR35/37 heads. Owner CI and official task evaluation remain separate gates.
+
+## Official CI launch parsing
+
+The launcher exposes its actual literal-default `vllm serve` argv through a
+local shell shim so the unchanged official `parse_run_sh` can read the model
+path, host and port. The shim executes those arguments through the pinned
+Python module entrypoint, replacing only the model path and first host/port
+values from the existing environment settings. The official parser is static:
+run it with the default `/gpfs/model` path, host `0.0.0.0` and port `8001`.
+Environment overrides remain available for direct launcher use.
+
+`validation/ci_contract_20261005.json` records the unchanged official parser,
+four argv cases identical to the previous vendor invocation, and two
+greedy32 runs at the default configured context 8192. Every output
+ID matches this model's reference; runtime/test sources are unchanged.
+This validates startup and short requests. Full official accuracy,
+performance evaluation and long-context requests remain pending.

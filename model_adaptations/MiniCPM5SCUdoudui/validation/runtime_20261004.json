@@ -240,5 +240,44 @@
     },
     "source_files": 20,
     "no_binaries_or_weights": true
+  },
+  "clean_export_validation": {
+    "source_remote_commit": "02561d839aa1fca42711fc4c5e87bd660ff68e00",
+    "source_public_commit": "b0a0e120c94062da93d763c6de2bae821189220f",
+    "windows_archive_files": 20,
+    "all_lf_and_sha256_equal": true,
+    "model_smoke_runs": 2,
+    "each_complete_32_ids_match": true,
+    "actual_abi_count_delta": {
+      "tecoops.rms_norm": 3136,
+      "tecoops.reshape_and_cache": 1536,
+      "tecoops.flash_attn_varlen_func": 48
+    },
+    "worker_receipt": {
+      "pid": 112347,
+      "rank": 0,
+      "rms_class": "TecoopsRMSNorm",
+      "attention_forward": "sdaa_block_attention_forward",
+      "call_counts": {
+        "tecoops.rms_norm": 3283,
+        "tecoops.reshape_and_cache": 1536,
+        "tecoops.flash_attn_varlen_func": 48
+      },
+      "weight_devices": [
+        "sdaa:0"
+      ],
+      "weight_dtypes": [
+        "torch.float16"
+      ],
+      "peak_allocated_gib": 13.761231422424316,
+      "peak_reserved_gib": 13.94140625,
+      "source_sha256": {
+        "/root/tmpwork/minicpm-public-final-20261004/model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/compile_safe.py": "665604ef27fa3f38f278650aa1f2465648e3bceb4e04cdd7cc852691c3f5ee10",
+        "/root/tmpwork/minicpm-public-final-20261004/model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/receipt.py": "a9fe01d4b571eb219289ba618e23fb8ccf69d3b9be9d6a4ee304421f1b35b0a9"
+      }
+    },
+    "services_released": true,
+    "steady_repeated": false,
+    "scope": "final exact committed archive startup/greedy32; 302-second gate recorded separately"
   }
 }

@@ -1,0 +1,184 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-04",
+  "kind": "existing-vendor RoPE model integration, not a new UAL",
+  "source_branch": "model/internvl3_5-8b",
+  "source_commit": "f938425d6fdcbb0d3c3f2b57f0c8b8d0d997df12",
+  "entry": "run.sh",
+  "tested_runtime_sha256": {
+    "run.sh": "6ecb294d4835bf4e59b5cbb84583053d72332ca9ed36ddbe63f5c00bd4a7cbe1",
+    "runtime/custom_ops/__init__.py": "46b713a9a5a053e9a58a10662fa1c3c751ea998296f9fa15c4da9c4f3983dd96",
+    "runtime/custom_ops/block_attention/__init__.py": "6dcf946ec6dc494ca947ba1ddc6d511523a5131a1f4d60ce643d61e4cf6be939",
+    "runtime/custom_ops/block_attention/op.py": "d1e37d2bbc89f8a3a4759494da8003a744f0d0622d1c335edd053c283e7c4755",
+    "runtime/custom_ops/flash_attn_varlen/__init__.py": "f415fbe8a92c93bd755b91b834bb865ca8238da4f1d39c2024e2eeac040ffe4d",
+    "runtime/custom_ops/flash_attn_varlen/op.py": "91ad6a16359591258ce91e94ef54c915896ff80dee07c3d14ab22a3c5435bbca",
+    "runtime/custom_ops/peak_probe.py": "69320bc5ec10a40f73d9d5e5de221ee4ef8e6995dc64e4259086bfdca0189356",
+    "runtime/custom_ops/prefill_attention/__init__.py": "daf371462eae012e5b63bb3aa120f7f9a2ef0372bfc7502b11f64a6c6023127a",
+    "runtime/custom_ops/prefill_attention/op.py": "31645f11708b50535476b3b5ec4ea01ea6578ea00f3fe7d82765041b94af2201",
+    "runtime/custom_ops/receipt.py": "0bfd2455d0e549f33b404f9d598b62c6f6d693d355f17c1121e941846edc2845",
+    "runtime/custom_ops/reshape_and_cache/__init__.py": "d3e389e757dce9fc699343c2b6e6e87ab159dae6b602eb12eec22dc90e0a97a3",
+    "runtime/custom_ops/reshape_and_cache/op.py": "5e2cc27c610ace16bb8c3fd5644cdf49942facb7ec4edd320ee0d1c14e3f9021",
+    "runtime/custom_ops/rms_norm/__init__.py": "994768a52a79ef6bd2b08fea7f87146e3f6438d6e9eb188e79b990d26a2e3eb1",
+    "runtime/custom_ops/rms_norm/op.py": "f790b86715d97e510d5e3b6cff56baa1089adb812345206918dfce99e3a13423",
+    "runtime/custom_ops/rotary/__init__.py": "12989820ea051f1bf73036685b6188e3c5f4f09af7c96b186ba460db38fdb728",
+    "runtime/custom_ops/rotary/op.py": "de939610862d9d16666e8a3157f51e14115ffa95c3d801108f9a51b4163dbcb5",
+    "runtime/overlay/sitecustomize.py": "ae0bb38b8d2e8a52cd73b58d27cbed3ef2f7e4ff0fb106d77c93749ee1a12ba1",
+    "tests/test_model_binding.py": "2af88ec9b9ba60990de7bde60d294b2a2057c90a270bdfed7463e5f4549c30ee",
+    "tests/verify_vendor_rope.py": "1c148fb34aef922b793bcc50efbe8b2c36451d4cc1358949abcfc5e5829de2ce"
+  },
+  "vendor_libraries": {
+    "extension": "/home/py312/lib/python3.12/site-packages/vllm_sdaa/_C.cpython-312-loongarch64-linux-gnu.so",
+    "extension_sha256": "9ecc2cb57a5c870704580e39112c1e95321bc076507139d8b8855273a90cfec0",
+    "core": "/home/py312/lib/python3.12/site-packages/vllm_sdaa/libtecovllm_sdaa._C.so",
+    "core_sha256": "adf3014a8fd3ced720bbf5cfe666752b8583dc76b17b5c96517fc70716773cb1",
+    "schema": "_C::rotary_embedding(Tensor positions, Tensor($0! -> ) query, Tensor($1! -> )? key, int head_size, Tensor cos_sin_cache, bool is_neox, int rope_dim_offset=0, bool inverse=False) -> ()"
+  },
+  "config": {
+    "dtype": "float16",
+    "tp": 2,
+    "mask": "0,1",
+    "util": 0.85,
+    "max_model_len": 4096,
+    "prefix_cache": false,
+    "chunked_prefill": false,
+    "disable_compile_cache": true,
+    "text_prompt": "Explain why reproducible benchmarks matter.",
+    "greedy_max_tokens": 32,
+    "seed": 0
+  },
+  "focused": {
+    "cases": 12,
+    "rtol": 0.002,
+    "atol": 0.002,
+    "guards_fake_isolation_fullgraph_two_streams_passed": true,
+    "optimized_guards_passed": true
+  },
+  "performance": {
+    "comparison": "formal export reproduces v2 against its earlier fresh native baseline",
+    "warmups_each": 2,
+    "repetitions_each": 3,
+    "native_seconds": [
+      6.898981428006664,
+      6.909929068002384,
+      6.905793744997936
+    ],
+    "export_seconds": [
+      6.573132288991474,
+      6.573451438991469,
+      6.573975116989459
+    ],
+    "native_median_seconds": 6.905793744997936,
+    "export_median_seconds": 6.573451438991469,
+    "fixed_text_latency_reduction_percent": 4.812514220355801,
+    "profile_off_during_timing": true
+  },
+  "reference_checks": {
+    "text_token_ids": [
+      693,
+      776,
+      78285,
+      62019,
+      525,
+      7565,
+      304,
+      5257,
+      5043,
+      11,
+      2670,
+      3162,
+      4401,
+      11,
+      5662,
+      6832,
+      11,
+      323,
+      12344,
+      3412,
+      11,
+      369,
+      3807,
+      7966,
+      1447,
+      16,
+      13,
+      3070,
+      62339,
+      323,
+      18954,
+      95518
+    ],
+    "image_token_ids": [
+      785,
+      2168,
+      4933,
+      2326,
+      52484,
+      20816,
+      25,
+      264,
+      2518,
+      9334,
+      11,
+      264,
+      6303,
+      12671,
+      11,
+      323,
+      264,
+      6176,
+      21495,
+      13,
+      8886,
+      6083,
+      374,
+      12460,
+      304,
+      1894,
+      323,
+      1352,
+      11,
+      14064,
+      6770,
+      52484
+    ],
+    "concurrency": {
+      "4": {
+        "requests": 4,
+        "all_ids_match": true
+      },
+      "8": {
+        "requests": 8,
+        "all_ids_match": true
+      }
+    },
+    "steady_seconds": 305.78652734300704,
+    "steady_requests": 82,
+    "errors": 0,
+    "all_ids_matched": true,
+    "peak_allocated_gib_per_worker": 11.711,
+    "own_services_released": true
+  },
+  "trace": [
+    {
+      "native_kernels": 5792,
+      "export_kernels": 2336,
+      "vendor_fused_rope": 144,
+      "native_rope_replaced": 3600,
+      "other_kernel_name_counts_unchanged": true,
+      "trace_sha256": "06c48053319e45f4f6e46c5f4734dfbb42b01135bd9344d3f44906a8e10e13b4"
+    },
+    {
+      "native_kernels": 5792,
+      "export_kernels": 2336,
+      "vendor_fused_rope": 144,
+      "native_rope_replaced": 3600,
+      "other_kernel_name_counts_unchanged": true,
+      "trace_sha256": "be6ac5a1a22fce6da8074c93af4216699751f4fb5655aac4529dd5f7883b6b17"
+    }
+  ],
+  "limits": [
+    "existing version-pinned vendor API, no new UAL",
+    "fixed rtol/atol.002 arithmetic is not bit-exact and known FP16 subnormal loss remains",
+    "no official task accuracy, image performance or current teco-ops PR-head wheel equivalence claim"
+  ]
+}

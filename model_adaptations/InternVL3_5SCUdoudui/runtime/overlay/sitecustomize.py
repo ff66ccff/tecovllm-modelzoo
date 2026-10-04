@@ -93,5 +93,16 @@ def install_block_attention_overlay() -> None:
     sys.stderr.write("[custom_ops] BlockAttention overlay bound successfully.\n")
 
 
+def install_rotary_overlay() -> None:
+    """Bind the validated existing-vendor language-tower RoPE at initialization."""
+    try:
+        from custom_ops.rotary.op import install
+        install()
+    except (Exception, SystemExit) as exc:
+        sys.stderr.write(f"FATAL: [custom_ops] Failed to install InternVL RoPE binding: {exc}\n")
+        raise SystemExit(1) from exc
+
+
 install_rms_norm_overlay()
 install_block_attention_overlay()
+install_rotary_overlay()

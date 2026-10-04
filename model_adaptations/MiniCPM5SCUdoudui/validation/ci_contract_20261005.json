@@ -1,0 +1,395 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-05",
+  "status": "pass",
+  "attempt_type": "enabler",
+  "source_branch": "model/minicpm5-1b",
+  "source_baseline_commit": "688a3c989718a000f69a6208c6177fcd41865d49",
+  "official_ci_baseline": "bb01120f4682eb1e720e089ee84fc687636d4207",
+  "official_pr": "https://github.com/Tecorigin/tecovllm-modelzoo/pull/4",
+  "hypothesis": "The actual default serve command satisfies static CI parsing while retaining final vendor argv",
+  "python_realpath": "/usr/local/python/bin/python3.12",
+  "focused": {
+    "passed": true,
+    "baseline_parser": {
+      "model_name": "MiniCPM5-1B",
+      "model_path": null,
+      "port": 8000,
+      "host": "\"${MINICPM_HOST:-0.0.0.0}\""
+    },
+    "candidate_parser": {
+      "model_name": "MiniCPM5-1B",
+      "model_path": "/gpfs/model/OpenBMB/MiniCPM5-1B",
+      "host": "0.0.0.0",
+      "port": 8000
+    },
+    "mock_cases": [
+      {
+        "name": "default",
+        "argv": [
+          "/home/py312/bin/python",
+          "-m",
+          "vllm.entrypoints.cli.main",
+          "serve",
+          "/gpfs/model/OpenBMB/MiniCPM5-1B",
+          "--served-model-name",
+          "MiniCPM5-1B",
+          "--tensor-parallel-size",
+          "1",
+          "--port",
+          "8000",
+          "--host",
+          "0.0.0.0",
+          "--dtype",
+          "float16",
+          "--trust-remote-code",
+          "--no-enable-prefix-caching",
+          "--max-model-len",
+          "32768"
+        ],
+        "baseline_argv_identical": true,
+        "passed": true
+      },
+      {
+        "name": "environment",
+        "argv": [
+          "/home/py312/bin/python",
+          "-m",
+          "vllm.entrypoints.cli.main",
+          "serve",
+          "/readonly/model",
+          "--served-model-name",
+          "MiniCPM5-1B",
+          "--tensor-parallel-size",
+          "1",
+          "--port",
+          "18100",
+          "--host",
+          "127.0.0.1",
+          "--dtype",
+          "float16",
+          "--trust-remote-code",
+          "--no-enable-prefix-caching",
+          "--max-model-len",
+          "32768"
+        ],
+        "baseline_argv_identical": true,
+        "passed": true
+      },
+      {
+        "name": "model-root",
+        "argv": [
+          "/home/py312/bin/python",
+          "-m",
+          "vllm.entrypoints.cli.main",
+          "serve",
+          "/readonly/root/OpenBMB/MiniCPM5-1B",
+          "--served-model-name",
+          "MiniCPM5-1B",
+          "--tensor-parallel-size",
+          "1",
+          "--port",
+          "8000",
+          "--host",
+          "0.0.0.0",
+          "--dtype",
+          "float16",
+          "--trust-remote-code",
+          "--no-enable-prefix-caching",
+          "--max-model-len",
+          "32768"
+        ],
+        "baseline_argv_identical": true,
+        "passed": true
+      },
+      {
+        "name": "trailing-cli",
+        "argv": [
+          "/home/py312/bin/python",
+          "-m",
+          "vllm.entrypoints.cli.main",
+          "serve",
+          "/gpfs/model/OpenBMB/MiniCPM5-1B",
+          "--served-model-name",
+          "MiniCPM5-1B",
+          "--tensor-parallel-size",
+          "1",
+          "--port",
+          "18100",
+          "--host",
+          "127.0.0.1",
+          "--dtype",
+          "float16",
+          "--trust-remote-code",
+          "--no-enable-prefix-caching",
+          "--max-model-len",
+          "32768",
+          "--host",
+          "localhost",
+          "--port",
+          "19100",
+          "--max-num-seqs",
+          "4"
+        ],
+        "baseline_argv_identical": true,
+        "passed": true
+      }
+    ],
+    "device_execution": false,
+    "original_vendor_entrypoint_preserved": true
+  },
+  "model": {
+    "passed": true,
+    "model": "minicpm",
+    "models": {
+      "object": "list",
+      "data": [
+        {
+          "id": "MiniCPM5-1B",
+          "object": "model",
+          "created": 1791147891,
+          "owned_by": "vllm",
+          "root": "/gpfs/model/OpenBMB/MiniCPM5-1B",
+          "parent": null,
+          "max_model_len": 32768,
+          "permission": [
+            {
+              "id": "modelperm-84a4d5d2a9c8ccef",
+              "object": "model_permission",
+              "created": 1791147891,
+              "allow_create_engine": false,
+              "allow_sampling": true,
+              "allow_logprobs": true,
+              "allow_search_indices": false,
+              "allow_view": true,
+              "allow_fine_tuning": false,
+              "organization": "*",
+              "group": null,
+              "is_blocking": false
+            }
+          ]
+        }
+      ]
+    },
+    "requests": [
+      {
+        "label": "text_0",
+        "request": {
+          "model": "MiniCPM5-1B",
+          "max_tokens": 32,
+          "temperature": 0,
+          "top_p": 1,
+          "top_k": -1,
+          "seed": 0,
+          "return_token_ids": true,
+          "prompt": "Explain why reproducible benchmarks matter."
+        },
+        "response": {
+          "id": "cmpl-b70c012dd3ad1503",
+          "object": "text_completion",
+          "created": 1791147891,
+          "model": "MiniCPM5-1B",
+          "choices": [
+            {
+              "index": 0,
+              "text": " \n[A]. They provide a reliable measure of a system's performance. \n[B]. They allow for the comparison of different systems. \n[C]. They help in",
+              "logprobs": null,
+              "finish_reason": "length",
+              "stop_reason": null,
+              "token_ids": [
+                1974,
+                10300,
+                1759,
+                1773,
+                3211,
+                280,
+                14335,
+                2442,
+                304,
+                280,
+                1187,
+                468,
+                3622,
+                35,
+                1974,
+                52424,
+                1759,
+                1773,
+                2351,
+                374,
+                285,
+                7335,
+                304,
+                1356,
+                3095,
+                35,
+                1974,
+                45656,
+                1759,
+                1773,
+                1848,
+                310
+              ],
+              "prompt_logprobs": null,
+              "prompt_token_ids": [
+                0,
+                77524,
+                3212,
+                77008,
+                47387,
+                3554,
+                35
+              ]
+            }
+          ],
+          "service_tier": null,
+          "system_fingerprint": null,
+          "usage": {
+            "prompt_tokens": 7,
+            "total_tokens": 39,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null
+          },
+          "kv_transfer_params": null
+        },
+        "seconds": 2.4998111210006755
+      },
+      {
+        "label": "text_1",
+        "request": {
+          "model": "MiniCPM5-1B",
+          "max_tokens": 32,
+          "temperature": 0,
+          "top_p": 1,
+          "top_k": -1,
+          "seed": 0,
+          "return_token_ids": true,
+          "prompt": "Explain why reproducible benchmarks matter."
+        },
+        "response": {
+          "id": "cmpl-81034d97c5786bd4",
+          "object": "text_completion",
+          "created": 1791147893,
+          "model": "MiniCPM5-1B",
+          "choices": [
+            {
+              "index": 0,
+              "text": " \n[A]. They provide a reliable measure of a system's performance. \n[B]. They allow for the comparison of different systems. \n[C]. They help in",
+              "logprobs": null,
+              "finish_reason": "length",
+              "stop_reason": null,
+              "token_ids": [
+                1974,
+                10300,
+                1759,
+                1773,
+                3211,
+                280,
+                14335,
+                2442,
+                304,
+                280,
+                1187,
+                468,
+                3622,
+                35,
+                1974,
+                52424,
+                1759,
+                1773,
+                2351,
+                374,
+                285,
+                7335,
+                304,
+                1356,
+                3095,
+                35,
+                1974,
+                45656,
+                1759,
+                1773,
+                1848,
+                310
+              ],
+              "prompt_logprobs": null,
+              "prompt_token_ids": [
+                0,
+                77524,
+                3212,
+                77008,
+                47387,
+                3554,
+                35
+              ]
+            }
+          ],
+          "service_tier": null,
+          "system_fingerprint": null,
+          "usage": {
+            "prompt_tokens": 7,
+            "total_tokens": 39,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null
+          },
+          "kv_transfer_params": null
+        },
+        "seconds": 2.4385086859983858
+      }
+    ],
+    "performance_claim": false,
+    "launcher_sha256": "3d3b318085132de12fa012c9a8e863431a9e42e5a9d0bf611e4fe7755cd04e2c",
+    "all_32_reference_ids_match": true
+  },
+  "configuration": {
+    "context": 32768,
+    "dtype": "float16",
+    "tp": 1,
+    "default_compiler": true,
+    "default_model_flags_unchanged": true,
+    "host_override": "127.0.0.1"
+  },
+  "unchanged_source_blobs": {
+    ".gitattributes": "fcadb2cf97913f58a2523f535336e725c6b59d1f",
+    "runtime/custom_ops/__init__.py": "a6459801248eccae240ef25ac5b0e97c70c9e51d",
+    "runtime/custom_ops/block_attention/__init__.py": "6c04949f01e7828f3bec8ac0eb4c24fae8abef9b",
+    "runtime/custom_ops/block_attention/op.py": "12f31c6628d3bfdf526de686cc7162e02da426fc",
+    "runtime/custom_ops/compile_safe.py": "f532f1c744ed65fcbe3561253d3e5dc75c622a35",
+    "runtime/custom_ops/flash_attn_varlen/__init__.py": "b3145f8fb598a81ab5bd6caecae9fb9beffad55c",
+    "runtime/custom_ops/flash_attn_varlen/op.py": "d01be348d52f70545ce0f110aecf675cfdcacb00",
+    "runtime/custom_ops/receipt.py": "03b3ef08e535b2736f9dd14de237e2dcd4f919bb",
+    "runtime/custom_ops/reshape_and_cache/__init__.py": "aadc0906328deb965bb383366106af8446f0021c",
+    "runtime/custom_ops/reshape_and_cache/op.py": "0ee48ec6143bc4aee85aa160d38e28066ec62b13",
+    "runtime/custom_ops/rms_norm/__init__.py": "3b9a13a9aa6735c577e83a56ae649fbb30746b45",
+    "runtime/custom_ops/rms_norm/op.py": "3e4be03793d16f267734f1e48884fb58174614cd",
+    "runtime/overlay/sitecustomize.py": "5f8ac2dca1d8e61d899376e31fb1d5a6f4660118",
+    "tests/test_compile_safe_cpu.py": "d836f92878dbbad05408a327312b241ce978020e",
+    "tests/test_compile_safe_sdaa.py": "1a4ef08112f4b901a251a3bd844bac2b86b0dd94",
+    "tests/test_startup_failure.py": "a353949e5710adbe1e33f126f59d6aecf3569e87",
+    "tests/verify_model.py": "bacb6c02eef4af16a0993e58d0ece32ebdf8d99c",
+    "validation/baseline_token_ids.json": "fa39203f6937b2eb5dd5ddd60cfc9d42fe6bad1d",
+    "validation/runtime_20261004.json": "9b9d35710db58212affcd652bdd1fdcd1c334985"
+  },
+  "changed_source_sha256": {
+    "run.sh": "3d3b318085132de12fa012c9a8e863431a9e42e5a9d0bf611e4fe7755cd04e2c",
+    "README.md": "4119a6a909f6d039ff7deda1884cfc755c8fd665f6cc19a2ea0fa6e786bb1329"
+  },
+  "log_sha256": {
+    "model.json": "64ccf9c6ce183ceee5511a85e40cefc6778bc54716c168370b3ae5e864d4216a",
+    "client.log": "4fada83249addee6e450b2c23e26a0e4dc62d925a9132e6795ea2e2098246695",
+    "service.log": "e0be8e09c36e919bdc32a29ce984a733e21d3b02e9f3b1e4187cad1d1c831992",
+    "card_after.txt": "10b8f8e7efd8784d010ea5e967ab5257dcc483374713ce2fca893a13482f69ff"
+  },
+  "syntax": "pass",
+  "diff_check": "pass",
+  "own_services_released": true,
+  "performance_claim": false,
+  "unexecuted": [
+    "full official accuracy",
+    "full official performance suite",
+    "long-context request",
+    "new kernel benchmark or steady rerun",
+    "current upstream-head wheel equivalence"
+  ],
+  "reason": "Launcher-only adaptation keeps model/kernel/compile argv and source unchanged; fixed greedy32 validates startup and reference output. Long context is a configured capacity, not a tested long request."
+}

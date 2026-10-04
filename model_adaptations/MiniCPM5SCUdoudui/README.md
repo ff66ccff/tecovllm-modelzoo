@@ -97,3 +97,22 @@ Official task accuracy and owner CI remain pending. The default chunked-prefill
 setting remains enabled, but these short prompts do not validate long chunks or
 full 32768-token generation. Installed wheel equivalence to current upstream PR
 heads is unverified. Model weights and compiled binaries are not included.
+
+## Official CI launch parsing
+
+The launcher exposes its actual literal-default `vllm serve` argv through a
+local shell shim so the unchanged official `parse_run_sh` can read the model
+path, host and port. The shim executes those arguments through the pinned
+Python module entrypoint, replacing only the model path and first host/port
+values from the existing environment settings. The official parser is static:
+run it with the default `/gpfs/model` path, host `0.0.0.0` and port `8000`.
+Environment overrides remain available for direct launcher use; start the
+official CI runner with its default launch settings because it cannot read
+runtime shell overrides.
+
+`validation/ci_contract_20261005.json` records the unchanged official parser,
+four argv cases identical to the previous vendor invocation, and two
+greedy32 runs at the default configured context 32768. Every output
+ID matches this model's reference; runtime/test sources are unchanged.
+This validates startup and short requests. Full official accuracy,
+performance evaluation and long-context requests remain pending.

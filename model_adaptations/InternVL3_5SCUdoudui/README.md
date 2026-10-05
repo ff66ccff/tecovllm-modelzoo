@@ -25,8 +25,41 @@ and explicitly uses `/home/py312/bin/python` (resolved target
 `/usr/local/python/bin/python3.12`). `VLLM_DISABLE_COMPILE_CACHE=1` prevents
 reuse of graphs from the previous operator binding. Override the local path,
 port, host, and sequence limit with `INTERNVL_MODEL`, `INTERNVL_PORT`,
-`INTERNVL_HOST`, and `INTERNVL_MAX_MODEL_LEN`. The validated model checks use
-TP2, FP16, and a sequence limit of 4096.
+`INTERNVL_HOST`, and `INTERNVL_MAX_MODEL_LEN`.
+The historical baseline was tested with TP2, FP16, and a sequence limit of 4096.
+The candidate changes only the default sequence limit to 4352 for the official
+T2 4096-token prompt plus 100-token output. On 2026-10-05, both TP workers
+reported max_model_len=4352, max_num_batched_tokens=4352, FP16, and chunked
+prefill disabled. The branch's Q16/KV4/D128 capacity prefill, long-position RoPE
+gate, fixed text/image greedy32 IDs, and official T2 capacity run passed. T2
+plus one same-shape supplemental run recorded 453.985099 seconds of summed
+SQLite request spans with 20/20 requests successful. This is capacity and
+correctness evidence only; it makes no speedup, official-accuracy, or full-CI
+claim. The 12.106 GiB/rank worker peak covers the post-reset T2/steady request
+window; startup/profile peak was not measured. See
+validation/ci_budget4352_20261005.json for receipts and raw-log hashes. The
+public launcher change is tracked by [PR #6](https://github.com/Tecorigin/tecovllm-modelzoo/pull/6); this receipt records its branch-local capacity and correctness evidence.
+
+
+## Capacity gate reproduction
+
+From the repository root with an available SDAA device, run the public tests
+directly from this adaptation. These commands use the public runtime files and
+the vendor Python; they do not depend on the internal op_learning helpers.
+
+~~~bash
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
+source /opt/tecoai/setvars.sh
+ADAPTATION="$PWD/model_adaptations/InternVL3_5SCUdoudui"
+export SDAA_VISIBLE_DEVICES=0
+/home/py312/bin/python "$ADAPTATION/tests/test_capacity_attention.py"
+/home/py312/bin/python "$ADAPTATION/tests/verify_long_vendor_rope.py" --allow-device --device 0 --result /tmp/internvl-rope-budget4352.json
+~~~
+
+The first test exercises public Q16/KV4/D128 FP16 prefill at sequence length
+4352 against a bounded FP32 CPU oracle. The second verifies RoPE at positions
+4096, 4195, and 4351 using the unchanged branch tolerance and public
+verify_vendor_rope.py implementation.
 
 ## Operator path
 
@@ -77,7 +110,7 @@ positions 17/4095 and M8 mixed positions on default and nondefault streams.
 Primitive comparison uses fixed `rtol=atol=0.002`; vendor arithmetic is not
 bit-exact with the native/CPU reference, and known FP16 subnormal loss remains.
 
-The exported `run.sh` was tested with the same FP16 TP2 configuration and
+In the previous 4096-context RoPE gate, the exported `run.sh` was tested with the same FP16 TP2 configuration and
 fixed text prompt as the native baseline, two warmups, then three consecutive
 greedy32 requests. The native reference was recorded before the private
 binding experiment and reused for this formal-entry reproduction.
@@ -96,5 +129,5 @@ The source branch `model/internvl3_5-8b` contains real-shape hardware evidence
 for the RMSNorm, reshape/cache, and prefill paths, plus fixed 32-token text and
 natural-image smoke logs.  The prefill adapter explicitly disables chunked
 prefill because SDAA's non-square causal mask path is not semantically safe.
-Official benchmark and accuracy jobs remain the repository's external
+Full official CI and accuracy evaluation remain the repository's external
 evaluation step.

@@ -55,7 +55,7 @@ vllm serve /gpfs/model/OpenGVLab/InternVL3_5-8B \
     --dtype float16 \
     --tensor-parallel-size "${INTERNVL_TP_SIZE:-2}" \
     --gpu-memory-utilization "${INTERNVL_UTIL:-0.85}" \
-    --max-model-len "${INTERNVL_MAX_MODEL_LEN:-4096}" \
+    --max-model-len "${INTERNVL_MAX_MODEL_LEN:-4352}" \
     --limit-mm-per-prompt '{"image": 1}' \
     --trust-remote-code \
     --no-enable-prefix-caching \

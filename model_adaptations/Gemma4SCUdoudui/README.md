@@ -35,7 +35,8 @@ CLI arguments can be passed to `run.sh` for diagnostics.
 Without the optional extension below, global D512 decode uses the existing
 single-KV-head math implementation. D256 decode retains the trailing 1024 KV
 positions and fused non-causal SDPA. Both choices bind during construction.
-Prefill and vendor `reshape_and_cache` remain unchanged. The overlay also
+Math prefill uses the window-aware entry described below; the vendor
+`reshape_and_cache` ABI remains unchanged. The overlay also
 registers `gemma4_unified`, adapts the installed tokenizer API, and skips
 vision/audio-only checkpoint tensors for this text model.
 
@@ -142,7 +143,7 @@ context-budget validation is a separate attempt.
 ## Official T1 input and output budget
 
 The 2304-token default reserves room for the official 2048-input / 100-output
-T1 case. TP2, FP16, util0.92, attention implementations, full KV layout and
+T1 case. TP2, FP16, util0.92, attention implementations, KV layout and
 prefix/chunked flags are unchanged. This is a capacity enabler.
 `validation/ci_budget2304_20261005.json` records eight longer-context D512
 operator cases (maximum absolute error 0.0010442734),
@@ -179,3 +180,46 @@ for task_shape in 1024:10:1 2048:100:10; do
     --extra-args '{"ignore_eos": true}' --parallel 1 --number "$task_number"
 done
 ```
+
+## Window-aware math prefill (2026-10-05)
+
+The math prefill entry accepts contiguous appended chunks with `q_len <= kv_len`.
+For local W1024 layers it gathers only
+`[max(0, kv_len - q_len - 1024 + 1), kv_len)`; global layers retain full history.
+The existing right-aligned math mask, flash entry, shared gather and decoder are
+unchanged. Required pages must be valid. Retired prefix pages and poisoned old
+values outside that interval are not read, including old offsets in the first
+retained boundary page. The global null-page check is specific to this Gemma
+TP2 manager64-to-kernel32 contract (reserved subpages 0/1).
+
+The portable focused test checks actual local Q8/K4/D256/W1024 and global
+Q8/K1/D512 against an independent CPU FP32 absolute-position oracle. It uses
+the vendor cache-write ABI with continuous HND caches, noncontiguous K/V tails,
+physical page permutations, mixed q1/padding, required-null rejection and
+persistent serial chunks on default/nondefault streams. Run on an owned free
+device after exporting `LD_LIBRARY_PATH` and sourcing `/opt/tecoai/setvars.sh`:
+
+```bash
+b="$PWD/model_adaptations/Gemma4SCUdoudui"
+SDAA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 \
+  /home/py312/bin/python "$b/tests/verify_windowed_math.py" \
+  --allow-device --output windowed_math_operator.json
+```
+
+Public-source validation passes 84 numerical cases, 12 serial cases and 252
+required-null rejections; maximum oracle error is 0.000542039 and serial versus
+whole error is 0.0000621676, with exact cache values. The unchanged public
+launcher passes fixed greedy32, a 2048-token input and mixed 11/1057 requests
+against the model's own references. An optional 2304-context chunk512 run also
+passes real scheduler metadata and at least 300 seconds of output/cache
+stability. `validation/windowed_math_20261005.json` retains the source hashes,
+execution/final-test license lineage and independent private three-run values.
+These results establish chunked-prefill capability; they do not establish an
+official accuracy score, 3492+ context capacity, graph capture or a new speedup.
+
+The default remains maxlen2304/batch2304 with chunking disabled. To exercise
+the validated optional scheduler mode, set `GEMMA_MAX_BATCHED_TOKENS=512` and
+append `--enable-chunked-prefill` to the usual `bash "$b/run.sh"` command.
+The math metadata checks currently synchronize on the host; capture support
+was not tested. Runtime diagnostics and private metadata hooks are excluded
+from the portable product test.

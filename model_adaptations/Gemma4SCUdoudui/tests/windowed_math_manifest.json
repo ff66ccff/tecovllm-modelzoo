@@ -1,0 +1,15 @@
+{
+  "public_source_sha256": "24c03d43c2b9a68824a05590253ee01ed3043ccebecdd4d5578a5c6c6107a2ac",
+  "sha256": {
+    "runtime/custom_ops/prefill_attention/op.py": "24c03d43c2b9a68824a05590253ee01ed3043ccebecdd4d5578a5c6c6107a2ac",
+    "runtime/custom_ops/reshape_and_cache/op.py": "0cfd8aa757412f769e04cc1adaffc9bf53e4997bcd6e44ab154794483b0ee029",
+    "tests/verify_windowed_math.py": "2ce6f5dcfe41d180aa8e0afcd5b10bed094f613c995d2102f051a2a1452a48bc"
+  },
+  "cache_abi_wrapper_sha256": "0cfd8aa757412f769e04cc1adaffc9bf53e4997bcd6e44ab154794483b0ee029",
+  "expected_sdaa_counts": {
+    "numerical": 84,
+    "serial": 12,
+    "required_null_rejections": 252
+  },
+  "scope": "Gemma TP2 local Q8/K4/D256/W1024, global Q8/K1/D512; global reserved subpages0/1 only manager64->kernel32"
+}

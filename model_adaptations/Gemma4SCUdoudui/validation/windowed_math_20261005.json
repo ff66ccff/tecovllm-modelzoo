@@ -1,0 +1,1673 @@
+{
+  "date": "2026-10-05",
+  "hypothesis": "math prefill gathers contiguous query-window union; global full history",
+  "profiles": [
+    "TP2 Q8/K4/D256/W1024",
+    "TP2 Q8/K1/D512/global/scale1"
+  ],
+  "local_needed_interval": "[max(0,kv_len-q_len-1024+1),kv_len)",
+  "global_needed_interval": "[0,kv_len)",
+  "global_null_scope": "Gemma TP2 manager64 to kernel32 reserved subpages0/1 only",
+  "public_source_sha256": "24c03d43c2b9a68824a05590253ee01ed3043ccebecdd4d5578a5c6c6107a2ac",
+  "frozen_private_candidate_sha256": "a391462dc7b679e3c4b94bffdf9a83471169103639f82e86ce3722641d909de9",
+  "candidate_public_all_functions_classes_ast_equal": true,
+  "flash_shared_gather_attend_math_decoder_unchanged": true,
+  "public_launcher_sha256": "1b76de897476c2d910a1159f0d62778cbc753800510b019d3c7642ac54281e9f",
+  "default_profile": {
+    "max_model_len": 2304,
+    "max_num_batched_tokens": 2304,
+    "tp": 2,
+    "dtype": "float16",
+    "util": 0.92,
+    "prefix_caching": false,
+    "chunked_prefill": false
+  },
+  "portable_test_lineage": {
+    "executed_test_sha256": "08b6c3ef3014dde4c345089b39c7a2a9aed7e087023a467e80310684e90172b5",
+    "current_test_sha256": "2ce6f5dcfe41d180aa8e0afcd5b10bed094f613c995d2102f051a2a1452a48bc",
+    "comment_only": true,
+    "ast_equal": true,
+    "retest_needed": false,
+    "executed_test_snapshot": "logs/gemma-4-12b-it/windowed-chunked-math-public-focused-20261005/executed_verify_windowed_math.py"
+  },
+  "focused": {
+    "passed": true,
+    "exit_code": 0,
+    "numerical_cases": 84,
+    "serial_cases": 12,
+    "required_null_rejections": 252,
+    "max_abs": 0.0005420390516519547,
+    "serial_max_abs_vs_whole": 6.216764450073242e-05,
+    "cache_exact": true,
+    "thresholds": {
+      "atol": 0.006,
+      "rtol": 0.02,
+      "serial_atol": 0.002,
+      "serial_rtol": 0.02
+    },
+    "streams": [
+      "default",
+      "nondefault"
+    ],
+    "vendor_cache_abi": "continuous HND caches; noncontiguous tail inputs",
+    "source_sha256": "24c03d43c2b9a68824a05590253ee01ed3043ccebecdd4d5578a5c6c6107a2ac"
+  },
+  "public_model": {
+    "candidate_whole": {
+      "passed": true,
+      "actual_public_launcher": true,
+      "private_prefill_binding": false,
+      "diagnostic_loopback_host": "127.0.0.1",
+      "diagnostic_dev_mode": true,
+      "smoke_greedy32_repeats": 2,
+      "long_input2048_output32": true,
+      "mixed_input_lengths": [
+        11,
+        1057
+      ],
+      "all_ids_equal_own_original_reference": true,
+      "workers": [
+        {
+          "rank": 0,
+          "weight_dtypes": [
+            "torch.float16"
+          ],
+          "weight_devices": [
+            "sdaa:0"
+          ],
+          "peak_allocated_gib": 13.744415760040283,
+          "manager_block_sizes": [
+            32,
+            32,
+            32,
+            32,
+            32,
+            64
+          ],
+          "kernel_block_sizes": [
+            32,
+            32,
+            32,
+            32,
+            32,
+            32
+          ],
+          "disable_hybrid": false,
+          "cudagraph_mode": "NONE",
+          "cache_shapes": [
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              994,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              994,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              994,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              994,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              994,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              994,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              994,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              994,
+              1,
+              32,
+              512
+            ]
+          ],
+          "prefill_source_sha256": [
+            "24c03d43c2b9a68824a05590253ee01ed3043ccebecdd4d5578a5c6c6107a2ac"
+          ],
+          "metadata_hook_armed": false
+        },
+        {
+          "rank": 1,
+          "weight_dtypes": [
+            "torch.float16"
+          ],
+          "weight_devices": [
+            "sdaa:1"
+          ],
+          "peak_allocated_gib": 13.744415760040283,
+          "manager_block_sizes": [
+            32,
+            32,
+            32,
+            32,
+            32,
+            64
+          ],
+          "kernel_block_sizes": [
+            32,
+            32,
+            32,
+            32,
+            32,
+            32
+          ],
+          "disable_hybrid": false,
+          "cudagraph_mode": "NONE",
+          "cache_shapes": [
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              994,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              994,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              994,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              994,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              994,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              994,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              994,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              497,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              994,
+              1,
+              32,
+              512
+            ]
+          ],
+          "prefill_source_sha256": [
+            "24c03d43c2b9a68824a05590253ee01ed3043ccebecdd4d5578a5c6c6107a2ac"
+          ],
+          "metadata_hook_armed": false
+        }
+      ]
+    },
+    "candidate_chunk512": {
+      "passed": true,
+      "actual_public_launcher": true,
+      "private_prefill_binding": false,
+      "diagnostic_loopback_host": "127.0.0.1",
+      "diagnostic_dev_mode": true,
+      "smoke_greedy32_repeats": 2,
+      "long_input2048_output32": true,
+      "mixed_input_lengths": [
+        11,
+        1057
+      ],
+      "all_ids_equal_own_original_reference": true,
+      "workers": [
+        {
+          "rank": 0,
+          "weight_dtypes": [
+            "torch.float16"
+          ],
+          "weight_devices": [
+            "sdaa:0"
+          ],
+          "peak_allocated_gib": 13.745141506195068,
+          "manager_block_sizes": [
+            32,
+            32,
+            32,
+            32,
+            32,
+            64
+          ],
+          "kernel_block_sizes": [
+            32,
+            32,
+            32,
+            32,
+            32,
+            32
+          ],
+          "disable_hybrid": false,
+          "cudagraph_mode": "NONE",
+          "cache_shapes": [
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              1022,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              1022,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              1022,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              1022,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              1022,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              1022,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              1022,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              1022,
+              1,
+              32,
+              512
+            ]
+          ],
+          "prefill_source_sha256": [
+            "24c03d43c2b9a68824a05590253ee01ed3043ccebecdd4d5578a5c6c6107a2ac"
+          ],
+          "metadata_hook_armed": false
+        },
+        {
+          "rank": 1,
+          "weight_dtypes": [
+            "torch.float16"
+          ],
+          "weight_devices": [
+            "sdaa:1"
+          ],
+          "peak_allocated_gib": 13.745141506195068,
+          "manager_block_sizes": [
+            32,
+            32,
+            32,
+            32,
+            32,
+            64
+          ],
+          "kernel_block_sizes": [
+            32,
+            32,
+            32,
+            32,
+            32,
+            32
+          ],
+          "disable_hybrid": false,
+          "cudagraph_mode": "NONE",
+          "cache_shapes": [
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              1022,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              1022,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              1022,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              1022,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              1022,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              1022,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              1022,
+              1,
+              32,
+              512
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              511,
+              4,
+              32,
+              256
+            ],
+            [
+              2,
+              1022,
+              1,
+              32,
+              512
+            ]
+          ],
+          "prefill_source_sha256": [
+            "24c03d43c2b9a68824a05590253ee01ed3043ccebecdd4d5578a5c6c6107a2ac"
+          ],
+          "metadata_hook_armed": false
+        }
+      ],
+      "steady_seconds": 314.21095486500417,
+      "steady_requests": 21,
+      "long_and_fixed32_after_steady_equal": true,
+      "card_memory_mb_samples": [
+        29456,
+        29456,
+        29456
+      ],
+      "before_after_worker_peak_unchanged": true
+    }
+  },
+  "metadata": {
+    "outer_call": 4,
+    "q_len": 512,
+    "kv_len": 2048,
+    "prefix": 1536,
+    "local_needed_start": 513,
+    "first_required_page": 16,
+    "required_window_pages_valid": true,
+    "global_manager64_kernel32_pairs_valid": true,
+    "worker_retired_prefix_null_observed": false,
+    "old_worker_entries": "append-only stale IDs; validity outside required union is not assumed",
+    "diagnostic_excluded_from_timing": true,
+    "hook_restored": true
+  },
+  "private_prior_performance": {
+    "scope": "fixed completion prompt11 greedy32; two warmups and three sequential raw times, private same2304 math configs",
+    "values": {
+      "original": {
+        "raw_seconds": [
+          13.940660143998684,
+          13.920823005988495,
+          13.926486881013261
+        ],
+        "median_seconds": 13.926486881013261
+      },
+      "candidate_whole": {
+        "raw_seconds": [
+          11.404711663984926,
+          11.350467684998875,
+          11.39042408100795
+        ],
+        "median_seconds": 11.39042408100795
+      },
+      "candidate_chunk512": {
+        "raw_seconds": [
+          13.884809588984353,
+          13.786896851990605,
+          13.728236403985647
+        ],
+        "median_seconds": 13.786896851990605
+      }
+    },
+    "performance_claim": false
+  },
+  "raw_evidence": {
+    "public_model": "logs/gemma-4-12b-it/windowed-chunked-math-public-20261005",
+    "public_focused": "logs/gemma-4-12b-it/windowed-chunked-math-public-focused-20261005",
+    "private_prior": "logs/gemma-4-12b-it/windowed-chunked-math-model-20261005"
+  },
+  "harness_failure": {
+    "type": "diagnostic RPC404 before any generation/arm",
+    "cause": "task orchestration initially omitted VLLM_SERVER_DEV_MODE=1",
+    "scope": "diagnostic-only environment corrected; public launcher/math unchanged; first raw retained"
+  },
+  "card_after": "0MB / 65536MB; No Process Running",
+  "accuracy_run": false,
+  "capacity_3492_plus_run": false,
+  "capture_run": false,
+  "fake_run": false,
+  "performance_claim": false,
+  "decision": "root final review passed; single-hypothesis atomic commit authorized, official export handled by root",
+  "baseline": "63d90bc4b6611333e52d026deb35857f6213b440",
+  "source_head_at_test": "63d90bc4b6611333e52d026deb35857f6213b440",
+  "source_ref_at_test": "model/gemma-4-12b-it",
+  "worktree_dirty_at_test": true,
+  "source_commit_scope": "Execution-time snapshots: source HEAD is baseline with uncommitted candidate/public math changes, not a fabricated committed runtime revision.",
+  "official_snapshot_at_test": {
+    "base": "bb01120",
+    "existing_pr_url": "https://github.com/Tecorigin/tecovllm-modelzoo/pull/3",
+    "head_at_test": "f63e4af"
+  },
+  "final_static_checks": {
+    "passed": true,
+    "date": "2026-10-05",
+    "python": "/home/py312/bin/python",
+    "gpu_rerun": false,
+    "syntax_compile_passed": true,
+    "bash_n_passed": true,
+    "diff_check_passed": true,
+    "all_candidate_public_function_class_ast_equal": true,
+    "private_manifest_and_sources_unchanged": true,
+    "public_launcher_unchanged": true
+  },
+  "raw_inventory": {
+    "model_raw_sha256.json": {
+      "path": "op_learning/attention/gemma-windowed-chunked-math/stage_results/model_raw_sha256.json",
+      "sha256": "ee030ac2ccb7be3b9cb797d0ea11577c1df3437328764a8e6fd0a9ac0f9cc8c2",
+      "entry_count": 60
+    },
+    "public_model_raw_sha256.json": {
+      "path": "op_learning/attention/gemma-windowed-chunked-math/stage_results/public_model_raw_sha256.json",
+      "sha256": "6f80d91052848ee4bf203b0de83d8a799ac90b1af9c2e8ac394d6fe4ef2970e1",
+      "entry_count": 38
+    }
+  }
+}

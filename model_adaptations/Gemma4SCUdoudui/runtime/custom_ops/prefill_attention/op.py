@@ -25,6 +25,11 @@
 
 """custom_ops/prefill_attention/op.py - 注意力：paged cache gather + torch SDPA
 
+Gemma math 入口支持连续 appended chunk（q_len <= kv_len）：local W1024
+只读取 [max(0, kv_len-q_len-W+1), kv_len)，global 读取完整历史。
+所需页必须有效；区间外退休页与 NaN 不读取。下文厂商融合 SDPA 的
+非方阵 causal 限制与 chunk 拒绝仅适用于 flash 入口，math 使用右对齐掩码。
+
 ## 为什么是「gather 补齐 + 逐序列掩码」而不是「加一个回退分支」
 
 旧版只吃**当前步的 dense K/V**，因此要求 `query_len == seq_len`；一旦批里混有 decode
@@ -57,7 +62,7 @@
 - 完整 prefill（q_len == kv_len > 1）→ True，方阵，融合；
 - 混合批里的 decode（q_len == 1）→ False，非方阵但**非因果**，融合且正确。
 
-## 仍不支持：chunked prefill（1 < q_len < kv_len）
+## flash 入口仍不支持：chunked prefill（1 < q_len < kv_len）
 
 该形状要「右下角因果」，而 SDAA 上三条路都不可用：
 `is_causal=True` ⇒ math + 左上角（又慢又错）；显式 `attn_mask` ⇒ 同样 math（68.7 ms 量级）；
@@ -261,6 +266,41 @@ def sdpa_prefill_attention_math(
     block_attention/op.py 与 overlay 的 ``BlockAttentionImpl.__init__`` 补丁），
     forward 内不保留后端 if-else。
     """
+    # Validate only pages intersecting the required query-window union.
+    if query.ndim != 3 or key_cache.ndim != 4 or value_cache.shape != key_cache.shape:
+        raise RuntimeError("invalid Q/cache layout")
+    if query.shape[-1] != key_cache.shape[-1] or key_cache.size(2) != 32:
+        raise RuntimeError("requires matching head dimension and block32")
+    if key_cache.shape[1] <= 0 or query.shape[1] % key_cache.shape[1]:
+        raise RuntimeError("invalid GQA head ratio")
+    if any(t.device != query.device for t in (key_cache, value_cache, block_table, query_start_loc, seq_lens)):
+        raise RuntimeError("mixed devices")
+    if key_cache.dtype != query.dtype or value_cache.dtype != query.dtype:
+        raise RuntimeError("cache dtype mismatch")
+    if query_start_loc.ndim != 1 or seq_lens.ndim != 1 or block_table.ndim != 2:
+        raise RuntimeError("invalid metadata rank")
+    if query_start_loc.dtype != torch.int32 or seq_lens.dtype != torch.int32 or block_table.dtype != torch.int32:
+        raise RuntimeError("metadata must be int32")
+    if query_start_loc.numel() != seq_lens.numel() + 1 or block_table.shape[0] != seq_lens.numel():
+        raise RuntimeError("metadata request count mismatch")
+    if int(query_start_loc[0]) != 0 or int(query_start_loc[-1]) != query.shape[0]:
+        raise RuntimeError("invalid cumulative query endpoints")
+    for i in range(seq_lens.numel()):
+        q_start, q_end = int(query_start_loc[i]), int(query_start_loc[i + 1])
+        q_len, kv_len = q_end - q_start, int(seq_lens[i])
+        if q_start < 0 or q_end < q_start or q_end > query.shape[0] or kv_len < q_len or kv_len < 0:
+            raise RuntimeError("invalid continuous chunk lengths")
+        if q_len == 0:
+            if kv_len != 0:
+                raise RuntimeError("padding row must have zero KV length")
+            continue
+        start = max(0, kv_len - q_len - int(window_size) + 1) if window_size is not None else 0
+        pages = (kv_len + 31) // 32
+        if pages > block_table.shape[1]:
+            raise RuntimeError("historical block table too short")
+        required = block_table[i, start // 32:pages]
+        if bool(torch.any(required < (1 if window_size is not None else 2))) or bool(torch.any(required >= key_cache.shape[0])):
+            raise RuntimeError("invalid historical page ID")
     out = torch.empty_like(query)
     num_seqs = query_start_loc.numel() - 1
     block_size = key_cache.size(2)
@@ -272,14 +312,11 @@ def sdpa_prefill_attention_math(
         kv_len = int(seq_lens[i])
         if kv_len <= 0 or q_len <= 0:
             continue
-        if causal and q_len > 1 and q_len != kv_len:
-            raise RuntimeError(
-                "custom_ops.prefill_attention: 不支持 chunked prefill "
-                f"(sequence {i}: query_len={q_len} != seq_len={kv_len})。"
-                "请用 --no-enable-chunked-prefill。"
-            )
-        k_i, v_i = gather_kv_from_cache(
-            key_cache, value_cache, block_table[i], kv_len, block_size)
+        start = max(0, kv_len - q_len - int(window_size) + 1) if window_size is not None else 0
+        logical = torch.arange(start, kv_len, device=key_cache.device)
+        block_ids = block_table[i][logical // block_size]
+        offsets = logical % block_size
+        k_i, v_i = key_cache[block_ids, :, offsets, :], value_cache[block_ids, :, offsets, :]
         seq_causal = bool(causal and q_len > 1)
         q_i = query[q_start:q_end].transpose(0, 1).unsqueeze(0)
         k_i = k_i.transpose(0, 1).unsqueeze(0)

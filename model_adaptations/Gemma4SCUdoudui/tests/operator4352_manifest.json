@@ -1,0 +1,203 @@
+{
+  "cache_abi_wrapper_sha256": "0cfd8aa757412f769e04cc1adaffc9bf53e4997bcd6e44ab154794483b0ee029",
+  "case_plan": [
+    [
+      0,
+      32
+    ],
+    [
+      31,
+      1
+    ],
+    [
+      31,
+      2
+    ],
+    [
+      31,
+      33
+    ],
+    [
+      31,
+      257
+    ],
+    [
+      31,
+      512
+    ],
+    [
+      32,
+      1
+    ],
+    [
+      32,
+      2
+    ],
+    [
+      32,
+      33
+    ],
+    [
+      32,
+      257
+    ],
+    [
+      32,
+      512
+    ],
+    [
+      511,
+      1
+    ],
+    [
+      511,
+      2
+    ],
+    [
+      511,
+      33
+    ],
+    [
+      511,
+      257
+    ],
+    [
+      511,
+      512
+    ],
+    [
+      512,
+      1
+    ],
+    [
+      512,
+      2
+    ],
+    [
+      512,
+      33
+    ],
+    [
+      512,
+      257
+    ],
+    [
+      512,
+      512
+    ],
+    [
+      1023,
+      1
+    ],
+    [
+      1023,
+      2
+    ],
+    [
+      1023,
+      33
+    ],
+    [
+      1023,
+      257
+    ],
+    [
+      1023,
+      512
+    ],
+    [
+      1024,
+      1
+    ],
+    [
+      1024,
+      2
+    ],
+    [
+      1024,
+      33
+    ],
+    [
+      1024,
+      257
+    ],
+    [
+      1024,
+      512
+    ],
+    [
+      4095,
+      1
+    ],
+    [
+      4095,
+      2
+    ],
+    [
+      4095,
+      33
+    ],
+    [
+      4095,
+      257
+    ],
+    [
+      4096,
+      1
+    ],
+    [
+      4096,
+      2
+    ],
+    [
+      4096,
+      33
+    ],
+    [
+      3840,
+      512
+    ],
+    [
+      4096,
+      256
+    ]
+  ],
+  "execution_started": false,
+  "existing_public_helper": {
+    "imported_by_candidate": false,
+    "path": "model_adaptations/Gemma4SCUdoudui/tests/verify_windowed_math.py",
+    "sha256": "2ce6f5dcfe41d180aa8e0afcd5b10bed094f613c995d2102f051a2a1452a48bc"
+  },
+  "expected_sdaa_counts": {
+    "numerical": 160,
+    "required_null_rejections": 480,
+    "serial": 12
+  },
+  "gpu_run": false,
+  "model_run": false,
+  "preparation_only": {
+    "candidate_is_not_yet_public": true,
+    "device_or_model_run": false
+  },
+  "prepared_only": true,
+  "profiles": [
+    "actual TP2 localQ8/K4/D256/W1024",
+    "globalQ8/K1/D512/global/scale1"
+  ],
+  "prospective_public_destination": "model_adaptations/Gemma4SCUdoudui/tests/verify_windowed_math4352.py",
+  "public_source_sha256": "24c03d43c2b9a68824a05590253ee01ed3043ccebecdd4d5578a5c6c6107a2ac",
+  "routing": {
+    "cache_abi": "actual public runtime custom_ops.reshape_and_cache.op.sdaa_reshape_and_cache",
+    "candidate_task_fallback": "TASK.parents[2]/'model_adaptations/Gemma4SCUdoudui'",
+    "manifest_filename": "operator4352_manifest.json",
+    "private_injection_or_weight_dependency": false,
+    "public_adapter_root_expression": "Path(__file__).resolve().parent.parent",
+    "public_operator_loaded_by_exact_file": "runtime/custom_ops/prefill_attention/op.py"
+  },
+  "sha256": {
+    "runtime/custom_ops/prefill_attention/op.py": "24c03d43c2b9a68824a05590253ee01ed3043ccebecdd4d5578a5c6c6107a2ac",
+    "runtime/custom_ops/reshape_and_cache/op.py": "0cfd8aa757412f769e04cc1adaffc9bf53e4997bcd6e44ab154794483b0ee029"
+  },
+  "test_sha256": "12e29c6ce4dcfb505f41f5f34eb898e586ca6980cfefa6331ce2cf5fe6fe6d77",
+  "total_kv_tokens": 4352
+}

@@ -1,0 +1,121 @@
+{
+  "branch_at_source": "model/gemma-4-12b-it",
+  "execution_scope": {
+    "adapter_or_product_files_changed": false,
+    "candidate_verifiers_run": false,
+    "existing_receipts_reused_as_historical_evidence": true,
+    "gpu_or_model_run_during_portability_prep": false
+  },
+  "manifest_filename": "d512_4352_public_manifest.json",
+  "model": "Gemma-4-12B-IT",
+  "path_contract": {
+    "adapter_root_condition": "script parent is tests and its parent is Gemma4SCUdoudui",
+    "candidate_task_fallback": "TASK_DIR.parents[2]/model_adaptations/Gemma4SCUdoudui",
+    "manifest_is_colocated": true,
+    "public_adapter_root_expression": "Path(__file__).resolve().parent.parent"
+  },
+  "prospective_public_directory": "model_adaptations/Gemma4SCUdoudui/tests",
+  "public_source": {
+    "accepted_official_source_base": "de27305efed0a17ae926d21d5415d8b915614649",
+    "accepted_patch_sha256": "c9a970bed3012c44bae0f446c314fa7fc2db2caee7496b03e48cd9f498884abb",
+    "expected_extension_basename": "_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+    "expected_extension_sha256": "9339b3756b49f9a4e2ec32e98f6b5e2f812d7790ceab360601238f77f517c7cb",
+    "isolated_extension_path_input": "GEMMA_D512_OFFICIAL_EXTENSION",
+    "isolated_extension_sha256_input": "GEMMA_D512_OFFICIAL_SHA256",
+    "operator_path": "runtime/custom_ops/d512_official.py",
+    "operator_sha256": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8",
+    "portable_artifact_contract": "Caller supplies extension path via original env var; extension and pinned core must be colocated; scripts and loader verify expected basenames and digests.",
+    "private_path_hardcoded_in_candidate": false,
+    "required_core_sibling_basename": "libteco_gemma_flash.so",
+    "required_core_sibling_sha256": "34afac5eded9a1d474a53c32bf19d71fe025ef81ad69fe0848ed0cbc616d0a6a"
+  },
+  "schema": "gemma-d512-4352-public-tests/v1",
+  "source_head_at_test_preparation": "f49de6300778ccc340c2d4b4d8969ce941b320eb",
+  "status": "portable_candidate_static_reviewed_existing_receipts_passed",
+  "tests": {
+    "main": {
+      "candidate_path": "op_learning/attention/gemma-d512-public-test-port/verify_d512_4352.py",
+      "candidate_sha256": "283188e776f6e1a15cb996020e7e81a7ec3c14934eb321df002e31396b5596a8",
+      "case_count": 12,
+      "cases": [
+        "[4095]",
+        "[4096]",
+        "[4195]",
+        "[4351]",
+        "[4352]",
+        "[4095,4096,4195,4351,4352]"
+      ],
+      "diff": {
+        "AST_equal_after_path_route_normalization": true,
+        "BSD_header_byte_identical": true,
+        "only_path_route_block_changed": true,
+        "reverse_replacement_reproduces_source_bytes": true
+      },
+      "expected_core_sha256": "34afac5eded9a1d474a53c32bf19d71fe025ef81ad69fe0848ed0cbc616d0a6a",
+      "expected_extension_sha256": "9339b3756b49f9a4e2ec32e98f6b5e2f812d7790ceab360601238f77f517c7cb",
+      "expected_public_operator_sha256": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8",
+      "public_destination": "model_adaptations/Gemma4SCUdoudui/tests/verify_d512_4352.py",
+      "receipt": {
+        "cache_exact": true,
+        "case_count": 12,
+        "max_abs_error": 0.001107931137084961,
+        "max_abs_tolerance": 0.02,
+        "passed": true,
+        "path": "logs/gemma-4-12b-it/d512_budget4352/operator_pathfixed.json",
+        "recorded_stream_invocation_count": 24,
+        "sha256": "fa8bbb85b5c6769c7b19a3a9dbcf676cde219362203e1d761a411fd4a371ee3a"
+      },
+      "recorded_absolute_tolerance": 0.02,
+      "source_manifest_sha256": "b4e82ae009222f2eff53c60abf70d6f3118e48ece398befcf899e0ecbb526b73",
+      "source_path": "op_learning/attention/gemma-d512-budget4352/verify_d512_4352.py",
+      "source_sha256": "11b5bd017a2ea3990bfc5ec3ca38bdd78980b43d44dd8c8199a379b27b48c414",
+      "stream_modes": [
+        "default eager",
+        "nondefault stream fullgraph eager"
+      ]
+    },
+    "poisoned_tail": {
+      "candidate_path": "op_learning/attention/gemma-d512-public-test-port/verify_d512_poisoned_tail.py",
+      "candidate_sha256": "ede1ed61cc5d6ea68af7ce8b0c1940ebfe360c0e42afaceb092a602f3cabe95a",
+      "case_count": 6,
+      "diff": {
+        "AST_equal_after_path_route_normalization": true,
+        "BSD_header_byte_identical": true,
+        "only_path_route_block_changed": true,
+        "reverse_replacement_reproduces_source_bytes": true
+      },
+      "expected_core_sha256": "34afac5eded9a1d474a53c32bf19d71fe025ef81ad69fe0848ed0cbc616d0a6a",
+      "expected_extension_sha256": "9339b3756b49f9a4e2ec32e98f6b5e2f812d7790ceab360601238f77f517c7cb",
+      "expected_public_operator_sha256": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8",
+      "fixtures": [
+        "[4195]",
+        "[4351]",
+        "[4195,4351]"
+      ],
+      "public_destination": "model_adaptations/Gemma4SCUdoudui/tests/verify_d512_poisoned_tail.py",
+      "receipt": {
+        "cache_bitwise_exact": true,
+        "case_count": 6,
+        "max_abs_tolerance": 0.02,
+        "max_control_or_poison_error": 0.0009737014770507812,
+        "max_control_poison_delta": 0.0,
+        "passed": true,
+        "path": "logs/gemma-4-12b-it/d512_budget4352/poisoned_tail_pathfixed.json",
+        "recorded_stream_invocation_count": 12,
+        "sha256": "6c5d0d58371d3c035a412861fbf926e2f857897e86c710ae7fddac4a1a04b103"
+      },
+      "recorded_absolute_tolerance": 0.02,
+      "source_manifest_sha256": "533c91e37c85284dc23754ac184a2ec8eddb656f3a1794fea3377637e5a755f0",
+      "source_path": "op_learning/attention/gemma-d512-budget4352/verify_d512_poisoned_tail.py",
+      "source_sha256": "aae0b83d79e4168b911893a303066491a8f79ae4ea3fc0bb184bec72dbbd5b7e",
+      "stream_modes": [
+        "default eager",
+        "nondefault stream fullgraph eager"
+      ],
+      "variants": [
+        "finite control cache",
+        "same valid data with FP16 NaNs in unused regions"
+      ]
+    }
+  }
+}

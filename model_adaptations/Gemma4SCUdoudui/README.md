@@ -13,21 +13,22 @@ export PATH="/home/py312/bin:${PATH}"
 export SDAA_ENABLE_COREDUMP_ON_EXCEPTION=0
 export MODEL_ROOT=/gpfs/model
 export GEMMA_TP_SIZE=2 GEMMA_UTIL=0.92
-export GEMMA_MAX_MODEL_LEN=2304 GEMMA_MAX_BATCHED_TOKENS=2304
+export GEMMA_MAX_MODEL_LEN=4352 GEMMA_MAX_BATCHED_TOKENS=512
 b=model_adaptations/Gemma4SCUdoudui
 bash "$b/run.sh"
 ```
 
-The default is the validated 2304-token profile on port 8003, with served
-name `gemma-4-12B-it`. The actual literal serve command is accepted by the
-unmodified official `tools/ci_pipline/run_ci.py`; environment overrides
-are resolved once before the vendor entrypoint. Parser validation covers
-startup metadata, while official accuracy and the full performance suite
-remain pending.
+The current default is the 4352-token capacity profile on port 8003, with
+served name `gemma-4-12B-it`. The actual literal serve command is accepted by
+the unmodified official `tools/ci_pipline/run_ci.py`; environment overrides
+are resolved once before the vendor entrypoint. The official T2 request and
+full-context boundary checks recorded below pass at this configuration. They
+establish capacity and stability only; official accuracy, T3/T4, and current
+owner CI remain pending.
 
 The entry locks `/home/py312/bin/python` and `VLLM_DISABLE_COMPILE_CACHE=1`.
-It uses FP16, automatic KV-cache dtype, TP2, disabled prefix caching and chunked
-prefill, and the installed default `VLLM_COMPILE` mode with its SDAA eager
+It uses FP16, automatic KV-cache dtype, TP2, disabled prefix caching, enabled
+chunked prefill, and the installed default `VLLM_COMPILE` mode with its SDAA eager
 backend. It does not select `--enforce-eager`. `GEMMA_HOST`, `GEMMA_PORT`,
 `GEMMA_PATH`, `GEMMA_UTIL` and the length variables configure startup; additional
 CLI arguments can be passed to `run.sh` for diagnostics.
@@ -140,11 +141,13 @@ weights and installed source files remain unchanged. This focused client gate
 is not a model smoke, official accuracy, full CI or performance result. Server
 context-budget validation is a separate attempt.
 
-## Official T1 input and output budget
+## Historical official T1 input and output budget (2304-token profile)
 
-The 2304-token default reserves room for the official 2048-input / 100-output
-T1 case. TP2, FP16, util0.92, attention implementations, KV layout and
-prefix/chunked flags are unchanged. This is a capacity enabler.
+The former 2304-token context/batch profile reserved room for the official
+2048-input / 100-output T1 case. That T1 run is historical; the current
+launcher default is 4352/512. Its TP2, FP16, util0.92 attention implementation,
+KV layout and prefix/chunked behavior are recorded at their original scope.
+This was a capacity enabler, not an accuracy or speedup result.
 `validation/ci_budget2304_20261005.json` records eight longer-context D512
 operator cases (maximum absolute error 0.0010442734),
 same-config math/selected controls with four matching greedy32 responses and
@@ -159,10 +162,12 @@ duration is 457.818861 seconds. Four greedy32 responses
 before/after T1 match the committed reference. Both workers load the frozen
 isolated D512 core; owned services are released.
 
-The 2048-profile timings above retain their original scope. Reproduce them by
-setting `GEMMA_MAX_MODEL_LEN=2048 GEMMA_MAX_BATCHED_TOKENS=2048` before launch.
-T1 capacity/stability does not establish a new speedup or official accuracy.
-T2/T3/T4 (4K/8K/16K), multimodal evaluation and owner CI remain pending.
+The 2048-profile timings above retain their original scope. Reproduce them with
+`GEMMA_MAX_MODEL_LEN=2048 GEMMA_MAX_BATCHED_TOKENS=2048 bash "$b/run.sh" --no-enable-chunked-prefill`.
+T1 capacity/stability did not establish a new speedup or official accuracy.
+The separate 4352 profile now passes the official T2 capacity/stability request
+as described below. T3/T4 (8K/16K), multimodal evaluation, the official
+accuracy suite and current owner CI remain pending.
 
 After starting the selected server, reproduce the official warmup and T1
 individually with vendor Python (all request arguments are unchanged):
@@ -217,9 +222,90 @@ execution/final-test license lineage and independent private three-run values.
 These results establish chunked-prefill capability; they do not establish an
 official accuracy score, 3492+ context capacity, graph capture or a new speedup.
 
-The default remains maxlen2304/batch2304 with chunking disabled. To exercise
-the validated optional scheduler mode, set `GEMMA_MAX_BATCHED_TOKENS=512` and
-append `--enable-chunked-prefill` to the usual `bash "$b/run.sh"` command.
-The math metadata checks currently synchronize on the host; capture support
-was not tested. Runtime diagnostics and private metadata hooks are excluded
-from the portable product test.
+Those 2304-token measurements used the explicitly configured historical
+profile; chunked prefill was enabled only for the recorded chunk512 run. The
+current launcher defaults to maxlen4352/batch512 with chunked prefill enabled
+and prefix caching disabled. Its independent public-path focused and model
+checks are recorded below. The math metadata checks synchronize on the host; graph
+capture support was not tested. Runtime diagnostics and private metadata
+hooks are excluded from the portable product tests.
+
+
+## 4352-token capacity profile (2026-10-05)
+
+The current default is TP2, FP16, utilization 0.92, max model length 4352,
+max batched tokens 512, chunked prefill enabled, and prefix caching disabled.
+D256/window1024 decode, the window-aware math prefill source, cache ABI,
+overlay and accepted optional D512 kernel were not changed by this capacity
+configuration. The profile covers the official T2 request budget of 4096 input
+plus 100 output tokens, as well as a 4320-input plus 32-output endpoint at
+4352 total tokens.
+
+The service's actual SDK hybrid-pool receipt reports 511 manager blocks and a
+4352-token request-memory lower bound from the live hybrid specs and allocated
+pool. This is the SDK capacity calculation, not a maximum inferred from cache
+views. The worker memory measurements have separate scopes: startup peak
+allocated was 13.745507717 GiB; after resetting the counters before T2, the
+request-window peak was 12.236205578 GiB; end allocated was 12.052499771 GiB;
+reserved was 14.1328125 GiB. The reset-window peak does not include startup.
+
+The unchanged official warmup and T2 arguments were used: random dataset,
+1024 prompt / 10 output / one request for warmup, then fixed 4096 prompt / 100
+output, `ignore_eos=true`, parallel 1 and 10 requests for T2. All ten T2 rows
+succeeded and produced 100 output tokens; observed prompt counts were 4096–4098.
+The SQLite request span from the first request start through the last completion
+was 506.650664 seconds. This is a capacity/stability receipt, not a latency
+comparison or accuracy score.
+
+Before and after the math-service T2 window, fixed greedy32 IDs matched their
+same-configuration reference. Two 4096-input greedy32 responses were exact
+same-configuration repeats; the receipt explicitly provides no 2304-profile or
+external reference for that prompt. A 4320-input plus 32-output request reached
+the 4352 endpoint and matched the saved math reference. The longest MMLU chat
+fixture contained 2468 input tokens with a 1024-token output budget; the service
+accepted it and naturally stopped after 454 output tokens. That request had no
+precision score and is not an accuracy result.
+
+The optional selected D512 service used the same 4352/512 configuration. Its
+fixed, 4096-input, concurrent short/long, post-run fixed, and boundary outputs
+were checked against this model's math references. The 4320+32 endpoint
+completed, followed by 13 successful steady requests over 308.918429 seconds;
+the boundary request was repeated afterward. This is capacity and stability
+evidence, not a D512 speedup claim. The public-path D512 focused tests also
+pass: the main gate records 12 case/stream rows and 24 reported stream
+invocations, max absolute error 0.001107931 against the unchanged 0.02 limit,
+and exact cache preservation. The poisoned-tail gate records 6 rows / 12
+reported invocations, maximum error 0.000973701, control-to-poison output delta
+0, and bitwise-exact cache preservation at the same 0.02 limit.
+
+The frozen private and final public-path math entries each pass 160 numerical
+cases, 12 serial cases, and 480 required-null rejections, with maximum absolute
+error 0.001144115 and serial-versus-whole error 0.0001220703125. Cache contents
+are exact. Both routes use the same kernel and unchanged oracle thresholds.
+
+For the focused checks, first source the SDK and supply an idle device owned by
+the current run. The math test requires the explicit device opt-in flag. The
+D512 scripts use the original extension-path and SHA environment interface;
+the extension must be the accepted file and have its matching core beside it.
+The D512 SHA values below identify the tested artifact. The public focused
+receipts record execution through these relative-path entries:
+
+```bash
+b="$PWD/model_adaptations/Gemma4SCUdoudui"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
+source /opt/tecoai/setvars.sh
+SDAA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 /home/py312/bin/python "$b/tests/verify_windowed_math4352.py" --allow-device --output math4352_operator.json
+export GEMMA_D512_OFFICIAL_EXTENSION=/path/to/accepted/_torch_ext.cpython-312-loongarch64-linux-gnu.so
+export GEMMA_D512_OFFICIAL_SHA256=9339b3756b49f9a4e2ec32e98f6b5e2f812d7790ceab360601238f77f517c7cb
+SDAA_VISIBLE_DEVICES=0 /home/py312/bin/python "$b/tests/verify_d512_4352.py" --out d5124352_operator.json
+SDAA_VISIBLE_DEVICES=0 /home/py312/bin/python "$b/tests/verify_d512_poisoned_tail.py" --out d5124352_poisoned_tail.json
+```
+
+The consolidated `validation/ci_budget4352_20261005.json` retains source/test
+lineage, all ten T2 metric values, memory scopes and raw manifest hashes. All
+130 listed raw files were independently hash-verified after local transfer.
+T3/T4, the full 200-example repo-CI precision suite, current owner CI, graph
+capture, multimodal evaluation and current upstream-head wheel equivalence
+remain unexecuted or unverified. This capacity change makes no new speedup or
+final competition accuracy claim. Historical 2048/2304 results retain their
+original configuration and measurement scope.

@@ -6,8 +6,8 @@ MODEL_ROOT="${MODEL_ROOT:-/gpfs/model}"
 GEMMA_PATH="${GEMMA_PATH:-${MODEL_ROOT}/google/gemma-4-12B-it}"
 PORT="${GEMMA_PORT:-8003}"
 HOST="${GEMMA_HOST:-0.0.0.0}"
-MAX_MODEL_LEN="${GEMMA_MAX_MODEL_LEN:-2304}"
-MAX_BATCHED="${GEMMA_MAX_BATCHED_TOKENS:-${MAX_MODEL_LEN}}"
+MAX_MODEL_LEN="${GEMMA_MAX_MODEL_LEN:-4352}"
+MAX_BATCHED="${GEMMA_MAX_BATCHED_TOKENS:-512}"
 UTIL="${GEMMA_UTIL:-0.92}"
 
 # Bind the reviewed implementation before vLLM constructs its attention
@@ -49,7 +49,7 @@ vllm serve /gpfs/model/google/gemma-4-12B-it \
     --max-num-batched-tokens "${MAX_BATCHED}" \
     --trust-remote-code \
     --no-enable-prefix-caching \
-    --no-enable-chunked-prefill \
+    --enable-chunked-prefill \
     --hf-overrides '{"architectures":["Gemma4ForCausalLM"]}' \
     --dtype float16 \
     --host 0.0.0.0 \

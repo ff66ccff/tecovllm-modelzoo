@@ -1,0 +1,686 @@
+{
+  "schema": "gemma-context4352-validation/v1",
+  "date": "2026-10-05",
+  "source_branch": "model/gemma-4-12b-it",
+  "source_head_at_test": "f49de6300778ccc340c2d4b4d8969ce941b320eb",
+  "worktree_dirty_at_test": true,
+  "hypothesis": "Window-aware prefill permits maxlen4352 with scheduler chunk512; raising launcher capacity requires no kernel or decoder changes.",
+  "change_scope": [
+    "run.sh: max-model-len2304->4352",
+    "run.sh: max-num-batched-tokens defaults to512",
+    "run.sh: chunked prefill enabled",
+    "portable focused tests and validation documentation"
+  ],
+  "kernel_changed": false,
+  "decoder_changed": false,
+  "threshold_changed": false,
+  "source_hashes": {
+    "isolated_core": "34afac5eded9a1d474a53c32bf19d71fe025ef81ad69fe0848ed0cbc616d0a6a",
+    "isolated_extension": "9339b3756b49f9a4e2ec32e98f6b5e2f812d7790ceab360601238f77f517c7cb",
+    "math_prefill": "24c03d43c2b9a68824a05590253ee01ed3043ccebecdd4d5578a5c6c6107a2ac",
+    "cache_abi_wrapper": "0cfd8aa757412f769e04cc1adaffc9bf53e4997bcd6e44ab154794483b0ee029",
+    "run_sh": "f9bfa24244cba5b29d00c911e71ad675c893aeb151f5f4fad888549243952d79",
+    "math_public_test": "12e29c6ce4dcfb505f41f5f34eb898e586ca6980cfefa6331ce2cf5fe6fe6d77",
+    "d512_runtime": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8",
+    "math_public_manifest": "73ee2d82e207bc82b9258c62bfaffc4157776877604c693f1a60f656fae82eaa",
+    "d512_public_files": {
+      "tests/verify_d512_4352.py": "283188e776f6e1a15cb996020e7e81a7ec3c14934eb321df002e31396b5596a8",
+      "tests/verify_d512_poisoned_tail.py": "ede1ed61cc5d6ea68af7ce8b0c1940ebfe360c0e42afaceb092a602f3cabe95a",
+      "tests/d512_4352_public_manifest.json": "6bc58d4723fb5a137cf262323670157603506db6e3cf30f1a9d55c979bbbbacc",
+      "runtime/custom_ops/prefill_attention/op.py": "24c03d43c2b9a68824a05590253ee01ed3043ccebecdd4d5578a5c6c6107a2ac",
+      "run.sh": "f9bfa24244cba5b29d00c911e71ad675c893aeb151f5f4fad888549243952d79"
+    }
+  },
+  "configuration": {
+    "dtype": "float16",
+    "model": "/gpfs/model/google/gemma-4-12B-it",
+    "python": "/home/py312/bin/python",
+    "optional_decode": "D256 local math and selected isolated D512 global decode",
+    "chunked_prefill": true,
+    "torch_sdaa": "20260623.8.51.dev+d942f23",
+    "torch": "2.12.0a0+0d62256",
+    "max_model_len": 4352,
+    "weights_read_only": true,
+    "compile_backend": "installed SDAA eager; no --enforce-eager",
+    "max_num_batched_tokens": 512,
+    "driver_runtime": "3.2.0",
+    "custom_dnn": "3.2.1a0",
+    "prefix_caching": false,
+    "vllm": "0.20.2.dev+132765e35.d20260728",
+    "tensor_parallel_size": 2,
+    "python_realpath": "/usr/local/python/bin/python3.12",
+    "gpu_memory_utilization": 0.92,
+    "default_decode": "D256 local math and D512 global math",
+    "global_package_changes": false
+  },
+  "focused_math": {
+    "capture_run": false,
+    "serial_vs_whole_max_abs_error": 0.0001220703125,
+    "thresholds": {
+      "atol": 0.006,
+      "rtol": 0.02,
+      "serial_atol": 0.002,
+      "serial_rtol": 0.02
+    },
+    "fake_run": false,
+    "profiles": [
+      "Q8/K4/D256/W1024",
+      "Q8/K1/D512/global"
+    ],
+    "private_and_public_required_null_rejections_each": 480,
+    "private_and_public_numerical_cases_each": 160,
+    "gpu_run": true,
+    "max_abs_error": 0.0011441151145845652,
+    "streams": [
+      "default",
+      "nondefault"
+    ],
+    "cache_exact": true,
+    "private_and_public_serial_cases_each": 12,
+    "maximum_total_length": 4352,
+    "passed": true
+  },
+  "focused_optional_d512": {
+    "streams": [
+      "default",
+      "nondefault"
+    ],
+    "mixed_batch": true,
+    "passed": true,
+    "lengths": [
+      4095,
+      4096,
+      4195,
+      4351,
+      4352
+    ],
+    "private_and_public_poison_each": {
+      "records": 6,
+      "invocations": 12,
+      "max_abs": 0.0009737014770507812,
+      "control_vs_poison_max_delta": 0.0,
+      "cache_bitwise_exact": true,
+      "exit_code": 0
+    },
+    "capture_run": false,
+    "threshold": 0.02,
+    "private_and_public_main_each": {
+      "records": 12,
+      "invocations": 24,
+      "max_abs": 0.001107931137084961,
+      "cache_exact": true,
+      "exit_code": 0
+    },
+    "unused_tail_and_unreferenced_pages": "NaN poison against independent finite control and FP32 reference",
+    "fullgraph_scope": "nondefault torch.compile backend=eager fullgraph=True; no device graph capture claim"
+  },
+  "model_math": {
+    "startup_workers": "PID144175/144176; FP16 SDAA; global math",
+    "fixed_reference_scope": "model-owned prior references",
+    "owned_cleanup_passed": true,
+    "boundary": {
+      "passed": true,
+      "capacity_endpoint": 4352,
+      "performance_claim": false,
+      "accuracy_claim": false,
+      "input_tokens": 4320,
+      "output_tokens": 32,
+      "total_tokens": 4352,
+      "input_ids_compact_json_sha256": "03e6040555231c507cf735caaddd21fa38ea4e23950f7265aef0f1bef8a105ac",
+      "input_repeat_period": 1,
+      "token_ids": [
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770,
+        236770
+      ],
+      "reference_scope": "new4352 math endpoint baseline for same-config optional-path comparison; not accuracy",
+      "source_sha256": "24c03d43c2b9a68824a05590253ee01ed3043ccebecdd4d5578a5c6c6107a2ac"
+    },
+    "fixed_repetitions_before": 2,
+    "fixed_greedy_output_tokens": 32,
+    "long_repetitions": 2,
+    "fixed_repetitions_after": 2,
+    "fixed_prompt_input_tokens": 11,
+    "long_greedy_output_tokens": 32,
+    "long_input_tokens": 4096,
+    "long_reference_scope": "same4352 math repeated baseline, not older2304 coverage",
+    "longest_audited_chat": {
+      "input_tokens": 2468,
+      "output_budget": 1024,
+      "actual_completion_tokens": 454,
+      "prompt_ids_equal": true,
+      "precision_score": false
+    },
+    "passed": true
+  },
+  "official_T2_math": {
+    "actual_prompt_token_range": [
+      4096,
+      4098
+    ],
+    "success_count": 10,
+    "accuracy_claim": false,
+    "command": [
+      "/home/py312/bin/python",
+      "/home/py312/bin/evalscope",
+      "perf",
+      "--model",
+      "gemma-4-12B-it",
+      "--url",
+      "http://127.0.0.1:8003/v1/chat/completions",
+      "--api",
+      "openai",
+      "--tokenizer-path",
+      "/gpfs/model/google/gemma-4-12B-it",
+      "--dataset",
+      "random",
+      "--min-prompt-length",
+      "4096",
+      "--max-prompt-length",
+      "4096",
+      "--max-tokens",
+      "100",
+      "--min-tokens",
+      "100",
+      "--extra-args",
+      "{\"ignore_eos\": true}",
+      "--parallel",
+      "1",
+      "--number",
+      "10",
+      "--outputs-dir",
+      "/root/SichuanUniversity_AI_accelerator-gemma/logs/gemma-4-12b-it/ci-budget4352-20261005/official_T2"
+    ],
+    "request_span_seconds": 506.6506636889826,
+    "raw_request_metrics": [
+      {
+        "actual_input_tokens": 4096,
+        "latency_seconds": 50.37195530900499,
+        "first_chunk_latency_seconds": 8.202924210985657,
+        "actual_output_tokens": 100,
+        "time_per_output_token_seconds": 0.42594980907090235
+      },
+      {
+        "actual_input_tokens": 4098,
+        "latency_seconds": 51.00142733298708,
+        "first_chunk_latency_seconds": 8.801505287003238,
+        "actual_output_tokens": 100,
+        "time_per_output_token_seconds": 0.42626183884832164
+      },
+      {
+        "actual_input_tokens": 4096,
+        "latency_seconds": 50.53689808299532,
+        "first_chunk_latency_seconds": 8.188801365002291,
+        "actual_output_tokens": 100,
+        "time_per_output_token_seconds": 0.4277585527070003
+      },
+      {
+        "actual_input_tokens": 4097,
+        "latency_seconds": 50.60466099399491,
+        "first_chunk_latency_seconds": 8.632843462983146,
+        "actual_output_tokens": 100,
+        "time_per_output_token_seconds": 0.4239577528385027
+      },
+      {
+        "actual_input_tokens": 4097,
+        "latency_seconds": 50.72360963499523,
+        "first_chunk_latency_seconds": 8.629229971003952,
+        "actual_output_tokens": 100,
+        "time_per_output_token_seconds": 0.42519575418173006
+      },
+      {
+        "actual_input_tokens": 4097,
+        "latency_seconds": 50.737433041998884,
+        "first_chunk_latency_seconds": 8.610395195020828,
+        "actual_output_tokens": 100,
+        "time_per_output_token_seconds": 0.42552563481796013
+      },
+      {
+        "actual_input_tokens": 4096,
+        "latency_seconds": 50.394226256990805,
+        "first_chunk_latency_seconds": 8.195111768989591,
+        "actual_output_tokens": 100,
+        "time_per_output_token_seconds": 0.42625368169698197
+      },
+      {
+        "actual_input_tokens": 4096,
+        "latency_seconds": 50.70273213699693,
+        "first_chunk_latency_seconds": 8.193397812981857,
+        "actual_output_tokens": 100,
+        "time_per_output_token_seconds": 0.42938721539409164
+      },
+      {
+        "actual_input_tokens": 4096,
+        "latency_seconds": 50.463633253995795,
+        "first_chunk_latency_seconds": 8.215011294989381,
+        "actual_output_tokens": 100,
+        "time_per_output_token_seconds": 0.42675375716168096
+      },
+      {
+        "actual_input_tokens": 4097,
+        "latency_seconds": 51.10970630397787,
+        "first_chunk_latency_seconds": 8.63837563598645,
+        "actual_output_tokens": 100,
+        "time_per_output_token_seconds": 0.42900334008072144
+      }
+    ],
+    "nominal_prompt_tokens": 4096,
+    "output_tokens": 100,
+    "number": 10,
+    "warmup_nominal": "1024 prompt /10 output /parallel1 /number1",
+    "actual_output_token_range": [
+      100,
+      100
+    ],
+    "timing_scope": "capacity/steady gate on unchanged official request parameters; no before/after speed comparison",
+    "speedup_claim": false,
+    "parallel": 1,
+    "passed": true,
+    "warmup_actual": "1025 input /10 output"
+  },
+  "model_selected_d512": {
+    "passed": true,
+    "mixed_short11_long4096_concurrency": true,
+    "steady_endpoint_requests": 13,
+    "steady_fixture": "same4320 token-ID input +forced32 greedy output, total4352",
+    "long_input4096_output32": true,
+    "accuracy_claim": false,
+    "steady_seconds": 308.9184288610122,
+    "boundary_input4320_output32": true,
+    "worker_bind_execute": {
+      "145742": {
+        "mapped_core": [
+          "/root/tmpwork/gemma-public-d512-build-20261005/api/tecoops/libteco_gemma_flash.so"
+        ],
+        "mapped_core_sha256": [
+          "34afac5eded9a1d474a53c32bf19d71fe025ef81ad69fe0848ed0cbc616d0a6a"
+        ],
+        "isolated_registered": true,
+        "BIND": [
+          "(Worker_TP0 pid=145742) [gemma-d512-official] BIND H8/KV1/D512/global/scale1/decode",
+          "(Worker_TP0 pid=145742) [gemma-d512-official] BIND H8/KV1/D512/global/scale1/decode",
+          "(Worker_TP0 pid=145742) [gemma-d512-official] BIND H8/KV1/D512/global/scale1/decode",
+          "(Worker_TP0 pid=145742) [gemma-d512-official] BIND H8/KV1/D512/global/scale1/decode",
+          "(Worker_TP0 pid=145742) [gemma-d512-official] BIND H8/KV1/D512/global/scale1/decode",
+          "(Worker_TP0 pid=145742) [gemma-d512-official] BIND H8/KV1/D512/global/scale1/decode",
+          "(Worker_TP0 pid=145742) [gemma-d512-official] BIND H8/KV1/D512/global/scale1/decode",
+          "(Worker_TP0 pid=145742) [gemma-d512-official] BIND H8/KV1/D512/global/scale1/decode"
+        ],
+        "EXECUTE": [
+          "(Worker_TP0 pid=145742) [gemma-d512-official] EXECUTE {\"pid\": 145742, \"query_shape\": [1, 8, 512], \"key_cache_shape\": [1022, 1, 32, 512], \"value_cache_shape\": [1022, 1, 32, 512], \"out_shape\": [1, 8, 512], \"dtype\": \"torch.float16\", \"device\": \"sdaa:0\", \"scale\": 1.0, \"stream\": \"<torch_sdaa.backend.Stream device=sdaa:0 sdaa_stream=0x0>\"}"
+        ]
+      },
+      "145743": {
+        "mapped_core": [
+          "/root/tmpwork/gemma-public-d512-build-20261005/api/tecoops/libteco_gemma_flash.so"
+        ],
+        "mapped_core_sha256": [
+          "34afac5eded9a1d474a53c32bf19d71fe025ef81ad69fe0848ed0cbc616d0a6a"
+        ],
+        "isolated_registered": true,
+        "BIND": [
+          "(Worker_TP1 pid=145743) [gemma-d512-official] BIND H8/KV1/D512/global/scale1/decode",
+          "(Worker_TP1 pid=145743) [gemma-d512-official] BIND H8/KV1/D512/global/scale1/decode",
+          "(Worker_TP1 pid=145743) [gemma-d512-official] BIND H8/KV1/D512/global/scale1/decode",
+          "(Worker_TP1 pid=145743) [gemma-d512-official] BIND H8/KV1/D512/global/scale1/decode",
+          "(Worker_TP1 pid=145743) [gemma-d512-official] BIND H8/KV1/D512/global/scale1/decode",
+          "(Worker_TP1 pid=145743) [gemma-d512-official] BIND H8/KV1/D512/global/scale1/decode",
+          "(Worker_TP1 pid=145743) [gemma-d512-official] BIND H8/KV1/D512/global/scale1/decode",
+          "(Worker_TP1 pid=145743) [gemma-d512-official] BIND H8/KV1/D512/global/scale1/decode"
+        ],
+        "EXECUTE": [
+          "(Worker_TP1 pid=145743) [gemma-d512-official] EXECUTE {\"pid\": 145743, \"query_shape\": [1, 8, 512], \"key_cache_shape\": [1022, 1, 32, 512], \"value_cache_shape\": [1022, 1, 32, 512], \"out_shape\": [1, 8, 512], \"dtype\": \"torch.float16\", \"device\": \"sdaa:1\", \"scale\": 1.0, \"stream\": \"<torch_sdaa.backend.Stream device=sdaa:1 sdaa_stream=0x0>\"}"
+        ]
+      }
+    },
+    "reference_scope": "each token ID equals frozen same-config math references",
+    "post_fixed_greedy32": 2,
+    "fixed_greedy32_before": 2,
+    "load_log_scope": "initialization messages lack PID prefix; per-worker RPC registered-op and mapped isolated-core path/digest proves each worker loaded; do not assign anonymous LOAD lines to specific PIDs",
+    "workers": [
+      {
+        "end_reserved_gib": 14.1328125,
+        "weight_dtypes": [
+          "torch.float16"
+        ],
+        "end_current_allocated_gib": 12.052499771118164,
+        "request_window_peak_allocated_gib": 12.236205577850342,
+        "weight_devices": [
+          "sdaa:0"
+        ],
+        "manager_blocks": 511,
+        "max_model_len": 4352,
+        "kv_capacity_lower_bound_tokens": 4352,
+        "decode_profiles": [
+          [
+            256,
+            "_decode_math"
+          ],
+          [
+            512,
+            "decode_forward"
+          ]
+        ],
+        "sdk_max_concurrency_at_4352": 1.6325878594249201,
+        "rank": 0,
+        "mapped_core_sha256": [
+          "34afac5eded9a1d474a53c32bf19d71fe025ef81ad69fe0848ed0cbc616d0a6a"
+        ],
+        "startup_peak_allocated_gib": 13.745507717132568,
+        "pid": 145742,
+        "chunked_prefill": true,
+        "max_num_batched_tokens": 512
+      },
+      {
+        "end_reserved_gib": 14.1328125,
+        "weight_dtypes": [
+          "torch.float16"
+        ],
+        "end_current_allocated_gib": 12.052499771118164,
+        "request_window_peak_allocated_gib": 12.236205577850342,
+        "weight_devices": [
+          "sdaa:1"
+        ],
+        "manager_blocks": 511,
+        "max_model_len": 4352,
+        "kv_capacity_lower_bound_tokens": 4352,
+        "decode_profiles": [
+          [
+            256,
+            "_decode_math"
+          ],
+          [
+            512,
+            "decode_forward"
+          ]
+        ],
+        "sdk_max_concurrency_at_4352": 1.6325878594249201,
+        "rank": 1,
+        "mapped_core_sha256": [
+          "34afac5eded9a1d474a53c32bf19d71fe025ef81ad69fe0848ed0cbc616d0a6a"
+        ],
+        "startup_peak_allocated_gib": 13.745507717132568,
+        "pid": 145743,
+        "chunked_prefill": true,
+        "max_num_batched_tokens": 512
+      }
+    ],
+    "owned_cleanup_passed": true,
+    "official_T2_rerun": false,
+    "post_boundary_pass": true,
+    "speedup_claim": false
+  },
+  "memory_scope": {
+    "reserved": "14.1328125GiB per worker",
+    "card_after_mb": 0,
+    "end_current": "12.052499771GiB per worker",
+    "card_stable_mb": 29456,
+    "capacity": "SDK calculation from actual hybrid specs and allocated511 manager blocks establishes4352 lower bound; not maximum inferred from physical cache views",
+    "request_window": "peak reset before T2 or selected steady; includes endpoint/post controls:12.236205578GiB per worker",
+    "startup": "startup/profile before explicit peak reset:13.745507717GiB per worker"
+  },
+  "path_port_lineage": {
+    "math": {
+      "branch": "model/gemma-4-12b-it",
+      "candidate": {
+        "manifest_path": "op_learning/runtime/gemma4352-public-test-port/operator4352_manifest.json",
+        "manifest_sha256": "73ee2d82e207bc82b9258c62bfaffc4157776877604c693f1a60f656fae82eaa",
+        "path": "op_learning/runtime/gemma4352-public-test-port/verify_windowed_math4352.py",
+        "sha256": "12e29c6ce4dcfb505f41f5f34eb898e586ca6980cfefa6331ce2cf5fe6fe6d77"
+      },
+      "diff_scope": {
+        "AST_equivalent_after_path_route_normalization": true,
+        "BSD_header_copied_byte_for_byte": true,
+        "manifest_case_plan_unchanged": true,
+        "manifest_expected_sdaa_counts": {
+          "numerical": 160,
+          "required_null_rejections": 480,
+          "serial": 12
+        },
+        "only_filesystem_route_block_changed": true,
+        "oracle_cases_thresholds_and_loops_byte_identical": true,
+        "reverse_replacement_reproduces_frozen_source_bytes": true
+      },
+      "execution": {
+        "gpu": false,
+        "lf_only": "passed",
+        "manifest_json": "passed",
+        "model": false,
+        "path_modes": {
+          "candidate_fallback_root": "/root/SichuanUniversity_AI_accelerator-gemma/model_adaptations/Gemma4SCUdoudui",
+          "future_public_parent_parent_root": "/root/SichuanUniversity_AI_accelerator-gemma/model_adaptations/Gemma4SCUdoudui",
+          "roots_match": true
+        },
+        "public_adapter_and_source_sha_preflight": "passed_cpu_static_only",
+        "py_compile": "passed_with_vendor_python_no_import_execution"
+      },
+      "frozen_source": {
+        "asserted_sha256": "3332eb304b7fafd5286a86dd6c6f05fbdf408580344cf938c6612f3400f4a1a0",
+        "path": "op_learning/runtime/gemma-ci-budget4352/verify_operator4352.py",
+        "sha256": "3332eb304b7fafd5286a86dd6c6f05fbdf408580344cf938c6612f3400f4a1a0"
+      },
+      "head_at_preparation": "f49de6300778ccc340c2d4b4d8969ce941b320eb",
+      "public_sources": {
+        "existing_helper": {
+          "candidate_imports_it": false,
+          "path": "model_adaptations/Gemma4SCUdoudui/tests/verify_windowed_math.py",
+          "sha256": "2ce6f5dcfe41d180aa8e0afcd5b10bed094f613c995d2102f051a2a1452a48bc"
+        },
+        "prefill_attention": {
+          "exists": true,
+          "path": "model_adaptations/Gemma4SCUdoudui/runtime/custom_ops/prefill_attention/op.py",
+          "sha256": "24c03d43c2b9a68824a05590253ee01ed3043ccebecdd4d5578a5c6c6107a2ac"
+        },
+        "reshape_and_cache": {
+          "exists": true,
+          "path": "model_adaptations/Gemma4SCUdoudui/runtime/custom_ops/reshape_and_cache/op.py",
+          "sha256": "0cfd8aa757412f769e04cc1adaffc9bf53e4997bcd6e44ab154794483b0ee029"
+        }
+      },
+      "schema": "gemma-windowed-math4352-public-port-lineage/v1",
+      "status": "passed_cpu_static_only"
+    },
+    "d512": {
+      "baseline_scripts": {
+        "verify_d512_4352.py": {
+          "path": "op_learning/attention/gemma-d512-budget4352/verify_d512_4352.py",
+          "sha256": "11b5bd017a2ea3990bfc5ec3ca38bdd78980b43d44dd8c8199a379b27b48c414"
+        },
+        "verify_d512_poisoned_tail.py": {
+          "path": "op_learning/attention/gemma-d512-budget4352/verify_d512_poisoned_tail.py",
+          "sha256": "aae0b83d79e4168b911893a303066491a8f79ae4ea3fc0bb184bec72dbbd5b7e"
+        }
+      },
+      "branch": "model/gemma-4-12b-it",
+      "candidate_manifest": {
+        "path": "op_learning/attention/gemma-d512-public-test-port/d512_4352_public_manifest.json",
+        "sha256": "6bc58d4723fb5a137cf262323670157603506db6e3cf30f1a9d55c979bbbbacc"
+      },
+      "candidate_scripts": {
+        "verify_d512_4352.py": {
+          "AST_equal_after_path_route_normalization": true,
+          "BSD_header_byte_identical": true,
+          "only_path_route_block_changed": true,
+          "path": "op_learning/attention/gemma-d512-public-test-port/verify_d512_4352.py",
+          "reverse_replacement_reproduces_source_bytes": true,
+          "sha256": "283188e776f6e1a15cb996020e7e81a7ec3c14934eb321df002e31396b5596a8"
+        },
+        "verify_d512_poisoned_tail.py": {
+          "AST_equal_after_path_route_normalization": true,
+          "BSD_header_byte_identical": true,
+          "only_path_route_block_changed": true,
+          "path": "op_learning/attention/gemma-d512-public-test-port/verify_d512_poisoned_tail.py",
+          "reverse_replacement_reproduces_source_bytes": true,
+          "sha256": "ede1ed61cc5d6ea68af7ce8b0c1940ebfe360c0e42afaceb092a602f3cabe95a"
+        }
+      },
+      "execution": {
+        "gpu": false,
+        "json": "passed_vendor_python_json_tool",
+        "lf_and_whitespace": "passed",
+        "model": false,
+        "py_compile": "passed_vendor_python_no_import"
+      },
+      "gpu_or_model_run": false,
+      "head_at_preparation": "f49de6300778ccc340c2d4b4d8969ce941b320eb",
+      "historical_test_receipts": {
+        "main": {
+          "cache_exact": true,
+          "case_count": 12,
+          "max_abs_error": 0.001107931137084961,
+          "max_abs_tolerance": 0.02,
+          "passed": true,
+          "path": "logs/gemma-4-12b-it/d512_budget4352/operator_pathfixed.json",
+          "recorded_stream_invocation_count": 24,
+          "sha256": "fa8bbb85b5c6769c7b19a3a9dbcf676cde219362203e1d761a411fd4a371ee3a"
+        },
+        "poisoned_tail": {
+          "cache_bitwise_exact": true,
+          "case_count": 6,
+          "max_abs_tolerance": 0.02,
+          "max_control_or_poison_error": 0.0009737014770507812,
+          "max_control_poison_delta": 0.0,
+          "passed": true,
+          "path": "logs/gemma-4-12b-it/d512_budget4352/poisoned_tail_pathfixed.json",
+          "recorded_stream_invocation_count": 12,
+          "sha256": "6c5d0d58371d3c035a412861fbf926e2f857897e86c710ae7fddac4a1a04b103"
+        }
+      },
+      "no_unrelated_changes": {
+        "README": false,
+        "commit_or_push": false,
+        "experiment_log": false,
+        "launcher": false,
+        "operator": false
+      },
+      "portable_path_preflight": {
+        "candidate_and_future_public_roots": {
+          "main": {
+            "candidate_resolves_adapter_root": "/root/SichuanUniversity_AI_accelerator-gemma/model_adaptations/Gemma4SCUdoudui",
+            "future_public_resolves_adapter_root": "/root/SichuanUniversity_AI_accelerator-gemma/model_adaptations/Gemma4SCUdoudui",
+            "public_operator_sha256": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8",
+            "roots_equal": true,
+            "runtime_exists": true
+          },
+          "poisoned_tail": {
+            "candidate_resolves_adapter_root": "/root/SichuanUniversity_AI_accelerator-gemma/model_adaptations/Gemma4SCUdoudui",
+            "future_public_resolves_adapter_root": "/root/SichuanUniversity_AI_accelerator-gemma/model_adaptations/Gemma4SCUdoudui",
+            "public_operator_sha256": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8",
+            "roots_equal": true,
+            "runtime_exists": true
+          }
+        },
+        "extension_path_hardcoded_in_candidate": false,
+        "extension_user_env_interface_preserved": true,
+        "pinned_extension_and_core_digests": {
+          "core": "34afac5eded9a1d474a53c32bf19d71fe025ef81ad69fe0848ed0cbc616d0a6a",
+          "extension": "9339b3756b49f9a4e2ec32e98f6b5e2f812d7790ceab360601238f77f517c7cb"
+        },
+        "public_operator_sha256": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8"
+      },
+      "portable_path_validation": {
+        "extension_and_core_sha256_verified_read_only": {
+          "core": "34afac5eded9a1d474a53c32bf19d71fe025ef81ad69fe0848ed0cbc616d0a6a",
+          "extension": "9339b3756b49f9a4e2ec32e98f6b5e2f812d7790ceab360601238f77f517c7cb"
+        },
+        "extension_path_is_user_supplied_by_original_env_contract": true,
+        "public_adapter_root": "/root/SichuanUniversity_AI_accelerator-gemma/model_adaptations/Gemma4SCUdoudui",
+        "public_adapter_root_expression": "Path(__file__).resolve().parent.parent",
+        "public_runtime_op_sha256": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8",
+        "task_and_public_routes_resolve_to_same_runtime": true,
+        "task_tree_root": "/root/SichuanUniversity_AI_accelerator-gemma"
+      },
+      "schema": "gemma-d512-4352-public-port-lineage/v1",
+      "status": "passed_cpu_static_only"
+    },
+    "scope": "path block only; reverse substitution restores original bytes and normalized AST; final public relative-path entries independently run on SDAA"
+  },
+  "raw_evidence": {
+    "manifests": [
+      {
+        "count": 63,
+        "sha256": "c187d0661784786ee37cd03103d2eb1c1e0549023481fc494b79f5757fc95767",
+        "manifest": "gemma-capacity4352-math-raw-sha256.json"
+      },
+      {
+        "count": 9,
+        "sha256": "4afa2474e44e69a6efc3d7d798e45ef5d3e5af424faa56626feb23894b9c8cac",
+        "manifest": "gemma-capacity4352-focused-raw-sha256.json"
+      },
+      {
+        "count": 13,
+        "sha256": "58af1185dc5a1c7499d0a56917b53cde4be39e92a5682a6c9a3bda1d3a2ba4cc",
+        "manifest": "gemma-d5124352-focused-raw-sha256.json"
+      },
+      {
+        "count": 28,
+        "sha256": "df06b8dd140299051336d757bd6358ded3f84f6bee4e051752bddc09eb6cc9c5",
+        "manifest": "gemma-d5124352-selected-raw-sha256.json"
+      },
+      {
+        "count": 6,
+        "sha256": "d5b3853ed385d68ad45a398a610ba741883dee400aac286f7c8ab9553f1d2810",
+        "manifest": "gemma4352-public-math-raw-sha256.json"
+      },
+      {
+        "count": 11,
+        "sha256": "33180e66419d887921fbd9ef0241a1be00d64121845698ad9a584bdbe61af718",
+        "manifest": "gemma4352-public-d512-raw-sha256.json"
+      }
+    ],
+    "mismatches": 0,
+    "archives": {
+      "selected": "1ac3438e9d2d6fcd733307792a4e496bd941ee2ec2877289a4e58168a70002f4",
+      "math": "5e0517cbcdabda7592178c910fdcf7c9f663d01c79cab73cb0ef0e2176c88320",
+      "public_tests": "63bdd66cda2cf84840b0e855552ad091cd2da899852b7a43a548a6baf80aa4ac",
+      "d512_focused": "54e144999e430d5fbaa6bda22168af5bb1d76be3ff048f588b567a8ac5cf7612"
+    },
+    "raw_files_verified_locally": 130
+  },
+  "static_gates": {
+    "vendor_python_syntax": true,
+    "official_ci_parser": true,
+    "bash_n": true,
+    "launcher_argv_mock_cases": 5,
+    "git_diff_check": true
+  },
+  "unexecuted_gates": [
+    "full200-row repo precision",
+    "official owner CI",
+    "T3/T4 8K/16K",
+    "device graph capture",
+    "committee final accuracy"
+  ],
+  "accuracy_passed": false,
+  "new_speedup_claim": false,
+  "full_official_ci_executed": false
+}

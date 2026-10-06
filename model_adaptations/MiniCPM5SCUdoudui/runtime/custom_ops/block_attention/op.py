@@ -32,6 +32,7 @@ vLLM V1 attention execution to vendor C++ kernels:
 """
 
 from typing import Optional
+import os
 import torch
 
 from custom_ops.compile_safe import official_ops
@@ -40,7 +41,19 @@ _OFFICIAL_OPS = official_ops()
 if _OFFICIAL_OPS is None:
     raise RuntimeError("Official compile-safe bindings must be registered before BlockAttention import")
 _reshape_and_cache = _OFFICIAL_OPS.reshape_and_cache
-_flash_attn_varlen = _OFFICIAL_OPS.flash_attn_varlen_func
+_PROFILE = os.environ.get("MINICPM_OP_PROFILE", "official")
+if _PROFILE == "official":
+    _flash_attn_varlen = _OFFICIAL_OPS.flash_attn_varlen_func
+elif _PROFILE == "fast_attention":
+    # The fused SDAA backend is enabled only for this explicit manual profile.
+    try:
+        torch.backends.sdaa.enable_flash_sdp(True)
+    except Exception as exc:
+        raise RuntimeError("fast_attention requires SDAA fused flash-SDP") from exc
+    from custom_ops.flash_attn_varlen.op import make_opaque_sdpa_prefill
+    _flash_attn_varlen = make_opaque_sdpa_prefill()
+else:
+    raise RuntimeError(f"Unknown MINICPM_OP_PROFILE={_PROFILE}")
 
 
 def sdaa_block_attention_forward(
@@ -99,7 +112,7 @@ def sdaa_block_attention_forward(
         out_view = out_view.view(-1, self.num_heads, self.head_size)
 
     if attn_metadata.max_query_len > 1:
-        # Prefill uses the official teco-ops paged-cache flash ABI.
+        # Prefill implementation is bound once at process initialization.
         _flash_attn_varlen(
             query[:num_actual_tokens].contiguous(),
             key_cache,

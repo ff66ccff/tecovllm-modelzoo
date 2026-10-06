@@ -81,7 +81,7 @@ for case in ('success', 'registration', 'missing_rms_norm', 'missing_reshape_and
         assert result.returncode != 0 and 'FATAL:' in result.stderr and 'ENTRYPOINT_REACHED' not in result.stdout, (case, result)
     print(f'{case}: PASS')
 
-env = dict(os.environ, MINICPM_OP_PROFILE='fast_attention')
+env = dict(os.environ, MINICPM_OP_PROFILE='unknown')
 result = subprocess.run(['bash', str(overlay.parents[2]/'run.sh')], env=env, capture_output=True, text=True, timeout=20)
-assert result.returncode != 0 and 'supports only' in result.stderr, result
+assert result.returncode != 0 and 'unknown MINICPM_OP_PROFILE' in result.stderr, result
 print('unsupported_profile: PASS')

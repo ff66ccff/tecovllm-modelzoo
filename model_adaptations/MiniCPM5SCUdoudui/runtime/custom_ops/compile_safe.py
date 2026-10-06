@@ -208,3 +208,69 @@ def official_ops(tecoops_module=None) -> "OfficialOps | None":
 
 def registered() -> bool:
     return _REGISTERED is not None
+
+
+# ---------------------------------------------------------------------------
+# Dense-SDPA prefill as an opaque op
+# ---------------------------------------------------------------------------
+_SDPA_REGISTERED: object | None = None
+
+
+def register_sdpa_prefill(kernel):
+    """Register the dense-SDPA prefill path as an opaque custom op.
+
+    The dense path slices per sequence using Python ``int()`` values read off
+    the sequence-length tensors, so Dynamo must not trace into it - exactly the
+    same reason the tecoops kernels are wrapped.  Declaring ``out`` as mutated
+    keeps FakeTensor propagation honest.
+
+    Registration errors propagate; no eager fallback is permitted.
+    """
+    global _SDPA_REGISTERED
+    if _SDPA_REGISTERED is not None:
+        return _SDPA_REGISTERED
+
+    @torch.library.custom_op(f"{_NAMESPACE}::sdpa_varlen_prefill", mutates_args=("out",))
+    def sdpa_varlen_prefill(
+        q: torch.Tensor,
+        k: torch.Tensor,
+        v: torch.Tensor,
+        cu_seqlens_q: torch.Tensor,
+        cu_seqlens_k: torch.Tensor,
+        seqused_k: torch.Tensor,
+        block_table: torch.Tensor,
+        out: torch.Tensor,
+        max_seqlen_q: int,
+        max_seqlen_k: int,
+        softmax_scale: float,
+        causal: bool,
+    ) -> None:
+        kernel(
+            q,
+            k,
+            v,
+            cu_seqlens_q,
+            cu_seqlens_k,
+            int(max_seqlen_q),
+            int(max_seqlen_k),
+            float(softmax_scale),
+            bool(causal),
+            seqused_k,
+            None,
+            block_table,
+            out,
+        )
+
+    @sdpa_varlen_prefill.register_fake
+    def _sdpa_varlen_prefill_fake(
+        q, k, v, cu_seqlens_q, cu_seqlens_k, seqused_k, block_table, out,
+        max_seqlen_q, max_seqlen_k, softmax_scale, causal,
+    ):
+        return None
+
+    _SDPA_REGISTERED = sdpa_varlen_prefill
+    return _SDPA_REGISTERED
+
+
+def sdpa_registered() -> bool:
+    return _SDPA_REGISTERED is not None

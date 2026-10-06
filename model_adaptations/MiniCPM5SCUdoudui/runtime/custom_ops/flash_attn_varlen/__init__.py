@@ -23,6 +23,6 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-from custom_ops.flash_attn_varlen.op import sdaa_flash_attn_varlen_func, bench_flash_attn_varlen
+from custom_ops.flash_attn_varlen.op import make_opaque_sdpa_prefill, sdpa_varlen_prefill
 
-__all__ = ["sdaa_flash_attn_varlen_func", "bench_flash_attn_varlen"]
+__all__ = ["make_opaque_sdpa_prefill", "sdpa_varlen_prefill"]

@@ -131,3 +131,87 @@ natural-image smoke logs.  The prefill adapter explicitly disables chunked
 prefill because SDAA's non-square causal mask path is not semantically safe.
 Full official CI and accuracy evaluation remain the repository's external
 evaluation step.
+
+
+## RMSNorm SIMD epilogue validation and isolated rebuild
+
+The independent 2026-10-07 InternVL gate tests an epilogue-only patch of
+[official RMSNorm PR37](https://github.com/Tecorigin/teco-ops/pull/37), starting
+from `8f896f2a9103cc9c684eb4488c9f885a38f15eb6`. The patch changes only the two
+FP16 output loops: widen, multiply by rstd then weight in FP32, narrow, and
+retain the scalar tail. Reduction order, residual rounding, DMA, stream and
+ABI remain unchanged. The default launcher/runtime above are unchanged.
+
+The 32 focused cases match baseline output/residual bits, including real
+hidden4096 and q/k128 shapes, stream and tail probes. Three identical
+micro trials improve actual long-prefill shapes; raw triples, medians and
+original CPU oracle limits/differences are in
+`validation/rms_epilogue_simd_20261007.json`. Baseline odd-half DMA and CPU
+rounding limitations are recorded rather than attributed to this patch.
+
+Independent TP2 public launches match all fixed text/image greedy32 token
+IDs; candidate steady318.024 seconds/48requests passed. Request-window peak
+is11.713GiB allocated/13.039GiB reserved perworker. Worker mappings/hashes and
+145 selected RMSNorm layers confirm package binding. Model timing is only a
+single baseline-to-candidate observation: all raw values are retained, with
+no causal whole-model speed claim or official accuracy claim.
+
+The public source is pinned to PR37 revision
+`e29b53c256f366e6eee538d656bfbb56e867cefc`, whose kernel bytes match the tested
+candidate source SHA below. No private task DSO is required. The bundled
+`validation/epilogue-only.patch` also reproduces the same kernel from the
+exact `8f896f2` baseline; the promoted revision includes documentation, so
+its full archive hash differs from the original baseline-plus-patch archive.
+For an isolated rebuild, use a fresh official checkout at the promoted revision:
+
+```bash
+# ADAPTATION is this public package's absolute directory.
+# OPS_SRC is a fresh clean checkout of https://github.com/Tecorigin/teco-ops
+# on a writable RAM build area; HAL_ROOT is the existing teco-hal0.0.2 dependency.
+git -C "$OPS_SRC" checkout e29b53c256f366e6eee538d656bfbb56e867cefc
+# Alternative exact source reproduction: checkout8f896f2a9103cc9c684eb4488c9f885a38f15eb6
+# then git apply --check and git apply validation/epilogue-only.patch.
+# Do not apply the patch again to the promoted revision.
+source /opt/tecoai/setvars.sh
+PYTHON=/home/py312/bin/python
+test "$(readlink -f "$PYTHON")" = /usr/local/python/bin/python3.12
+export WITH_TORCH=ON WITH_INFERENCE_PLUGIN=OFF MAX_JOBS=2 CMAKE_BUILD_PARALLEL_LEVEL=2
+export TORCH_DEVICE_BACKEND_AUTOLOAD=0
+# TMPDIR must be a short executable path; /dev/shm can be noexec.
+export TMPDIR=/tmp/rn26
+mkdir -p "$TMPDIR" "$OPS_SRC/thirdparty" "$OPS_SRC/dist"
+ln -s "$(readlink -f "$HAL_ROOT")" "$OPS_SRC/thirdparty/teco-hal"
+unset PYTHONPATH
+(cd "$OPS_SRC" && "$PYTHON" setup.py bdist_wheel --dist-dir "$OPS_SRC/dist")
+# PACKAGE_OUT must be a fresh executable directory (not noexec RAM).
+"$PYTHON" - "$OPS_SRC/dist" "$PACKAGE_OUT" <<'PY'
+import hashlib, json, pathlib, sys, zipfile
+wdir, output = map(pathlib.Path, sys.argv[1:])
+wheel, = wdir.glob('*.whl')
+output.mkdir(parents=True, exist_ok=False)
+with zipfile.ZipFile(wheel) as archive:
+    for name in archive.namelist():
+        parts = pathlib.Path(name).parts
+        if len(parts) == 2 and parts[0] == 'tecoops' and (name.endswith('.so') or name.endswith('__init__.py')):
+            dest = output / name
+            dest.parent.mkdir(exist_ok=True)
+            dest.write_bytes(archive.read(name))
+(output / 'build-sha256.json').write_text(json.dumps({
+    p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+    for p in (output / 'tecoops').iterdir()}, indent=2))
+PY
+# Initialization chooses this isolated package; public run.sh adds its overlays.
+export PYTHONPATH="$PACKAGE_OUT"
+unset TORCH_DEVICE_BACKEND_AUTOLOAD
+bash "$ADAPTATION/run.sh"
+# No global site-packages installation or model-weight download/copy.
+```
+
+Check candidate kernel source SHA256
+`41a517c23ae849f0d36cbdb2746ea2b75e21e5f2efe4dbaf44b6ed99a62193be`.
+For deployment, record each locally rebuilt extension/core hash and verify
+actual worker module paths and unique mapped core against that package.
+The recorded test-library hashes identify the tested build, while the pinned
+source and patch identify what to rebuild. Re-run the independent focused
+and fixed-input model gates for a new build; the source commit alone does
+not prove another build or model's performance.

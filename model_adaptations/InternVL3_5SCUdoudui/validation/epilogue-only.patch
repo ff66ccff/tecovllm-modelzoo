@@ -1,0 +1,46 @@
+--- a/teco/ual/kernel/rms_norm/rms_norm_fp16.scpp
++++ b/teco/ual/kernel/rms_norm/rms_norm_fp16.scpp
+@@ -111,7 +111,20 @@
+             sum_sq += val * val;
+         }
+         float rstd = 1.0f / sqrtf(sum_sq / static_cast<float>(D) + eps);
+-        for (int d = 0; d < D; ++d) {
++        int d = 0;
++        const floatv16 rstd_vec = simd_vcpyfs(rstd);
++        for (; d + 16 <= D; d += 16) {
++            float16v16 input_half, weight_half;
++            simd_loadu(input_half, CDBUF(in) + d);
++            simd_loadu(weight_half, weight + d);
++            const floatv16 input_vec = simd_vfcvths(input_half);
++            const floatv16 weight_vec = simd_vfcvths(weight_half);
++            const floatv16 scaled = input_vec * rstd_vec;
++            const floatv16 weighted = scaled * weight_vec;
++            const float16v16 output_half = simd_vfcvtsh(weighted);
++            simd_storeu(output_half, CDBUF(out) + d);
++        }
++        for (; d < D; ++d) {
+             float val = static_cast<float>(CDBUF(in)[d]) * rstd
+                         * static_cast<float>(weight[d]);
+             CDBUF(out)[d] = static_cast<half>(val);
+@@ -211,7 +224,20 @@
+             sum_sq += val * val;
+         }
+         float rstd = 1.0f / sqrtf(sum_sq / static_cast<float>(D) + eps);
+-        for (int d = 0; d < D; ++d) {
++        int d = 0;
++        const floatv16 rstd_vec = simd_vcpyfs(rstd);
++        for (; d + 16 <= D; d += 16) {
++            float16v16 input_half, weight_half;
++            simd_loadu(input_half, CDBUF(res) + d);
++            simd_loadu(weight_half, weight + d);
++            const floatv16 input_vec = simd_vfcvths(input_half);
++            const floatv16 weight_vec = simd_vfcvths(weight_half);
++            const floatv16 scaled = input_vec * rstd_vec;
++            const floatv16 weighted = scaled * weight_vec;
++            const float16v16 output_half = simd_vfcvtsh(weighted);
++            simd_storeu(output_half, CDBUF(out) + d);
++        }
++        for (; d < D; ++d) {
+             float val = static_cast<float>(CDBUF(res)[d]) * rstd
+                         * static_cast<float>(weight[d]);
+             CDBUF(out)[d] = static_cast<half>(val);

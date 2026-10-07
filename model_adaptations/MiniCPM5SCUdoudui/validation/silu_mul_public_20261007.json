@@ -1,0 +1,1108 @@
+{
+  "schema": "minicpm-silu-mul-single-mechanism/v1",
+  "date": "2026-10-07",
+  "baseline_commit": "d02b397370507fc0b6bd1cc8defa6e25c5f3e46f",
+  "hypothesis": "Startup opt-in opaque SiLU x Mul bridge to vendor sdaa::swiglu only",
+  "profiles": {
+    "MINICPM_SILU_MUL_PROFILE": "vendor_swiglu",
+    "MINICPM_OP_PROFILE": "official",
+    "default_silu_mul_profile": "official unchanged"
+  },
+  "source_sha256": {
+    "custom_ops/silu_mul/op.py": "4251e8d81947693daa83ba03d8cc09ba93a5d3ec412d538c6c8c536febd1437b",
+    "custom_ops/overlay/sitecustomize.py": "8ecd6a145ab03b8788e100394389c8ea5dcce49fab167fbb2ffe1fcd6a551f8a",
+    "tests/test_silu_mul.py": "3d74f4c782013d7bf25826229a9534254dba87814fd90d9d3d8fbd1fe5d15aad",
+    "scripts/bench_silu_mul.py": "9a0eb8a310e6074c92cdf2e70c3cea0729bb05544e38c74e94e973f75b9bf279",
+    "scripts/capture_silu_mul_shapes.py": "112736239c27ddc28549e95cf2e362b590abc2459a4af80bb7f1b1fee66781c1",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/silu_mul/op.py": "8c544edea7311e6dc2728a945b49ede3096ce6f2a54be99188f5c609beeb3869",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/overlay/sitecustomize.py": "664c49f6330ec1313d6b9924d3d0390d3a284a260c87a879c4bab14ac343f389",
+    "model_adaptations/MiniCPM5SCUdoudui/tests/test_silu_mul_public_cpu.py": "dd1fc981cd248d6a27875ccf6f2afc7b909af68819fccb968132de9bfbf01de1",
+    "model_adaptations/MiniCPM5SCUdoudui/tests/test_silu_mul_sdaa.py": "843af726a5c3149c10a55435835c0caa8b0a9a398b88b82e778a06b2b1d71bb5"
+  },
+  "shape_capture": {
+    "scope": "minicpm5-1b_silu_mul_runtime_shape_capture",
+    "status": "pass",
+    "commit": "d02b397370507fc0b6bd1cc8defa6e25c5f3e46f",
+    "timestamp_utc": "2026-10-07T05:59:07.770496+00:00",
+    "model_path": "/gpfs/model/OpenBMB/MiniCPM5-1B",
+    "runtime": {
+      "vllm": "0.20.2.dev0+g132765e35.d20260728",
+      "torch": "2.12.0a0+git0d62256",
+      "device": "sdaa:0",
+      "dtype": "float16",
+      "max_model_len": 2048,
+      "enforce_eager": true,
+      "execution_mode": "diagnostic eager capture only; production-config validation remains separate",
+      "v1_multiprocessing": "0"
+    },
+    "profiles": {
+      "MINICPM_OP_PROFILE": "<unset: official default>",
+      "MINICPM_SILU_MUL_PROFILE": "<unset: official default>"
+    },
+    "overlay": {
+      "sitecustomize": "/root/SichuanUniversity_AI_accelerator-minicpm/custom_ops/overlay/sitecustomize.py",
+      "llama_rms_norm_class": "TecoopsRMSNorm",
+      "block_attention_forward_bound": true,
+      "block_attention_profile": "official"
+    },
+    "request": {
+      "prompt": "Explain why reproducible benchmarks matter.",
+      "prompt_token_ids": [
+        0,
+        77524,
+        3212,
+        77008,
+        47387,
+        3554,
+        35
+      ],
+      "max_tokens": 32,
+      "temperature": 0.0,
+      "generated_token_ids": [
+        1974,
+        10300,
+        1759,
+        1773,
+        3211,
+        280,
+        14335,
+        2442,
+        304,
+        280,
+        1187,
+        468,
+        3622,
+        35,
+        1974,
+        52424,
+        1759,
+        1773,
+        2351,
+        374,
+        285,
+        7335,
+        304,
+        1356,
+        3095,
+        35,
+        1974,
+        45656,
+        1759,
+        1773,
+        1848,
+        310
+      ],
+      "generated_token_count": 32
+    },
+    "silu_and_mul": {
+      "module_class": "SiluAndMul",
+      "selected_forward_call_count": 768,
+      "capture_window": "fixed-prompt llm.generate only; engine initialization excluded",
+      "input_output_signatures": [
+        {
+          "selected_method": "CustomOp.forward_oot",
+          "input": {
+            "shape": [
+              1,
+              9216
+            ],
+            "dtype": "torch.float16",
+            "stride": [
+              9216,
+              1
+            ],
+            "device": "sdaa:0",
+            "is_contiguous": true
+          },
+          "output": {
+            "shape": [
+              1,
+              4608
+            ],
+            "dtype": "torch.float16",
+            "stride": [
+              4608,
+              1
+            ],
+            "device": "sdaa:0",
+            "is_contiguous": true
+          },
+          "calls": 744
+        },
+        {
+          "selected_method": "CustomOp.forward_oot",
+          "input": {
+            "shape": [
+              7,
+              9216
+            ],
+            "dtype": "torch.float16",
+            "stride": [
+              9216,
+              1
+            ],
+            "device": "sdaa:0",
+            "is_contiguous": true
+          },
+          "output": {
+            "shape": [
+              7,
+              4608
+            ],
+            "dtype": "torch.float16",
+            "stride": [
+              4608,
+              1
+            ],
+            "device": "sdaa:0",
+            "is_contiguous": true
+          },
+          "calls": 24
+        }
+      ]
+    },
+    "shape_source_note": "Only observed runtime tensors are listed; model config is not used to infer activation shapes."
+  },
+  "micro": [
+    {
+      "correctness_atol": 0.001,
+      "correctness_rtol": 0.001,
+      "device": "sdaa:0",
+      "dtype": "float16",
+      "iterations_per_run": 100,
+      "runs": 3,
+      "seed": 20261007,
+      "separate_silu_mul_median_ms": 0.17390426015481353,
+      "separate_silu_mul_ms": [
+        0.17405476013664156,
+        0.17390426015481353,
+        0.1737217599293217
+      ],
+      "shape": [
+        1,
+        9216
+      ],
+      "vendor_swiglu_median_ms": 0.09357137023471296,
+      "vendor_swiglu_ms": [
+        0.09357137023471296,
+        0.09331876004580408,
+        0.09374735993333161
+      ],
+      "warmup_calls_per_variant": 3,
+      "latency_reduction_percent": 46.19374467801215,
+      "speedup": 1.8585199695012995,
+      "wall_clock_scope": "Synchronized host wall time per call,100 calls/run, alternating A/B orders; not kernel device time or model speed.",
+      "raw_log": "logs/minicpm5-1b/silu-mul-shape-capture-20261007-pr37-bench-1x9216.log"
+    },
+    {
+      "correctness_atol": 0.001,
+      "correctness_rtol": 0.001,
+      "device": "sdaa:0",
+      "dtype": "float16",
+      "iterations_per_run": 100,
+      "runs": 3,
+      "seed": 20261007,
+      "separate_silu_mul_median_ms": 0.26649362000171095,
+      "separate_silu_mul_ms": [
+        0.265690129599534,
+        0.26662063028197736,
+        0.26649362000171095
+      ],
+      "shape": [
+        7,
+        9216
+      ],
+      "vendor_swiglu_median_ms": 0.09401476010680199,
+      "vendor_swiglu_ms": [
+        0.09401476010680199,
+        0.09358156006783247,
+        0.09485145972575992
+      ],
+      "warmup_calls_per_variant": 3,
+      "latency_reduction_percent": 64.72157190622485,
+      "speedup": 2.834593415959055,
+      "wall_clock_scope": "Synchronized host wall time per call,100 calls/run, alternating A/B orders; not kernel device time or model speed.",
+      "raw_log": "logs/minicpm5-1b/silu-mul-shape-capture-20261007-pr37-bench-7x9216.log"
+    }
+  ],
+  "final_checked_in_sdaa_focused": {
+    "passed_cpu_oracles": true,
+    "device": "sdaa:0",
+    "public_op_file": "/root/SichuanUniversity_AI_accelerator-minicpm/model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/silu_mul/op.py",
+    "vendor_calls": 2,
+    "tolerance": {
+      "rtol": 0.001,
+      "atol": 0.001
+    },
+    "old_sdaa_separate_all_matches_at_tolerance": false,
+    "known_numeric_boundary": "The original minimum-normal gate \u00d7 2048 case remains unchanged. The fused candidate is checked independently against both CPU references; the old separate SDAA comparison is reported separately and may differ because the intermediate SiLU flushes to zero.",
+    "cases": [
+      {
+        "label": "original_min_normal_times_2048",
+        "shape": [
+          1,
+          9216
+        ],
+        "dtype": "torch.float16",
+        "stride": [
+          9216,
+          1
+        ],
+        "candidate_vendor_calls_cumulative": 1,
+        "input_unchanged": true,
+        "max_abs_vs_cpu_float32_final_fp16": 8.440017700195312e-05,
+        "max_abs_vs_cpu_fp16_separate": 0.25,
+        "max_abs_vs_old_sdaa_separate": 0.25,
+        "old_sdaa_separate_matches_at_tolerance": false,
+        "rtol": 0.001,
+        "atol": 0.001,
+        "edge_gate_bits": [
+          52480,
+          50432,
+          48128,
+          32768,
+          0,
+          1,
+          1024,
+          14336,
+          17664,
+          18688,
+          19712,
+          21760
+        ],
+        "edge_up_bits": [
+          26624,
+          59392,
+          18688,
+          15360,
+          15360,
+          26624,
+          26624,
+          51456,
+          22080,
+          27874,
+          27100,
+          24528
+        ],
+        "candidate_edge": [
+          -0.0,
+          68.5625,
+          -2.689453125,
+          -0.0,
+          0.0,
+          0.0,
+          0.0625,
+          -3.111328125,
+          496.75,
+          49984.0,
+          60000.0,
+          40000.0
+        ],
+        "cpu_fp32_final_fp16_edge": [
+          -8.440017700195312e-05,
+          68.5625,
+          -2.689453125,
+          -0.0,
+          0.0,
+          6.103515625e-05,
+          0.0625,
+          -3.111328125,
+          496.75,
+          49984.0,
+          60000.0,
+          40000.0
+        ],
+        "cpu_fp16_separate_edge": [
+          -0.0001220703125,
+          68.5625,
+          -2.69140625,
+          -0.0,
+          0.0,
+          0.0,
+          0.0625,
+          -3.11328125,
+          496.5,
+          49984.0,
+          60000.0,
+          40000.0
+        ],
+        "old_sdaa_separate_edge": [
+          -0.0,
+          68.5625,
+          -2.69140625,
+          -0.0,
+          0.0,
+          0.0,
+          0.0,
+          -3.11328125,
+          496.5,
+          49984.0,
+          60000.0,
+          40000.0
+        ]
+      },
+      {
+        "label": "captured_shape_7x9216",
+        "shape": [
+          7,
+          9216
+        ],
+        "dtype": "torch.float16",
+        "stride": [
+          9216,
+          1
+        ],
+        "candidate_vendor_calls_cumulative": 2,
+        "input_unchanged": true,
+        "max_abs_vs_cpu_float32_final_fp16": 0.0001220703125,
+        "max_abs_vs_cpu_fp16_separate": 0.00390625,
+        "max_abs_vs_old_sdaa_separate": 0.00390625,
+        "old_sdaa_separate_matches_at_tolerance": true,
+        "rtol": 0.001,
+        "atol": 0.001,
+        "edge_gate_bits": null,
+        "edge_up_bits": null,
+        "candidate_edge": null,
+        "cpu_fp32_final_fp16_edge": null,
+        "cpu_fp16_separate_edge": null,
+        "old_sdaa_separate_edge": null
+      }
+    ]
+  },
+  "final_checked_in_sdaa_focused_json_sha256": "17ad009773bef301227f5eacd911c59926612e5cd3b22c95301717554ad9d9d5",
+  "original_edge_retest": {
+    "passed": true,
+    "device": "sdaa:0",
+    "shapes": [
+      {
+        "shape": [
+          1,
+          9216
+        ],
+        "dtype": "torch.float16",
+        "stride": [
+          9216,
+          1
+        ],
+        "vendor_calls_cumulative": 1,
+        "max_abs_vs_cpu_float32_final_fp16": 8.440017700195312e-05,
+        "max_abs_vs_cpu_fp16_separate": 0.25,
+        "max_abs_vs_previous_separate_fp16_path": 0.25,
+        "max_scaled_error_vs_cpu_float32_final_fp16": 0.08439304679632187,
+        "max_scaled_error_vs_cpu_fp16_separate": 0.7812499403953552,
+        "max_scaled_error_vs_previous_separate_fp16_path": 62.499996185302734,
+        "cpu_float32_final_fp16_edge": [
+          -8.440017700195312e-05,
+          68.5625,
+          -2.689453125,
+          -0.0,
+          0.0,
+          6.103515625e-05,
+          0.0625,
+          -3.111328125,
+          496.75,
+          49984.0,
+          60000.0,
+          40000.0
+        ],
+        "cpu_fp16_separate_edge": [
+          -0.0001220703125,
+          68.5625,
+          -2.69140625,
+          -0.0,
+          0.0,
+          0.0,
+          0.0625,
+          -3.11328125,
+          496.5,
+          49984.0,
+          60000.0,
+          40000.0
+        ],
+        "previous_sdaa_separate_within_tolerance": false,
+        "cpu_float32_final_fp16_within_tolerance": true,
+        "cpu_fp16_separate_within_tolerance": true,
+        "input_edge_gate_fp16_bits": [
+          52480,
+          50432,
+          48128,
+          32768,
+          0,
+          1,
+          1024,
+          14336,
+          17664,
+          18688,
+          19712,
+          21760
+        ],
+        "input_edge_up_fp16_bits": [
+          26624,
+          59392,
+          18688,
+          15360,
+          15360,
+          26624,
+          26624,
+          51456,
+          22080,
+          27874,
+          27100,
+          24528
+        ],
+        "output_edge": [
+          -0.0,
+          68.5625,
+          -2.689453125,
+          -0.0,
+          0.0,
+          0.0,
+          0.0625,
+          -3.111328125,
+          496.75,
+          49984.0,
+          60000.0,
+          40000.0
+        ],
+        "cpu_float32_edge": [
+          -8.442485705018044e-05,
+          68.5347900390625,
+          -2.6894142627716064,
+          -0.0,
+          0.0,
+          6.103515625e-05,
+          0.06250190734863281,
+          -3.1122968196868896,
+          496.653564453125,
+          49997.73046875,
+          60000.0,
+          40000.0
+        ],
+        "previous_separate_fp16_edge": [
+          -0.0,
+          68.5625,
+          -2.69140625,
+          -0.0,
+          0.0,
+          0.0,
+          0.0,
+          -3.11328125,
+          496.5,
+          49984.0,
+          60000.0,
+          40000.0
+        ]
+      },
+      {
+        "shape": [
+          7,
+          9216
+        ],
+        "dtype": "torch.float16",
+        "stride": [
+          9216,
+          1
+        ],
+        "vendor_calls_cumulative": 2,
+        "max_abs_vs_cpu_float32_final_fp16": 0.0001220703125,
+        "max_abs_vs_cpu_fp16_separate": 0.25,
+        "max_abs_vs_previous_separate_fp16_path": 0.25,
+        "max_scaled_error_vs_cpu_float32_final_fp16": 0.09903931617736816,
+        "max_scaled_error_vs_cpu_fp16_separate": 0.7806400656700134,
+        "max_scaled_error_vs_previous_separate_fp16_path": 62.499996185302734,
+        "cpu_float32_final_fp16_edge": [
+          -8.440017700195312e-05,
+          68.5625,
+          -2.689453125,
+          -0.0,
+          0.0,
+          6.103515625e-05,
+          0.0625,
+          -3.111328125,
+          496.75,
+          49984.0,
+          60000.0,
+          40000.0
+        ],
+        "cpu_fp16_separate_edge": [
+          -0.0001220703125,
+          68.5625,
+          -2.69140625,
+          -0.0,
+          0.0,
+          0.0,
+          0.0625,
+          -3.11328125,
+          496.5,
+          49984.0,
+          60000.0,
+          40000.0
+        ],
+        "previous_sdaa_separate_within_tolerance": false,
+        "cpu_float32_final_fp16_within_tolerance": true,
+        "cpu_fp16_separate_within_tolerance": true,
+        "input_edge_gate_fp16_bits": [
+          52480,
+          50432,
+          48128,
+          32768,
+          0,
+          1,
+          1024,
+          14336,
+          17664,
+          18688,
+          19712,
+          21760
+        ],
+        "input_edge_up_fp16_bits": [
+          26624,
+          59392,
+          18688,
+          15360,
+          15360,
+          26624,
+          26624,
+          51456,
+          22080,
+          27874,
+          27100,
+          24528
+        ],
+        "output_edge": [
+          -0.0,
+          68.5625,
+          -2.689453125,
+          -0.0,
+          0.0,
+          0.0,
+          0.0625,
+          -3.111328125,
+          496.75,
+          49984.0,
+          60000.0,
+          40000.0
+        ],
+        "cpu_float32_edge": [
+          -8.442485705018044e-05,
+          68.5347900390625,
+          -2.6894142627716064,
+          -0.0,
+          0.0,
+          6.103515625e-05,
+          0.06250190734863281,
+          -3.1122968196868896,
+          496.653564453125,
+          49997.73046875,
+          60000.0,
+          40000.0
+        ],
+        "previous_separate_fp16_edge": [
+          -0.0,
+          68.5625,
+          -2.69140625,
+          -0.0,
+          0.0,
+          0.0,
+          0.0,
+          -3.11328125,
+          496.5,
+          49984.0,
+          60000.0,
+          40000.0
+        ]
+      }
+    ],
+    "tolerance": {
+      "rtol": 0.001,
+      "atol": 0.001
+    },
+    "vendor_calls": 2,
+    "candidate_cpu_oracles_passed": true,
+    "old_sdaa_separate_passed": false,
+    "baseline_note": "A failure only against old SDAA separate SiLU then Mul is recorded separately from both CPU oracles; no threshold is relaxed."
+  },
+  "public_model_arms": {
+    "baseline-devmode": {
+      "raw_greedy32": {
+        "passed": true,
+        "prompt": "Explain why reproducible benchmarks matter.",
+        "expected_token_ids": [
+          1974,
+          10300,
+          1759,
+          1773,
+          3211,
+          280,
+          14335,
+          2442,
+          304,
+          280,
+          1187,
+          468,
+          3622,
+          35,
+          1974,
+          52424,
+          1759,
+          1773,
+          2351,
+          374,
+          285,
+          7335,
+          304,
+          1356,
+          3095,
+          35,
+          1974,
+          45656,
+          1759,
+          1773,
+          1848,
+          310
+        ],
+        "smoke": [
+          {
+            "label": "smoke_0",
+            "seconds": 2.5291660169605166,
+            "token_ids": [
+              1974,
+              10300,
+              1759,
+              1773,
+              3211,
+              280,
+              14335,
+              2442,
+              304,
+              280,
+              1187,
+              468,
+              3622,
+              35,
+              1974,
+              52424,
+              1759,
+              1773,
+              2351,
+              374,
+              285,
+              7335,
+              304,
+              1356,
+              3095,
+              35,
+              1974,
+              45656,
+              1759,
+              1773,
+              1848,
+              310
+            ],
+            "text": " \n[A]. They provide a reliable measure of a system's performance. \n[B]. They allow for the comparison of different systems. \n[C]. They help in",
+            "usage": {
+              "prompt_tokens": 7,
+              "total_tokens": 39,
+              "completion_tokens": 32,
+              "prompt_tokens_details": null
+            }
+          },
+          {
+            "label": "smoke_1",
+            "seconds": 2.4857140139793046,
+            "token_ids": [
+              1974,
+              10300,
+              1759,
+              1773,
+              3211,
+              280,
+              14335,
+              2442,
+              304,
+              280,
+              1187,
+              468,
+              3622,
+              35,
+              1974,
+              52424,
+              1759,
+              1773,
+              2351,
+              374,
+              285,
+              7335,
+              304,
+              1356,
+              3095,
+              35,
+              1974,
+              45656,
+              1759,
+              1773,
+              1848,
+              310
+            ],
+            "text": " \n[A]. They provide a reliable measure of a system's performance. \n[B]. They allow for the comparison of different systems. \n[C]. They help in",
+            "usage": {
+              "prompt_tokens": 7,
+              "total_tokens": 39,
+              "completion_tokens": 32,
+              "prompt_tokens_details": null
+            }
+          }
+        ],
+        "concurrency": [],
+        "steady": [],
+        "worker_receipt_before": {
+          "results": [
+            {
+              "memory_allocated": 13867795456,
+              "memory_reserved": 14969470976,
+              "max_memory_allocated": 14776009728,
+              "max_memory_reserved": 14969470976,
+              "device": 0,
+              "allocated_gib": 12.915390968322754,
+              "reserved_gib": 13.94140625,
+              "peak_allocated_gib": 13.761231422424316,
+              "peak_reserved_gib": 13.94140625
+            }
+          ]
+        },
+        "worker_receipt": {
+          "results": [
+            {
+              "memory_allocated": 13867795968,
+              "memory_reserved": 14969470976,
+              "max_memory_allocated": 14776009728,
+              "max_memory_reserved": 14969470976,
+              "device": 0,
+              "allocated_gib": 12.915391445159912,
+              "reserved_gib": 13.94140625,
+              "peak_allocated_gib": 13.761231422424316,
+              "peak_reserved_gib": 13.94140625
+            }
+          ]
+        }
+      },
+      "counters": "CALL tecoops.flash_attn_varlen_func\nCOUNT tecoops.flash_attn_varlen_func 48\nCALL tecoops.reshape_and_cache\nCOUNT tecoops.reshape_and_cache 1536\nCALL tecoops.rms_norm\nCOUNT tecoops.rms_norm 3283\n",
+      "observed_launcher_cli": {
+        "model_tag": "/gpfs/model/OpenBMB/MiniCPM5-1B",
+        "host": "127.0.0.1",
+        "port": 8014,
+        "model": "/gpfs/model/OpenBMB/MiniCPM5-1B",
+        "trust_remote_code": true,
+        "dtype": "float16",
+        "max_model_len": 2048,
+        "served_model_name": [
+          "MiniCPM5-1B"
+        ],
+        "worker_extension_cls": "minicpm_silu_probe.MiniCPMProbe",
+        "enable_prefix_caching": false
+      },
+      "default_vllm_compiler_observed": true,
+      "model_dtype_scope": "Configured FP16 from launcher/engine log; not enumerated every weight.",
+      "raw_model_path": "logs/minicpm5-1b/silu-mul-model-20261007/public-paired/baseline-devmode/model-greedy32.json"
+    },
+    "vendor-swiglu-v3": {
+      "raw_greedy32": {
+        "passed": true,
+        "prompt": "Explain why reproducible benchmarks matter.",
+        "expected_token_ids": [
+          1974,
+          10300,
+          1759,
+          1773,
+          3211,
+          280,
+          14335,
+          2442,
+          304,
+          280,
+          1187,
+          468,
+          3622,
+          35,
+          1974,
+          52424,
+          1759,
+          1773,
+          2351,
+          374,
+          285,
+          7335,
+          304,
+          1356,
+          3095,
+          35,
+          1974,
+          45656,
+          1759,
+          1773,
+          1848,
+          310
+        ],
+        "smoke": [
+          {
+            "label": "smoke_0",
+            "seconds": 2.164805435051676,
+            "token_ids": [
+              1974,
+              10300,
+              1759,
+              1773,
+              3211,
+              280,
+              14335,
+              2442,
+              304,
+              280,
+              1187,
+              468,
+              3622,
+              35,
+              1974,
+              52424,
+              1759,
+              1773,
+              2351,
+              374,
+              285,
+              7335,
+              304,
+              1356,
+              3095,
+              35,
+              1974,
+              45656,
+              1759,
+              1773,
+              1848,
+              310
+            ],
+            "text": " \n[A]. They provide a reliable measure of a system's performance. \n[B]. They allow for the comparison of different systems. \n[C]. They help in",
+            "usage": {
+              "prompt_tokens": 7,
+              "total_tokens": 39,
+              "completion_tokens": 32,
+              "prompt_tokens_details": null
+            }
+          },
+          {
+            "label": "smoke_1",
+            "seconds": 2.111663518997375,
+            "token_ids": [
+              1974,
+              10300,
+              1759,
+              1773,
+              3211,
+              280,
+              14335,
+              2442,
+              304,
+              280,
+              1187,
+              468,
+              3622,
+              35,
+              1974,
+              52424,
+              1759,
+              1773,
+              2351,
+              374,
+              285,
+              7335,
+              304,
+              1356,
+              3095,
+              35,
+              1974,
+              45656,
+              1759,
+              1773,
+              1848,
+              310
+            ],
+            "text": " \n[A]. They provide a reliable measure of a system's performance. \n[B]. They allow for the comparison of different systems. \n[C]. They help in",
+            "usage": {
+              "prompt_tokens": 7,
+              "total_tokens": 39,
+              "completion_tokens": 32,
+              "prompt_tokens_details": null
+            }
+          }
+        ],
+        "concurrency": [],
+        "steady": [],
+        "worker_receipt_before": {
+          "results": [
+            {
+              "memory_allocated": 13867795456,
+              "memory_reserved": 14969470976,
+              "max_memory_allocated": 14776009728,
+              "max_memory_reserved": 14969470976,
+              "device": 0,
+              "allocated_gib": 12.915390968322754,
+              "reserved_gib": 13.94140625,
+              "peak_allocated_gib": 13.761231422424316,
+              "peak_reserved_gib": 13.94140625,
+              "silu_mul_profile": "vendor_swiglu",
+              "silu_mul_op_file": "/root/SichuanUniversity_AI_accelerator-minicpm/model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/silu_mul/op.py",
+              "silu_mul_vendor_bound": true
+            }
+          ]
+        },
+        "worker_receipt": {
+          "results": [
+            {
+              "memory_allocated": 13867795968,
+              "memory_reserved": 14969470976,
+              "max_memory_allocated": 14776009728,
+              "max_memory_reserved": 14969470976,
+              "device": 0,
+              "allocated_gib": 12.915391445159912,
+              "reserved_gib": 13.94140625,
+              "peak_allocated_gib": 13.761231422424316,
+              "peak_reserved_gib": 13.94140625,
+              "silu_mul_profile": "vendor_swiglu",
+              "silu_mul_op_file": "/root/SichuanUniversity_AI_accelerator-minicpm/model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/silu_mul/op.py",
+              "silu_mul_vendor_bound": true
+            }
+          ]
+        }
+      },
+      "counters": "CALL silu_mul.vendor_swiglu\nCOUNT silu_mul.vendor_swiglu 1608\nCALL tecoops.flash_attn_varlen_func\nCOUNT tecoops.flash_attn_varlen_func 48\nCALL tecoops.reshape_and_cache\nCOUNT tecoops.reshape_and_cache 1536\nCALL tecoops.rms_norm\nCOUNT tecoops.rms_norm 3283\n",
+      "observed_launcher_cli": {
+        "model_tag": "/gpfs/model/OpenBMB/MiniCPM5-1B",
+        "host": "127.0.0.1",
+        "port": 8014,
+        "model": "/gpfs/model/OpenBMB/MiniCPM5-1B",
+        "trust_remote_code": true,
+        "dtype": "float16",
+        "max_model_len": 2048,
+        "served_model_name": [
+          "MiniCPM5-1B"
+        ],
+        "worker_extension_cls": "minicpm_silu_probe.MiniCPMProbe",
+        "enable_prefix_caching": false
+      },
+      "default_vllm_compiler_observed": true,
+      "model_dtype_scope": "Configured FP16 from launcher/engine log; not enumerated every weight.",
+      "raw_model_path": "logs/minicpm5-1b/silu-mul-model-20261007/public-paired/vendor-swiglu-v3/model-greedy32.json"
+    }
+  },
+  "launch_cli_same_observed": true,
+  "call_count_scope": "1608 total diagnostic process-lifecycle vendor calls includes initialization/generation; no measured generation-only delta is claimed",
+  "peak": {
+    "allocated_bytes": 14776009728,
+    "reserved_bytes": 14969470976,
+    "allocated_gib": 13.761231422424316,
+    "reserved_gib": 13.94140625
+  },
+  "cpu_validation": {
+    "root_focused": 5,
+    "public_focused": 8,
+    "root_startup": {
+      "passed": true,
+      "cases": [
+        {
+          "case": "explicit-bf16",
+          "returncode": 1,
+          "expected_message": "only supports explicit FP16 dtype",
+          "passed": true
+        },
+        {
+          "case": "missing-marker",
+          "returncode": 1,
+          "expected_message": "requires explicit FP16 dtype",
+          "passed": true
+        },
+        {
+          "case": "valid-worker",
+          "returncode": 0,
+          "expected_message": "/root/SichuanUniversity_AI_accelerator-minicpm/custom_ops/silu_mul/op.py",
+          "passed": true
+        },
+        {
+          "case": "mixed-profile",
+          "returncode": 1,
+          "expected_message": "requires MINICPM_OP_PROFILE=official",
+          "passed": true
+        }
+      ],
+      "previous_no_sdk_loader_error": "preserved root-startup-explicit-bf16.log; initial diagnostic lacked source setvars, same source rerun with SDK succeeds"
+    }
+  },
+  "private_public_math": {
+    "private_public_forward_math_ast_equal": true,
+    "normalization": "Local temporary out/output name only",
+    "sequence": "width, flatten token_count, view(T,1,9216), bound_vendor(packed,T,1,4608), view(original leading dims,4608)",
+    "receipt_binding": "Public bind_vendor_silu_mul selects accounting wrapper only once; TECOOPS_CALL_RECEIPT unset returns original callable. Micro uses private direct binding with no receipt wrapper.",
+    "original_ast_assertion": "Failed unnormalized variable-name comparison was corrected by alpha-normalization; no operator code modified",
+    "source_sha256": {
+      "custom_ops/silu_mul/op.py": "4251e8d81947693daa83ba03d8cc09ba93a5d3ec412d538c6c8c536febd1437b",
+      "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/silu_mul/op.py": "8c544edea7311e6dc2728a945b49ede3096ce6f2a54be99188f5c609beeb3869"
+    }
+  },
+  "current_vendor_static_provenance": {
+    "scope": "CPU-only current vendor/package/schema snapshot collected after both original paired service processes exited; not those process native-mapping evidence",
+    "python": "/usr/local/python/bin/python3.12",
+    "timestamp_utc": "2026-10-07T06:58:07.326323+00:00",
+    "modules": {
+      "tecoops": {
+        "path": "/home/py312/lib/python3.12/site-packages/tecoops/__init__.py",
+        "sha256": "0a336182d43f8ae9cd70ab4c9ee7639c0c03bd326a602e9084043617d00ec5bb"
+      },
+      "torch_sdaa": {
+        "path": "/home/py312/lib/python3.12/site-packages/torch_sdaa/__init__.py",
+        "sha256": "330eb18b611ba1b8837ab0bcc1bde48b5b6b65d7e0f4f0ad25c8dafdd92bad03"
+      },
+      "tecoops._torch_ext": {
+        "path": "/home/py312/lib/python3.12/site-packages/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+        "sha256": "658a3b5e9b64db7e6192deeffa98bd29db3d7919e7a75993a888e242bda3a42f"
+      }
+    },
+    "mapped_dsos_in_this_cpu_process": [
+      {
+        "path": "/home/py312/lib/python3.12/site-packages/tecoops/libteco_ops.so",
+        "sha256": "fe27930e91ce41ccdc2234d4ec9e71951a9539d02cf6cde2902508f58830f27c"
+      },
+      {
+        "path": "/opt/tecoai/lib64/libtecocustom.so.3.2.1",
+        "sha256": "f320e36d9a18999ef1c3556877b5c27bec51e7c81392b0da417110b7ae38efae"
+      },
+      {
+        "path": "/home/py312/lib/python3.12/site-packages/torch_sdaa/lib/libtorch_sdaa.so",
+        "sha256": "5f7ac21a06cad4f0cbec4d0160ffe965fce9e1d549b256b214e74dc0362693bf"
+      },
+      {
+        "path": "/home/py312/lib/python3.12/site-packages/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+        "sha256": "658a3b5e9b64db7e6192deeffa98bd29db3d7919e7a75993a888e242bda3a42f"
+      }
+    ],
+    "swiglu_schema": {
+      "": "sdaa::swiglu(Tensor self, int seq_lens, int num_head, int hidden_size) -> Tensor"
+    },
+    "vendor_privateuse1_kernel_present": true,
+    "versions": {
+      "torch": "2.12.0a0+git0d62256",
+      "torch_sdaa": "20260623.8.51.dev0+gitd942f23"
+    },
+    "original_two_arm_native_maps_retained": false,
+    "no_sdaa_tensor_or_device_execution": true
+  },
+  "known_numeric_boundary": "Original0x0400 gate x0x6800 up: candidate and both CPU references0.0625; old separate SDAA0 from intermediate FTZ. Original.001/.001 unchanged; old separate comparison false. No bitwise baseline equivalence claim.",
+  "limitations": [
+    "Micro synchronized wall time only; no model speedup claim",
+    "Both original exited production-arm tecoops/ext/vendor DSO maps/hashes were not retained; current CPU snapshot is not those process evidence",
+    "Original baseline environment/launch file was not separately archived; logged argparse config/default compiler match candidate, candidate launch.sh retained",
+    "FP16 is configured in launcher/engine log; every weight dtype was not enumerated",
+    "No new vendor kernel/global package change/weight copy/combined-wheel equivalence",
+    "Official accuracy/owner CI, BF16, long-context fusion, concurrent/steady fusion model and model three-run performance not executed"
+  ],
+  "model_pr": "https://github.com/Tecorigin/tecovllm-modelzoo/pull/4",
+  "decision": "Accept explicit FP16 official-attention-profile vendor_swiglu opt-in at tested shapes; leave default unchanged and disclose FTZ boundary."
+}

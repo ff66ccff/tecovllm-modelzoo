@@ -3,7 +3,8 @@
 This adaptation binds the existing official `tecoops` RMSNorm, KV-cache write
 and paged prefill-attention APIs to MiniCPM5-1B. It uses process-local overlays,
 the vendor interpreter and read-only pre-provisioned weights. It contains no new
-operator kernel or performance claim.
+operator kernel. The optional vendor SwiGLU profile below has bounded
+shape-level synchronized wall-time measurements; no model speedup is claimed.
 
 ## Launch
 
@@ -157,6 +158,87 @@ the receipt. Full official accuracy, public fast long-context requests
 and parallel sequence scheduling remain unvalidated. All test
 services were stopped; concurrent VOC training on logical device 0 was
 kept running. No current speed comparison is claimed.
+
+## Optional FP16 vendor SwiGLU activation (2026-10-07)
+
+Select this activation independently while retaining official attention:
+
+```bash
+MINICPM_OP_PROFILE=official MINICPM_SILU_MUL_PROFILE=vendor_swiglu bash "$b/run.sh"
+```
+
+Unset `MINICPM_SILU_MUL_PROFILE` or use `official` to retain the existing default.
+The optional profile replaces only `SiluAndMul` with an opaque `torch.library`
+bridge to vendor `sdaa::swiglu`. The SDAA forward is `view -> startup-bound
+vendor(x,T,1,4608) -> view`. It has no runtime environment lookup or backend
+selection. FakeTensor supplies shape metadata. The supported input contract is contiguous FP16 packed input. The startup
+shim rejects any explicit non-FP16 `--dtype` even
+if an inherited FP16 marker exists, and permits an argument-free worker to
+inherit its parent's validated FP16 marker. It requires `MINICPM_OP_PROFILE=official`;
+combining this activation with `fast_attention` has not been validated.
+The public runtime source is prioritized and a shadowed activation module fails
+closed. No installed framework package, model weights, attention/RMSNorm path
+or vendor kernel is changed.
+
+A diagnostic eager generation captured real contiguous FP16 inputs rather than
+inferring them from configuration: `[1,9216]` occurred 744 times and `[7,9216]`
+24 times within the fixed greedy32 generation, 768 activation calls total.
+Default-compiler public service validation is separate from that eager capture.
+
+Same-input seed 20261007, warmup 3, 100 calls/run and three alternating A/B trials
+measured synchronized host wall time per call:
+
+| Input | Separate SiLU + Mul raw ms / median | Vendor SwiGLU raw ms / median |
+| --- | --- | --- |
+| `[1,9216]` | `0.174054760/0.173904260/0.173721760` / `0.173904260` | `0.093571370/0.093318760/0.093747360` / `0.093571370` |
+| `[7,9216]` | `0.265690130/0.266620630/0.266493620` / `0.266493620` | `0.094014760/0.093581560/0.094851460` / `0.094014760` |
+
+These are shape-level wall-time results (1.85852x/2.83459x median ratios), not
+kernel device-time or model-latency results. Private micro and public bridge
+forward math/ABI are AST-equivalent up to a local temporary variable name.
+Public call accounting is selected once at initialization; when the receipt
+variable is unset, the original vendor callable is bound directly. Micro
+measurement did not include the diagnostic counter wrapper.
+
+The final checked-in `tests/test_silu_mul_sdaa.py` was actually executed:
+two vendor calls, both independent CPU references pass unchanged `rtol=atol=.001`,
+and all input bits remain unchanged. The original minimum-normal case is
+retained: gate bits `0x0400` times up bits `0x6800` (2048) gives candidate 0.0625
+and both CPU FP32-final-FP16 and CPU FP16 separate references 0.0625. The old
+separate SDAA path returns 0 from intermediate SiLU flush-to-zero; its comparison
+is explicitly false. This candidate is not claimed bitwise equivalent to the
+old SDAA path. Initial underflow-case failure and the exact original-case rerun
+are preserved without deleting inputs or changing tolerances.
+
+With the same observed public launcher/engine arguments, TP1, configured FP16,
+context 2048, default vLLM compiler, official attention and the same fixed prompt,
+each of baseline and vendor activation produces two complete greedy32 responses
+identical to this model's own `validation/baseline_token_ids.json`. Worker RPC
+identifies the actual public activation source and bound vendor callable.
+`COUNT silu_mul.vendor_swiglu=1608` is the complete diagnostic process-lifecycle
+count, including initialization; it is not a generation-only delta. Peak
+allocated/reserved memory is 14776009728/14969470976 bytes (13.761231/13.941406 GiB).
+The test services were stopped and their allocated logical device was released.
+FP16 is the configured launcher/engine dtype; every model parameter dtype was
+not independently enumerated.
+
+Both original exited service processes' native `tecoops`/extension/vendor-DSO
+maps and hashes were not retained. The separately timestamped CPU-only current
+package/DSO/schema snapshot in the receipt is not evidence of those old process
+mappings. Logged argparse configuration/compiler settings match; a separate
+baseline launch/environment file was not archived. No current combined-wheel,
+owner CI, official task accuracy, BF16, fusion long-context/concurrent/steady
+service, or three-run model speedup claim is made. Historical attention or RMS
+results are not activation evidence. Full raw values, source hashes, original
+boundary vectors and these limits are in
+`validation/silu_mul_public_20261007.json`.
+
+```bash
+# CPU/Fake/fullgraph/startup tests, in a fresh process.
+PYTHONPATH="$b/runtime:${PYTHONPATH:-}" /home/py312/bin/python "$b/tests/test_silu_mul_public_cpu.py"
+# Requires a separately assigned device; this command preserves original inputs.
+SDAA_VISIBLE_DEVICES=1 PYTHONPATH="$b/runtime:${PYTHONPATH:-}"   /home/py312/bin/python "$b/tests/test_silu_mul_sdaa.py"   --device sdaa:0 --output /path/to/silu-mul-focused.json
+```
 
 ## Official CI launch parsing
 

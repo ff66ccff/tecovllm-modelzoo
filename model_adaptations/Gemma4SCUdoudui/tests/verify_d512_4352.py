@@ -39,6 +39,8 @@ if TASK_DIR.name == "tests" and TASK_DIR.parent.name == "Gemma4SCUdoudui":
 else:
     REPO_ROOT = TASK_DIR.parents[2]
     ADAPTER_ROOT = REPO_ROOT / "model_adaptations/Gemma4SCUdoudui"
+sys.path.insert(0, str(TASK_DIR))
+from d512_build_provenance import validate_build_provenance
 PUBLIC_RUNTIME = ADAPTER_ROOT / "runtime"
 PUBLIC_OP = PUBLIC_RUNTIME / "custom_ops/d512_official.py"
 EXPECTED_PUBLIC_OP_SHA256 = "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8"
@@ -47,6 +49,11 @@ EXPECTED_CORE_SHA256 = "34afac5eded9a1d474a53c32bf19d71fe025ef81ad69fe0848ed0cbc
 MAX_CONTEXT = 4352
 PAGE_SIZE = 32
 MAX_ABS_TOLERANCE = 0.02
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--out", required=True)
+parser.add_argument("--build-provenance", type=Path)
+args = parser.parse_args()
 
 sys.path.insert(0, str(PUBLIC_RUNTIME))
 
@@ -75,9 +82,22 @@ extension_path = Path(os.environ["GEMMA_D512_OFFICIAL_EXTENSION"]).resolve(stric
 extension_sha256 = sha256(extension_path)
 core_path = extension_path.with_name("libteco_gemma_flash.so").resolve(strict=True)
 core_sha256 = sha256(core_path)
-assert extension_sha256 == EXPECTED_EXTENSION_SHA256, extension_sha256
+if args.build_provenance is None:
+    assert extension_sha256 == EXPECTED_EXTENSION_SHA256, extension_sha256
+    assert core_sha256 == EXPECTED_CORE_SHA256, core_sha256
+    build_provenance_file = None
+    build_provenance_sha256 = None
+else:
+    build_provenance_path = args.build_provenance.resolve(strict=True)
+    validate_build_provenance(
+        build_provenance_path,
+        extension_sha256=extension_sha256,
+        core_sha256=core_sha256,
+        python_executable=sys.executable,
+    )
+    build_provenance_file = str(build_provenance_path)
+    build_provenance_sha256 = sha256(build_provenance_path)
 assert os.environ["GEMMA_D512_OFFICIAL_SHA256"].lower() == extension_sha256
-assert core_sha256 == EXPECTED_CORE_SHA256, core_sha256
 extension_module = __import__("_gemma_d512_official._torch_ext", fromlist=[""])
 assert Path(extension_module.__file__).resolve() == extension_path
 
@@ -228,6 +248,8 @@ result = {
     "extension_sha256": extension_sha256,
     "core": str(core_path),
     "core_sha256": core_sha256,
+    "build_provenance_file": build_provenance_file,
+    "build_provenance_sha256": build_provenance_sha256,
     "official_source_base": "de27305efed0a17ae926d21d5415d8b915614649",
     "official_patch_sha256": "c9a970bed3012c44bae0f446c314fa7fc2db2caee7496b03e48cd9f498884abb",
     "binding": "bind_global_decode selects decode_forward; decode_forward invokes the registered isolated custom op",
@@ -242,9 +264,6 @@ result = {
     "all_caches_exact": all(row["cache_exact_after_decode"] for row in rows),
 }
 result["passed"] = len(rows) == 12 and result["all_caches_exact"]
-parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--out", required=True)
-args = parser.parse_args()
 output_path = Path(args.out)
 output_path.parent.mkdir(parents=True, exist_ok=True)
 output_path.write_text(json.dumps(result, indent=2) + "\n")

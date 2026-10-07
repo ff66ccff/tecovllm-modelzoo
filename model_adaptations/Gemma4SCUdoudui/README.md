@@ -73,6 +73,32 @@ under optimized Python. The output mutation and Fake implementation are explicit
 
 ## Validation
 
+The D512 focused scripts accept `--build-provenance PATH` for a freshly built
+library. The receipt is checked against the official base, combined patch SHA,
+the realpaths of the recorded and running vendor Python, and the selected
+extension/core byte digests. Recorded library paths may differ if the selected
+files were copied, provided both digests match. Omitting the option retains
+the frozen extension/core SHA checks. After the documented build and library
+selection, use the returned receipt for both focused scripts:
+
+```bash
+/home/py312/bin/python "$b/tests/test_d512_build_provenance.py"
+SDAA_VISIBLE_DEVICES=0 /home/py312/bin/python "$b/tests/verify_d512_4352.py" --out d5124352_operator.json --build-provenance /path/to/build-provenance.json
+SDAA_VISIBLE_DEVICES=0 /home/py312/bin/python "$b/tests/verify_d512_poisoned_tail.py" --out d5124352_poisoned_tail.json --build-provenance /path/to/build-provenance.json
+```
+
+The 2026-10-07 fresh isolated public build passes all six provenance unit tests,
+eight ordinary operator cases, 12 boundary case/stream records (max absolute
+error 0.001107931 against the unchanged 0.02 limit), and six poisoned-tail
+records with zero control-to-poison delta and exact cache preservation. The
+unchanged public TP2/FP16/4352-context entry completed 83 requests with exact
+32-token IDs, including 65 steady requests over 322.430396 seconds. Its three
+timing values and worker memory peaks are recorded in
+`validation/build_provenance_20261007.json`; no speedup is claimed. The isolated
+combination is runtime-equivalent to current operator PRs 36/41/42, but is not a
+full merged upstream wheel or a new official accuracy result. This run covers
+short model prompts; the existing long-context receipts retain their own scope.
+
 ```bash
 # CPU/Fake/fullgraph and constructor/loader rejection tests, without selection:
 env -u GEMMA_D512_OFFICIAL_EXTENSION -u GEMMA_D512_OFFICIAL_SHA256 \

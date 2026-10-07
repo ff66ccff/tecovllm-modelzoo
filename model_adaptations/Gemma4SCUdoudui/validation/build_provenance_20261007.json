@@ -1,0 +1,338 @@
+{
+  "date_cst": "2026-10-07",
+  "captured_utc": "2026-10-07T03:31:17.445536+00:00",
+  "hypothesis": "Reviewer fresh-build libraries can pass the unchanged 4352 and poisoned-tail numeric gates when their explicit build provenance matches the published contract",
+  "source_branch": "model/gemma-4-12b-it",
+  "source_parent": "37606bb8c35725ad90af70bbd3acc768c4bdead9",
+  "official_model_pr": "https://github.com/Tecorigin/tecovllm-modelzoo/pull/3",
+  "vendor_python": "/home/py312/bin/python",
+  "resolved_python": "/usr/local/python/bin/python3.12",
+  "public_runtime_changed": false,
+  "build_helper_changed": false,
+  "source_sha256": {
+    "tests/verify_d512_4352.py": "c31225682f42c378472cf952b3921c9879660b8e387b44e95158dbca53ce74a8",
+    "tests/verify_d512_poisoned_tail.py": "3486ac36cf3b38e7b8d11c0070eea010c410de1d916fbabc77fe833c54e732d2",
+    "tests/d512_build_provenance.py": "5485f50e5606720102b14069e60e81dfac0f624981c5e61b6850036267f494e4",
+    "tests/test_d512_build_provenance.py": "af11cd03662aed26560a9f86720f05e53dac8c085d4cc4b00c242d81f7a1f09f",
+    "run.sh": "f9bfa24244cba5b29d00c911e71ad675c893aeb151f5f4fad888549243952d79",
+    "runtime/custom_ops/d512_official.py": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8",
+    "scripts/gemma4/build_d512_official.py": "022a33075979c5580be9fc804ffe43643468345be2e9759b6ab25cef65fd9bd1",
+    "op_learning/attention/gemma-d512-model/official_combined.patch": "c9a970bed3012c44bae0f446c314fa7fc2db2caee7496b03e48cd9f498884abb"
+  },
+  "existing_numeric_function_equivalence": {
+    "tests/verify_d512_4352.py": "Every pre-existing numeric/reference/cache-check function AST is unchanged",
+    "tests/verify_d512_poisoned_tail.py": "Every pre-existing numeric/reference/cache-check function AST is unchanged"
+  },
+  "build": {
+    "official_base": "de27305efed0a17ae926d21d5415d8b915614649",
+    "patch_sha256": "c9a970bed3012c44bae0f446c314fa7fc2db2caee7496b03e48cd9f498884abb",
+    "teco_hal": "/root/thirdparty/teco-hal",
+    "python": "/usr/local/python/bin/python3.12",
+    "output": "/dev/shm/scu-gemma-public-proof-20261007-0310-v2/build",
+    "disk_free_bytes_before_build": 132588847104,
+    "extension": "/dev/shm/scu-gemma-public-proof-20261007-0310-v2/build/api/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+    "extension_sha256": "c727f57fdd20d226e9e839c513c641e751e4295317690f6cb4a5408ee93260a4",
+    "core": "/dev/shm/scu-gemma-public-proof-20261007-0310-v2/build/api/tecoops/libteco_gemma_flash.so",
+    "core_sha256": "981e6ccf201f2bc20ccdad3b22958db91813cc43c1d3ce1ce19bd23dd1ad5b34"
+  },
+  "upstream_runtime_equivalence": {
+    "date_cst": "2026-10-07",
+    "official_base": "de27305efed0a17ae926d21d5415d8b915614649",
+    "public_combined_patch_sha256": "c9a970bed3012c44bae0f446c314fa7fc2db2caee7496b03e48cd9f498884abb",
+    "comparisons": [
+      {
+        "pr": 36,
+        "frozen_runtime_baseline": "70fc80f9a5e22db37110366d15a61c1abda8c304",
+        "current_head": "70fc80f9a5e22db37110366d15a61c1abda8c304",
+        "runtime_paths": [
+          "api",
+          "teco/interface",
+          "teco/ual",
+          "teco/plugin"
+        ],
+        "runtime_diff_exit": 0,
+        "changed_paths": [],
+        "source_diff_sha256": "2dbf71e3f805f43792a543764786354773864883c7da82d81c94f9ed3a221deb"
+      },
+      {
+        "pr": 41,
+        "frozen_runtime_baseline": "08b38553bed0b2928f2237f37cdf96a08ee33f7a",
+        "current_head": "5584d46bc5617d259d5b49140055ad71fe92ca0d",
+        "runtime_paths": [
+          "api",
+          "teco/interface",
+          "teco/ual",
+          "teco/plugin"
+        ],
+        "runtime_diff_exit": 0,
+        "changed_paths": [
+          "doc/op_docs/flash_attention.md"
+        ],
+        "source_diff_sha256": "d253a072cd8d2ddc616f8d7bdff1e8ef9e1209c4527b2adccc6a1f29918a2465"
+      },
+      {
+        "pr": 42,
+        "frozen_runtime_baseline": "d222ce0fbb9297c10dcfd04be31055617c74b045",
+        "current_head": "8761f831eb045e57c6e0d84321a15ea796024277",
+        "runtime_paths": [
+          "api",
+          "teco/interface",
+          "teco/ual",
+          "teco/plugin"
+        ],
+        "runtime_diff_exit": 0,
+        "changed_paths": [
+          "doc/op_docs/flash_attention.md",
+          "test/zoo/teco/flash_attention/flash_attention.h"
+        ],
+        "source_diff_sha256": "f4f5eb59b786e26648feb7ee0dca48a58eaebd0936555e7c8eebecb3c5a4960a"
+      }
+    ],
+    "conclusion": "Published combination runtime inputs remain equivalent to current PR36/41/42 heads; this is an isolated combination build, not a full merged upstream wheel."
+  },
+  "cpu": {
+    "provenance_contract_tests": 6,
+    "passed": true,
+    "syntax": "pass",
+    "git_diff_check": "pass"
+  },
+  "operator": {
+    "ordinary_cases": 8,
+    "ordinary_maxabs": 0.00102996826171875,
+    "boundary_cases": 12,
+    "boundary_maxabs": 0.001107931137084961,
+    "boundary_tolerance": 0.02,
+    "cache_bitwise_exact": true,
+    "poison_records": 6,
+    "poison_invocations": 12,
+    "poison_delta": 0.0,
+    "poison_cache_bitwise_exact": true
+  },
+  "model": {
+    "configuration": "TP2/FP16/util.92/4352 context/chunk512/default VLLM_COMPILE",
+    "devices": [
+      2,
+      3
+    ],
+    "smoke_requests": 2,
+    "concurrency": [
+      1,
+      4,
+      8
+    ],
+    "total_requests": 83,
+    "all_32_token_ids_equal": true,
+    "steady_requests": 65,
+    "steady_seconds": 322.4303955110372,
+    "steady_errors": 0,
+    "workers": [
+      {
+        "pid": 195126,
+        "rank": 0,
+        "logical_device": "/dev/tcaicard2",
+        "weight_devices": [
+          "sdaa:0"
+        ],
+        "weight_dtypes": [
+          "torch.float16"
+        ],
+        "selected_global_layers": [
+          {
+            "name": "model.layers.5.self_attn.attn",
+            "head_size": 512,
+            "heads": 8,
+            "kv_heads": 1,
+            "window": null,
+            "scale": 1.0
+          },
+          {
+            "name": "model.layers.11.self_attn.attn",
+            "head_size": 512,
+            "heads": 8,
+            "kv_heads": 1,
+            "window": null,
+            "scale": 1.0
+          },
+          {
+            "name": "model.layers.17.self_attn.attn",
+            "head_size": 512,
+            "heads": 8,
+            "kv_heads": 1,
+            "window": null,
+            "scale": 1.0
+          },
+          {
+            "name": "model.layers.23.self_attn.attn",
+            "head_size": 512,
+            "heads": 8,
+            "kv_heads": 1,
+            "window": null,
+            "scale": 1.0
+          },
+          {
+            "name": "model.layers.29.self_attn.attn",
+            "head_size": 512,
+            "heads": 8,
+            "kv_heads": 1,
+            "window": null,
+            "scale": 1.0
+          },
+          {
+            "name": "model.layers.35.self_attn.attn",
+            "head_size": 512,
+            "heads": 8,
+            "kv_heads": 1,
+            "window": null,
+            "scale": 1.0
+          },
+          {
+            "name": "model.layers.41.self_attn.attn",
+            "head_size": 512,
+            "heads": 8,
+            "kv_heads": 1,
+            "window": null,
+            "scale": 1.0
+          },
+          {
+            "name": "model.layers.47.self_attn.attn",
+            "head_size": 512,
+            "heads": 8,
+            "kv_heads": 1,
+            "window": null,
+            "scale": 1.0
+          }
+        ],
+        "extension": "/root/SichuanUniversity_AI_accelerator-gemma/logs/gemma-4-12b-it/public-build-provenance-20261007/package/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+        "loaded_extension": "/root/SichuanUniversity_AI_accelerator-gemma/logs/gemma-4-12b-it/public-build-provenance-20261007/package/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+        "extension_sha256": "c727f57fdd20d226e9e839c513c641e751e4295317690f6cb4a5408ee93260a4",
+        "core": "/root/SichuanUniversity_AI_accelerator-gemma/logs/gemma-4-12b-it/public-build-provenance-20261007/package/libteco_gemma_flash.so",
+        "core_sha256": "981e6ccf201f2bc20ccdad3b22958db91813cc43c1d3ce1ce19bd23dd1ad5b34",
+        "mapped_cores": [
+          "/root/SichuanUniversity_AI_accelerator-gemma/logs/gemma-4-12b-it/public-build-provenance-20261007/package/libteco_gemma_flash.so"
+        ],
+        "runtime_sha256": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8",
+        "max_model_len": 4352,
+        "max_num_batched_tokens": 512,
+        "tp": 2,
+        "chunked_prefill": true,
+        "prefix_caching": false,
+        "peak_allocated_bytes": 14759126528,
+        "peak_reserved_bytes": 15174991872
+      },
+      {
+        "pid": 195127,
+        "rank": 1,
+        "logical_device": "/dev/tcaicard3",
+        "weight_devices": [
+          "sdaa:1"
+        ],
+        "weight_dtypes": [
+          "torch.float16"
+        ],
+        "selected_global_layers": [
+          {
+            "name": "model.layers.5.self_attn.attn",
+            "head_size": 512,
+            "heads": 8,
+            "kv_heads": 1,
+            "window": null,
+            "scale": 1.0
+          },
+          {
+            "name": "model.layers.11.self_attn.attn",
+            "head_size": 512,
+            "heads": 8,
+            "kv_heads": 1,
+            "window": null,
+            "scale": 1.0
+          },
+          {
+            "name": "model.layers.17.self_attn.attn",
+            "head_size": 512,
+            "heads": 8,
+            "kv_heads": 1,
+            "window": null,
+            "scale": 1.0
+          },
+          {
+            "name": "model.layers.23.self_attn.attn",
+            "head_size": 512,
+            "heads": 8,
+            "kv_heads": 1,
+            "window": null,
+            "scale": 1.0
+          },
+          {
+            "name": "model.layers.29.self_attn.attn",
+            "head_size": 512,
+            "heads": 8,
+            "kv_heads": 1,
+            "window": null,
+            "scale": 1.0
+          },
+          {
+            "name": "model.layers.35.self_attn.attn",
+            "head_size": 512,
+            "heads": 8,
+            "kv_heads": 1,
+            "window": null,
+            "scale": 1.0
+          },
+          {
+            "name": "model.layers.41.self_attn.attn",
+            "head_size": 512,
+            "heads": 8,
+            "kv_heads": 1,
+            "window": null,
+            "scale": 1.0
+          },
+          {
+            "name": "model.layers.47.self_attn.attn",
+            "head_size": 512,
+            "heads": 8,
+            "kv_heads": 1,
+            "window": null,
+            "scale": 1.0
+          }
+        ],
+        "extension": "/root/SichuanUniversity_AI_accelerator-gemma/logs/gemma-4-12b-it/public-build-provenance-20261007/package/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+        "loaded_extension": "/root/SichuanUniversity_AI_accelerator-gemma/logs/gemma-4-12b-it/public-build-provenance-20261007/package/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+        "extension_sha256": "c727f57fdd20d226e9e839c513c641e751e4295317690f6cb4a5408ee93260a4",
+        "core": "/root/SichuanUniversity_AI_accelerator-gemma/logs/gemma-4-12b-it/public-build-provenance-20261007/package/libteco_gemma_flash.so",
+        "core_sha256": "981e6ccf201f2bc20ccdad3b22958db91813cc43c1d3ce1ce19bd23dd1ad5b34",
+        "mapped_cores": [
+          "/root/SichuanUniversity_AI_accelerator-gemma/logs/gemma-4-12b-it/public-build-provenance-20261007/package/libteco_gemma_flash.so"
+        ],
+        "runtime_sha256": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8",
+        "max_model_len": 4352,
+        "max_num_batched_tokens": 512,
+        "tp": 2,
+        "chunked_prefill": true,
+        "prefix_caching": false,
+        "peak_allocated_bytes": 14759126528,
+        "peak_reserved_bytes": 15174991872
+      }
+    ],
+    "owned_services_released": true
+  },
+  "timing": {
+    "raw_seconds": [
+      13.367416242021136,
+      13.314877669967245,
+      13.319308328966144
+    ],
+    "median_seconds": 13.319308328966144,
+    "performance_claim": false,
+    "reason": "Correctness/stability gates only; concurrent VOC training and no paired baseline timing"
+  },
+  "initial_harness_failures": [
+    "noexec RAM TMPDIR blocked teco-smi self-extracted library before compilation",
+    "long executable TMPDIR exceeded Unix socket107-byte path limit before engine initialization"
+  ],
+  "limits": [
+    "Fresh isolated published combination, runtime-equivalent to PR36/41/42; not a full merged upstream wheel",
+    "Official model CI still needs maintainer approval; no new official accuracy claim",
+    "32-token model prompt only; no new4352-token model workload or8K/16K validation",
+    "Raw fixture repo_head_at_preparation fields retain their historical fixture origin; tested source identities are recorded above"
+  ]
+}

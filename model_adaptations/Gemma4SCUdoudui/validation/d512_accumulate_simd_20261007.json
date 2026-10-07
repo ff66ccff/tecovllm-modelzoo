@@ -1,0 +1,272 @@
+{
+  "model": "gemma-4-12b-it",
+  "branch": "model/gemma-4-12b-it",
+  "baseline_model_commit": "a7abd808e7d2e158cae441ffbc439b0d1e509a19",
+  "date": "2026-10-07",
+  "hypothesis": "Only SIMD FP32 SV additions in flash_attention_half<32> Step E",
+  "decision": "Accept operator improvement; no end-to-end speedup claim",
+  "build": {
+    "branch": "model/gemma-4-12b-it",
+    "head": "a7abd808e7d2e158cae441ffbc439b0d1e509a19",
+    "official_base": "de27305efed0a17ae926d21d5415d8b915614649",
+    "baseline_package": "/root/SichuanUniversity_AI_accelerator-gemma/logs/gemma-4-12b-it/public-build-provenance-20261007/package",
+    "source": "/dev/shm/scu-gemma-accumulate-simd-20261007/source/teco/ual/kernel/flash_attention/flash_attention.scpp",
+    "baseline_source_sha256": "70b230b38bdd40ce492a809daf9b1d223608e93f110c2a8a28ae0d169bde1fb5",
+    "candidate_source_sha256": "2774141cf047ab48c86ccd73473cbe0b81bbc545a0461d19691d82501b060998",
+    "patch_sha256": "675e07737e9d44ecf71a5122d42dfee129710b2c5bca849e2070743e7fac5bf3",
+    "inverse_replacement_exact": true,
+    "ram": "/dev/shm/scu-gemma-accumulate-simd-20261007",
+    "baseline_libraries": {
+      "_torch_ext.cpython-312-loongarch64-linux-gnu.so": "c727f57fdd20d226e9e839c513c641e751e4295317690f6cb4a5408ee93260a4",
+      "libteco_gemma_flash.so": "981e6ccf201f2bc20ccdad3b22958db91813cc43c1d3ce1ce19bd23dd1ad5b34"
+    },
+    "build_passed": true,
+    "extension_recompiled": false,
+    "abi_changed": false,
+    "candidate_libraries": {
+      "libteco_gemma_flash.so": "e88dd5c34e6cee2bec005dfb5b8696a555e48d83c6c68be2dffc25e3e37f47a8",
+      "_torch_ext.cpython-312-loongarch64-linux-gnu.so": "c727f57fdd20d226e9e839c513c641e751e4295317690f6cb4a5408ee93260a4"
+    },
+    "kernel_object_sha256": "dcb33cbfa1ebde52104974863ea50050373b9be09905edbb7da4f71cdb353331"
+  },
+  "micro": {
+    "passed": true,
+    "cases": 80,
+    "output_bitwise_equal": true,
+    "benchmark": [
+      {
+        "n": 1,
+        "kv": [
+          33
+        ],
+        "baseline_raw_ms": [
+          0.24201740161515772,
+          0.24332640459761024,
+          0.24072439991869032
+        ],
+        "candidate_raw_ms": [
+          0.24023339501582086,
+          0.23887139977887273,
+          0.23924040142446756
+        ],
+        "baseline_median_ms": 0.24201740161515772,
+        "candidate_median_ms": 0.23924040142446756,
+        "median_change_pct": -1.1474382305392994
+      },
+      {
+        "n": 1,
+        "kv": [
+          4352
+        ],
+        "baseline_raw_ms": [
+          10.584034101339057,
+          10.588059102883562,
+          10.58774309931323
+        ],
+        "candidate_raw_ms": [
+          10.239770996849984,
+          10.245721001410857,
+          10.289950796868652
+        ],
+        "baseline_median_ms": 10.58774309931323,
+        "candidate_median_ms": 10.245721001410857,
+        "median_change_pct": -3.2303588658527005
+      },
+      {
+        "n": 4,
+        "kv": [
+          33,
+          65,
+          1025,
+          4352
+        ],
+        "baseline_raw_ms": [
+          13.557968498207629,
+          13.639971299562603,
+          13.56919760000892
+        ],
+        "candidate_raw_ms": [
+          13.118165702326223,
+          13.117788697127253,
+          13.12588659930043
+        ],
+        "baseline_median_ms": 13.56919760000892,
+        "candidate_median_ms": 13.118165702326223,
+        "median_change_pct": -3.3239393439329135
+      },
+      {
+        "n": 8,
+        "kv": [
+          33,
+          65,
+          1025,
+          4097,
+          4320,
+          4352,
+          65,
+          4097
+        ],
+        "baseline_raw_ms": [
+          44.13519790396094,
+          44.13202379946597,
+          44.19502369710244
+        ],
+        "candidate_raw_ms": [
+          42.70112949889153,
+          42.771772301057354,
+          42.76430539903231
+        ],
+        "baseline_median_ms": 44.13519790396094,
+        "candidate_median_ms": 42.76430539903231,
+        "median_change_pct": -3.106120670200063
+      }
+    ],
+    "model_run": false,
+    "model_performance_claim": false
+  },
+  "focused_extra": {
+    "operator8": true,
+    "boundary": true,
+    "poison": true
+  },
+  "prefill_bitwise_cases": [
+    {
+      "query_tokens": 2,
+      "kv_tokens": 33,
+      "stream": "default",
+      "maxabs": 0.0009744167327880859,
+      "baseline_bitdiff": 0,
+      "cache_unchanged": true
+    },
+    {
+      "query_tokens": 2,
+      "kv_tokens": 33,
+      "stream": "nondefault",
+      "maxabs": 0.0009744167327880859,
+      "baseline_bitdiff": 0,
+      "cache_unchanged": true
+    },
+    {
+      "query_tokens": 33,
+      "kv_tokens": 65,
+      "stream": "default",
+      "maxabs": 0.0017347335815429688,
+      "baseline_bitdiff": 0,
+      "cache_unchanged": true
+    },
+    {
+      "query_tokens": 33,
+      "kv_tokens": 65,
+      "stream": "nondefault",
+      "maxabs": 0.0017347335815429688,
+      "baseline_bitdiff": 0,
+      "cache_unchanged": true
+    },
+    {
+      "query_tokens": 64,
+      "kv_tokens": 1025,
+      "stream": "default",
+      "maxabs": 0.0017695426940917969,
+      "baseline_bitdiff": 0,
+      "cache_unchanged": true
+    },
+    {
+      "query_tokens": 64,
+      "kv_tokens": 1025,
+      "stream": "nondefault",
+      "maxabs": 0.0017695426940917969,
+      "baseline_bitdiff": 0,
+      "cache_unchanged": true
+    },
+    {
+      "query_tokens": 128,
+      "kv_tokens": 4352,
+      "stream": "default",
+      "maxabs": 0.0018963813781738281,
+      "baseline_bitdiff": 0,
+      "cache_unchanged": true
+    },
+    {
+      "query_tokens": 128,
+      "kv_tokens": 4352,
+      "stream": "nondefault",
+      "maxabs": 0.0018963813781738281,
+      "baseline_bitdiff": 0,
+      "cache_unchanged": true
+    }
+  ],
+  "model_validation": {
+    "configuration": {
+      "tp": 2,
+      "dtype": "float16",
+      "max_model_len": 4352,
+      "max_num_batched_tokens": 512,
+      "chunked_prefill": true,
+      "prefix_caching": false,
+      "prompt_tokens": 11,
+      "completion_tokens": 32,
+      "devices": [
+        2,
+        3
+      ]
+    },
+    "raw_seconds": {
+      "model-baseline": [
+        13.56257046398241,
+        13.465909750026185,
+        13.543346152000595
+      ],
+      "model-candidate": [
+        12.748440574971028,
+        12.935509947012179,
+        12.962619586032815
+      ],
+      "model-baseline-after": [
+        13.004446402017493,
+        12.93558190704789,
+        12.96912328095641
+      ]
+    },
+    "median_seconds": {
+      "model-baseline": 13.543346152000595,
+      "model-candidate": 12.935509947012179,
+      "model-baseline-after": 12.96912328095641
+    },
+    "all_token_ids_match": true,
+    "candidate_requests": 83,
+    "candidate_steady_seconds": 318.3178238159744,
+    "candidate_steady_requests": 65,
+    "peak_allocated_bytes": {
+      "model-baseline": [
+        14759126528,
+        14759126528
+      ],
+      "model-candidate": [
+        14759126528,
+        14759126528
+      ],
+      "model-baseline-after": [
+        14759126528,
+        14759126528
+      ]
+    },
+    "end_to_end_gain_claim": false,
+    "ordered_run_drift_detected": true,
+    "baseline_after_harness_exit": "120",
+    "baseline_after_exit_note": "Turn was interrupted during stdout delivery; saved final receipt assertions and model JSON independently revalidated, owned service absent. Raw exit120 retained."
+  },
+  "official_operator_pr": "https://github.com/Tecorigin/teco-ops/pull/41",
+  "unexecuted": [
+    "Current-head official CI/full official wheel",
+    "Official py311 model environment",
+    "Committee full accuracy",
+    "New long-input model benchmark"
+  ],
+  "public_patch_sha256": "5308055b25e87d217574561f4e9545f36d2e779092d83c7d3bcc305176995ca7",
+  "patch_packaging": {
+    "tested_patch_sha256": "f39692e1b02bd30bc33d5bfc971f0eae6318a10deb7af938c92e7eb1cd23c160",
+    "published_patch_sha256": "5308055b25e87d217574561f4e9545f36d2e779092d83c7d3bcc305176995ca7",
+    "source_bytes_exact_across_all_changed_files": true,
+    "change": "zero-context patch metadata only; compiled source unchanged"
+  }
+}

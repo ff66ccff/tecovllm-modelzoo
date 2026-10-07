@@ -335,3 +335,26 @@ capture, multimodal evaluation and current upstream-head wheel equivalence
 remain unexecuted or unverified. This capacity change makes no new speedup or
 final competition accuracy claim. Historical 2048/2304 results retain their
 original configuration and measurement scope.
+
+## D512 SV accumulation SIMD (2026-10-07)
+
+The archived optional D512 build now vectorizes only the Step E FP32 additions
+in the BM32 specialization. The accumulation order, softmax, DMA, FP16 packing,
+ABI and D256/generic specializations are unchanged. The clean official-main
+reconstruction has patch SHA256
+`5308055b25e87d217574561f4e9545f36d2e779092d83c7d3bcc305176995ca7`.
+Use the build helper's current generated provenance JSON when testing a fresh
+build; the legacy artifact commands above retain their historical scope.
+
+Own paired D512 decode80 and prefill8 invocation rows are bitwise equal to the
+baseline, with the original .02 reference tolerance. Ordinary,4352-boundary
+and poisoned-tail public gates also pass. Same-input,warmup5,10calls×3 micro
+medians for KV4352 and mixed batches improve about3.1–3.3%. All three raw
+values are in `validation/d512_accumulate_simd_20261007.json`.
+
+Own TP2/FP16/context4352 fixed greedy32 outputs match on83 candidate requests,
+including65 steady requests over318.317824s. Model A→B→A medians are
+13.543346 /12.935510 /12.969123 seconds; the last baseline overlaps the
+candidate, so this change claims no end-to-end speedup. Actual worker core
+hashes and peak allocations are retained in the proof. Current-head official
+CI,official py311 and final committee accuracy remain unverified.

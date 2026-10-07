@@ -45,7 +45,7 @@ class BuildProvenanceTests(unittest.TestCase):
         self.core_sha256 = hashlib.sha256(b"selected core bytes").hexdigest()
         self.receipt = {
             "official_base": "de27305efed0a17ae926d21d5415d8b915614649",
-            "patch_sha256": "c9a970bed3012c44bae0f446c314fa7fc2db2caee7496b03e48cd9f498884abb",
+            "patch_sha256": "5308055b25e87d217574561f4e9545f36d2e779092d83c7d3bcc305176995ca7",
             "python": str(self.vendor_python),
             "extension": "/original/build/path/_torch_ext.so",
             "extension_sha256": self.extension_sha256,

@@ -147,7 +147,23 @@ diff --git a/teco/ual/kernel/flash_attention/flash_attention.scpp b/teco/ual/ker
 @@ -240 +240 @@
 -                // gemm: Q * K^T = score, using teco_hal matmul M2=128, N2=32
 +                // gemm: Q * K^T = score, using teco_hal matmul M2<=128, N2=32
-@@ -350,2 +350,14 @@
+@@ -286,2 +286,13 @@
+-                    for (int rk = 0; rk < BK; rk++) {
+-                        o_accum[ri * BK + rk] *= s;
++                    if constexpr (BM == 32) {
++                        floatv16 vscale = s;
++                        float *row = o_accum + ri * BK;
++                        for (int rk = 0; rk < BK; rk += 16) {
++                            floatv16 value;
++                            simd_load(value, row + rk);
++                            value = value * vscale;
++                            simd_store(value, row + rk);
++                        }
++                    } else {
++                        for (int rk = 0; rk < BK; rk++) {
++                            o_accum[ri * BK + rk] *= s;
++                        }
+@@ -350,2 +361,14 @@
 -                        for (int ak = 0; ak < gemm_bn; ak++) {
 -                            o_accum[ai * BK + hb * gemm_bn + ak] += outO[ai * gemm_bn + ak];
 +                        if constexpr (BM == 32) {
@@ -164,7 +180,7 @@ diff --git a/teco/ual/kernel/flash_attention/flash_attention.scpp b/teco/ual/ker
 +                            for (int ak = 0; ak < gemm_bn; ak++) {
 +                                o_accum[ai * BK + hb * gemm_bn + ak] += outO[ai * gemm_bn + ak];
 +                            }
-@@ -393 +405,12 @@
+@@ -393 +416,12 @@
 -}
 \ No newline at end of file
 +}

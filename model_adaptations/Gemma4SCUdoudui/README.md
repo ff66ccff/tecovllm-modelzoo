@@ -358,3 +358,29 @@ including65 steady requests over318.317824s. Model A→B→A medians are
 candidate, so this change claims no end-to-end speedup. Actual worker core
 hashes and peak allocations are retained in the proof. Current-head official
 CI,official py311 and final committee accuracy remain unverified.
+
+## D512 accumulator rescale SIMD (2026-10-07)
+
+The current archived optional build adds floatv16 FP32 multiplication only in
+the BM32 Step B accumulator rescale. Each element uses the same scale at the
+same point; earlier Step E additions, softmax, packing, DMA, tiles and ABI keep
+their previous behavior. The current U0 combined patch SHA256 is
+`9756790105110f8fd4ed610d8e12c9269d2992a331fb8a0a530134204b3b7600`. Historical receipts above retain their original patch
+and binary identities; use the fresh build helper's generated provenance for
+the current published source.
+
+Own paired decode80 and prefill8 records are bitwise equal to the accepted
+baseline; original .02 reference tolerance, ordinary/fullgraph-eager,4352
+boundary and poison gates pass. Warmup5/10calls per trial,3 trials produce
+long-KV medians10.248963→9.855969ms (N1),13.116348→12.612844ms (N4) and
+42.709625→41.112411ms (N8), a3.74–3.84% micro reduction. The post-candidate
+baseline reproduces the earlier medians. All raw triples are retained in
+`validation/d512_rescale_simd_20261007.json`.
+
+Own TP2/FP16/context4352/chunk512 fixed greedy32 outputs match on
+83 candidate requests, including65
+steady requests over313.616906s. Worker DSO
+identities,eight D512 bindings and memory peaks are retained in that proof.
+The ordered model timings are validation only; no end-to-end gain is claimed.
+Current-head official CI/full wheel,official py311,committee accuracy and new
+long-input model benchmarks have not been run.

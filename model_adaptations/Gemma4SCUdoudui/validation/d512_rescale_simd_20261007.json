@@ -1,0 +1,2038 @@
+{
+  "model": "gemma-4-12b-it",
+  "branch": "model/gemma-4-12b-it",
+  "date": "2026-10-07",
+  "baseline_model_commit": "d554f5344e9890ed0704ed5d23c358ef0a92de83",
+  "hypothesis": "Only SIMD FP32 accumulator rescale in flash_attention_half<32> Step B",
+  "decision": "Accept measured long-KV operator improvement; no end-to-end gain claim",
+  "build": {
+    "branch": "model/gemma-4-12b-it",
+    "head": "d554f5344e9890ed0704ed5d23c358ef0a92de83",
+    "official_base": "de27305efed0a17ae926d21d5415d8b915614649",
+    "baseline_package": "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-accumulate-simd-20261007/candidate",
+    "source": "/dev/shm/scu-gemma-rescale-simd-20261007/source/teco/ual/kernel/flash_attention/flash_attention.scpp",
+    "baseline_source_sha256": "2774141cf047ab48c86ccd73473cbe0b81bbc545a0461d19691d82501b060998",
+    "candidate_source_sha256": "2630b68c14df8285bad0d1dd4f1bcc14fb77c124fc32c7d5dc3ce2e74d74b352",
+    "patch_sha256": "dc88deb5c8d6fb019650fd8c0761a1038c9cc3c7656d46c321c6df179fde1933",
+    "inverse_replacement_exact": true,
+    "ram": "/dev/shm/scu-gemma-rescale-simd-20261007",
+    "baseline_libraries": {
+      "libteco_gemma_flash.so": "e88dd5c34e6cee2bec005dfb5b8696a555e48d83c6c68be2dffc25e3e37f47a8",
+      "_torch_ext.cpython-312-loongarch64-linux-gnu.so": "c727f57fdd20d226e9e839c513c641e751e4295317690f6cb4a5408ee93260a4"
+    },
+    "build_passed": true,
+    "extension_recompiled": false,
+    "abi_changed": false,
+    "candidate_libraries": {
+      "libteco_gemma_flash.so": "d61208eeba2362714f9aab67d74d8f3dd9e57121991c90f0b5a17f62ee0fe4ef",
+      "_torch_ext.cpython-312-loongarch64-linux-gnu.so": "c727f57fdd20d226e9e839c513c641e751e4295317690f6cb4a5408ee93260a4"
+    },
+    "kernel_object_sha256": "262ad30d9517b6afcf64291776f5bc628b244153a21481a1340b247f67a07a72"
+  },
+  "micro": {
+    "passed": true,
+    "cases": 80,
+    "output_bitwise_equal": true,
+    "benchmark": [
+      {
+        "n": 1,
+        "kv": [
+          33
+        ],
+        "baseline_raw_ms": [
+          0.24322749814018607,
+          0.24403140414506197,
+          0.24557849974371493
+        ],
+        "candidate_raw_ms": [
+          0.24354749475605786,
+          0.24328749859705567,
+          0.24181240005418658
+        ],
+        "baseline_median_ms": 0.24403140414506197,
+        "candidate_median_ms": 0.24328749859705567,
+        "median_change_pct": -0.3048400883535862
+      },
+      {
+        "n": 1,
+        "kv": [
+          4352
+        ],
+        "baseline_raw_ms": [
+          10.242068499792367,
+          10.248963395133615,
+          10.31629120116122
+        ],
+        "candidate_raw_ms": [
+          9.855969296768308,
+          9.855175198754296,
+          9.856668300926685
+        ],
+        "baseline_median_ms": 10.248963395133615,
+        "candidate_median_ms": 9.855969296768308,
+        "median_change_pct": -3.834476553520594
+      },
+      {
+        "n": 4,
+        "kv": [
+          33,
+          65,
+          1025,
+          4352
+        ],
+        "baseline_raw_ms": [
+          13.125246099662036,
+          13.113395997788757,
+          13.116348104085773
+        ],
+        "candidate_raw_ms": [
+          12.62167320237495,
+          12.612573202932253,
+          12.612844200339168
+        ],
+        "baseline_median_ms": 13.116348104085773,
+        "candidate_median_ms": 12.612844200339168,
+        "median_change_pct": -3.838750693035986
+      },
+      {
+        "n": 8,
+        "kv": [
+          33,
+          65,
+          1025,
+          4097,
+          4320,
+          4352,
+          65,
+          4097
+        ],
+        "baseline_raw_ms": [
+          42.70962490118109,
+          42.6960798969958,
+          42.7649237040896
+        ],
+        "candidate_raw_ms": [
+          41.1149624036625,
+          41.07660950394347,
+          41.112411400536075
+        ],
+        "baseline_median_ms": 42.70962490118109,
+        "candidate_median_ms": 41.112411400536075,
+        "median_change_pct": -3.739703882533607
+      }
+    ],
+    "model_run": false,
+    "model_performance_claim": false
+  },
+  "micro_baseline_after": {
+    "passed": true,
+    "variant": "baseline",
+    "head": "d554f5344e9890ed0704ed5d23c358ef0a92de83",
+    "hypothesis": "D512 Step B SIMD FP32 rescale only",
+    "package": "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-accumulate-simd-20261007/candidate",
+    "library_sha256": {
+      "libteco_gemma_flash.so": "e88dd5c34e6cee2bec005dfb5b8696a555e48d83c6c68be2dffc25e3e37f47a8",
+      "_torch_ext.cpython-312-loongarch64-linux-gnu.so": "c727f57fdd20d226e9e839c513c641e751e4295317690f6cb4a5408ee93260a4"
+    },
+    "mapped_cores": [
+      "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-accumulate-simd-20261007/candidate/libteco_gemma_flash.so"
+    ],
+    "seed": 20261007,
+    "warmup": 5,
+    "calls": 10,
+    "rows": [
+      {
+        "case": 0,
+        "n": 1,
+        "kv": [
+          33
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.0010652542114257812,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 0,
+        "n": 1,
+        "kv": [
+          33
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.0010652542114257812,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 0,
+        "n": 1,
+        "kv": [
+          33
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.0010652542114257812,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 0,
+        "n": 1,
+        "kv": [
+          33
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.0010652542114257812,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 1,
+        "n": 1,
+        "kv": [
+          65
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.0009558200836181641,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 1,
+        "n": 1,
+        "kv": [
+          65
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.0009558200836181641,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 1,
+        "n": 1,
+        "kv": [
+          65
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.0009558200836181641,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 1,
+        "n": 1,
+        "kv": [
+          65
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.0009558200836181641,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 2,
+        "n": 1,
+        "kv": [
+          1025
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.0009441375732421875,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 2,
+        "n": 1,
+        "kv": [
+          1025
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.0009441375732421875,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 2,
+        "n": 1,
+        "kv": [
+          1025
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.0009441375732421875,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 2,
+        "n": 1,
+        "kv": [
+          1025
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.0009441375732421875,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 3,
+        "n": 1,
+        "kv": [
+          4097
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.0009813308715820312,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 3,
+        "n": 1,
+        "kv": [
+          4097
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.0009813308715820312,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 3,
+        "n": 1,
+        "kv": [
+          4097
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.0009813308715820312,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 3,
+        "n": 1,
+        "kv": [
+          4097
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.0009813308715820312,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 4,
+        "n": 1,
+        "kv": [
+          4320
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.001491546630859375,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 4,
+        "n": 1,
+        "kv": [
+          4320
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.001491546630859375,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 4,
+        "n": 1,
+        "kv": [
+          4320
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.001491546630859375,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 4,
+        "n": 1,
+        "kv": [
+          4320
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.001491546630859375,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 5,
+        "n": 1,
+        "kv": [
+          4352
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.001001596450805664,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 5,
+        "n": 1,
+        "kv": [
+          4352
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.001001596450805664,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 5,
+        "n": 1,
+        "kv": [
+          4352
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.001001596450805664,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 5,
+        "n": 1,
+        "kv": [
+          4352
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.001001596450805664,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 6,
+        "n": 4,
+        "kv": [
+          33,
+          33,
+          33,
+          33
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.0010287761688232422,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 6,
+        "n": 4,
+        "kv": [
+          33,
+          33,
+          33,
+          33
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.0010287761688232422,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 6,
+        "n": 4,
+        "kv": [
+          33,
+          33,
+          33,
+          33
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.0010287761688232422,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 6,
+        "n": 4,
+        "kv": [
+          33,
+          33,
+          33,
+          33
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.0010287761688232422,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 7,
+        "n": 4,
+        "kv": [
+          65,
+          65,
+          65,
+          65
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.0009989738464355469,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 7,
+        "n": 4,
+        "kv": [
+          65,
+          65,
+          65,
+          65
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.0009989738464355469,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 7,
+        "n": 4,
+        "kv": [
+          65,
+          65,
+          65,
+          65
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.0009989738464355469,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 7,
+        "n": 4,
+        "kv": [
+          65,
+          65,
+          65,
+          65
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.0009989738464355469,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 8,
+        "n": 4,
+        "kv": [
+          1025,
+          1025,
+          1025,
+          1025
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.0018811225891113281,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 8,
+        "n": 4,
+        "kv": [
+          1025,
+          1025,
+          1025,
+          1025
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.0018811225891113281,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 8,
+        "n": 4,
+        "kv": [
+          1025,
+          1025,
+          1025,
+          1025
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.0018811225891113281,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 8,
+        "n": 4,
+        "kv": [
+          1025,
+          1025,
+          1025,
+          1025
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.0018811225891113281,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 9,
+        "n": 4,
+        "kv": [
+          4097,
+          4097,
+          4097,
+          4097
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.0010340213775634766,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 9,
+        "n": 4,
+        "kv": [
+          4097,
+          4097,
+          4097,
+          4097
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.0010340213775634766,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 9,
+        "n": 4,
+        "kv": [
+          4097,
+          4097,
+          4097,
+          4097
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.0010340213775634766,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 9,
+        "n": 4,
+        "kv": [
+          4097,
+          4097,
+          4097,
+          4097
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.0010340213775634766,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 10,
+        "n": 4,
+        "kv": [
+          4320,
+          4320,
+          4320,
+          4320
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.0009746551513671875,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 10,
+        "n": 4,
+        "kv": [
+          4320,
+          4320,
+          4320,
+          4320
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.0009746551513671875,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 10,
+        "n": 4,
+        "kv": [
+          4320,
+          4320,
+          4320,
+          4320
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.0009746551513671875,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 10,
+        "n": 4,
+        "kv": [
+          4320,
+          4320,
+          4320,
+          4320
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.0009746551513671875,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 11,
+        "n": 4,
+        "kv": [
+          4352,
+          4352,
+          4352,
+          4352
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.0010488033294677734,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 11,
+        "n": 4,
+        "kv": [
+          4352,
+          4352,
+          4352,
+          4352
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.0010488033294677734,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 11,
+        "n": 4,
+        "kv": [
+          4352,
+          4352,
+          4352,
+          4352
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.0010488033294677734,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 11,
+        "n": 4,
+        "kv": [
+          4352,
+          4352,
+          4352,
+          4352
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.0010488033294677734,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 12,
+        "n": 8,
+        "kv": [
+          33,
+          33,
+          33,
+          33,
+          33,
+          33,
+          33,
+          33
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.001016855239868164,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 12,
+        "n": 8,
+        "kv": [
+          33,
+          33,
+          33,
+          33,
+          33,
+          33,
+          33,
+          33
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.001016855239868164,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 12,
+        "n": 8,
+        "kv": [
+          33,
+          33,
+          33,
+          33,
+          33,
+          33,
+          33,
+          33
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.001016855239868164,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 12,
+        "n": 8,
+        "kv": [
+          33,
+          33,
+          33,
+          33,
+          33,
+          33,
+          33,
+          33
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.001016855239868164,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 13,
+        "n": 8,
+        "kv": [
+          65,
+          65,
+          65,
+          65,
+          65,
+          65,
+          65,
+          65
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.0015244483947753906,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 13,
+        "n": 8,
+        "kv": [
+          65,
+          65,
+          65,
+          65,
+          65,
+          65,
+          65,
+          65
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.0015244483947753906,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 13,
+        "n": 8,
+        "kv": [
+          65,
+          65,
+          65,
+          65,
+          65,
+          65,
+          65,
+          65
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.0015244483947753906,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 13,
+        "n": 8,
+        "kv": [
+          65,
+          65,
+          65,
+          65,
+          65,
+          65,
+          65,
+          65
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.0015244483947753906,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 14,
+        "n": 8,
+        "kv": [
+          1025,
+          1025,
+          1025,
+          1025,
+          1025,
+          1025,
+          1025,
+          1025
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.0011088848114013672,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 14,
+        "n": 8,
+        "kv": [
+          1025,
+          1025,
+          1025,
+          1025,
+          1025,
+          1025,
+          1025,
+          1025
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.0011088848114013672,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 14,
+        "n": 8,
+        "kv": [
+          1025,
+          1025,
+          1025,
+          1025,
+          1025,
+          1025,
+          1025,
+          1025
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.0011088848114013672,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 14,
+        "n": 8,
+        "kv": [
+          1025,
+          1025,
+          1025,
+          1025,
+          1025,
+          1025,
+          1025,
+          1025
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.0011088848114013672,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 15,
+        "n": 8,
+        "kv": [
+          4097,
+          4097,
+          4097,
+          4097,
+          4097,
+          4097,
+          4097,
+          4097
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.0010302066802978516,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 15,
+        "n": 8,
+        "kv": [
+          4097,
+          4097,
+          4097,
+          4097,
+          4097,
+          4097,
+          4097,
+          4097
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.0010302066802978516,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 15,
+        "n": 8,
+        "kv": [
+          4097,
+          4097,
+          4097,
+          4097,
+          4097,
+          4097,
+          4097,
+          4097
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.0010302066802978516,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 15,
+        "n": 8,
+        "kv": [
+          4097,
+          4097,
+          4097,
+          4097,
+          4097,
+          4097,
+          4097,
+          4097
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.0010302066802978516,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 16,
+        "n": 8,
+        "kv": [
+          4320,
+          4320,
+          4320,
+          4320,
+          4320,
+          4320,
+          4320,
+          4320
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.001043558120727539,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 16,
+        "n": 8,
+        "kv": [
+          4320,
+          4320,
+          4320,
+          4320,
+          4320,
+          4320,
+          4320,
+          4320
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.001043558120727539,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 16,
+        "n": 8,
+        "kv": [
+          4320,
+          4320,
+          4320,
+          4320,
+          4320,
+          4320,
+          4320,
+          4320
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.001043558120727539,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 16,
+        "n": 8,
+        "kv": [
+          4320,
+          4320,
+          4320,
+          4320,
+          4320,
+          4320,
+          4320,
+          4320
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.001043558120727539,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 17,
+        "n": 8,
+        "kv": [
+          4352,
+          4352,
+          4352,
+          4352,
+          4352,
+          4352,
+          4352,
+          4352
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.001575469970703125,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 17,
+        "n": 8,
+        "kv": [
+          4352,
+          4352,
+          4352,
+          4352,
+          4352,
+          4352,
+          4352,
+          4352
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.001575469970703125,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 17,
+        "n": 8,
+        "kv": [
+          4352,
+          4352,
+          4352,
+          4352,
+          4352,
+          4352,
+          4352,
+          4352
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.001575469970703125,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 17,
+        "n": 8,
+        "kv": [
+          4352,
+          4352,
+          4352,
+          4352,
+          4352,
+          4352,
+          4352,
+          4352
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.001575469970703125,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 18,
+        "n": 4,
+        "kv": [
+          33,
+          65,
+          1025,
+          4352
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.0009837150573730469,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 18,
+        "n": 4,
+        "kv": [
+          33,
+          65,
+          1025,
+          4352
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.0009837150573730469,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 18,
+        "n": 4,
+        "kv": [
+          33,
+          65,
+          1025,
+          4352
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.0009837150573730469,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 18,
+        "n": 4,
+        "kv": [
+          33,
+          65,
+          1025,
+          4352
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.0009837150573730469,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 19,
+        "n": 8,
+        "kv": [
+          33,
+          65,
+          1025,
+          4097,
+          4320,
+          4352,
+          65,
+          4097
+        ],
+        "poisoned": false,
+        "stream": "default",
+        "maxabs": 0.0018110275268554688,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 19,
+        "n": 8,
+        "kv": [
+          33,
+          65,
+          1025,
+          4097,
+          4320,
+          4352,
+          65,
+          4097
+        ],
+        "poisoned": false,
+        "stream": "nondefault",
+        "maxabs": 0.0018110275268554688,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 19,
+        "n": 8,
+        "kv": [
+          33,
+          65,
+          1025,
+          4097,
+          4320,
+          4352,
+          65,
+          4097
+        ],
+        "poisoned": true,
+        "stream": "default",
+        "maxabs": 0.0018110275268554688,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      },
+      {
+        "case": 19,
+        "n": 8,
+        "kv": [
+          33,
+          65,
+          1025,
+          4097,
+          4320,
+          4352,
+          65,
+          4097
+        ],
+        "poisoned": true,
+        "stream": "nondefault",
+        "maxabs": 0.0018110275268554688,
+        "baseline_bitdiff": null,
+        "cache_bits_exact": true,
+        "output_padding_unchanged": true
+      }
+    ],
+    "benchmark": [
+      {
+        "case": 0,
+        "n": 1,
+        "kv": [
+          33
+        ],
+        "raw_ms": [
+          0.24472439545206726,
+          0.2450043975841254,
+          0.24419539840891957
+        ],
+        "median_ms": 0.24472439545206726
+      },
+      {
+        "case": 5,
+        "n": 1,
+        "kv": [
+          4352
+        ],
+        "raw_ms": [
+          10.241912602214143,
+          10.239577502943575,
+          10.245804500300437
+        ],
+        "median_ms": 10.241912602214143
+      },
+      {
+        "case": 18,
+        "n": 4,
+        "kv": [
+          33,
+          65,
+          1025,
+          4352
+        ],
+        "raw_ms": [
+          13.111219397978857,
+          13.108960399404168,
+          13.115229399409145
+        ],
+        "median_ms": 13.111219397978857
+      },
+      {
+        "case": 19,
+        "n": 8,
+        "kv": [
+          33,
+          65,
+          1025,
+          4097,
+          4320,
+          4352,
+          65,
+          4097
+        ],
+        "raw_ms": [
+          42.709011799888685,
+          42.72211370407604,
+          42.709663801360875
+        ],
+        "median_ms": 42.709663801360875
+      }
+    ],
+    "model_run": false,
+    "model_performance_claim": false,
+    "peak_allocated_bytes": 71671296,
+    "peak_reserved_bytes": 377487360
+  },
+  "focused_extra": {
+    "operator8": true,
+    "boundary": true,
+    "poison": true
+  },
+  "prefill_bitwise_cases": [
+    {
+      "query_tokens": 2,
+      "kv_tokens": 33,
+      "stream": "default",
+      "maxabs": 0.0009744167327880859,
+      "baseline_bitdiff": 0,
+      "cache_unchanged": true
+    },
+    {
+      "query_tokens": 2,
+      "kv_tokens": 33,
+      "stream": "nondefault",
+      "maxabs": 0.0009744167327880859,
+      "baseline_bitdiff": 0,
+      "cache_unchanged": true
+    },
+    {
+      "query_tokens": 33,
+      "kv_tokens": 65,
+      "stream": "default",
+      "maxabs": 0.0017347335815429688,
+      "baseline_bitdiff": 0,
+      "cache_unchanged": true
+    },
+    {
+      "query_tokens": 33,
+      "kv_tokens": 65,
+      "stream": "nondefault",
+      "maxabs": 0.0017347335815429688,
+      "baseline_bitdiff": 0,
+      "cache_unchanged": true
+    },
+    {
+      "query_tokens": 64,
+      "kv_tokens": 1025,
+      "stream": "default",
+      "maxabs": 0.0017695426940917969,
+      "baseline_bitdiff": 0,
+      "cache_unchanged": true
+    },
+    {
+      "query_tokens": 64,
+      "kv_tokens": 1025,
+      "stream": "nondefault",
+      "maxabs": 0.0017695426940917969,
+      "baseline_bitdiff": 0,
+      "cache_unchanged": true
+    },
+    {
+      "query_tokens": 128,
+      "kv_tokens": 4352,
+      "stream": "default",
+      "maxabs": 0.0018963813781738281,
+      "baseline_bitdiff": 0,
+      "cache_unchanged": true
+    },
+    {
+      "query_tokens": 128,
+      "kv_tokens": 4352,
+      "stream": "nondefault",
+      "maxabs": 0.0018963813781738281,
+      "baseline_bitdiff": 0,
+      "cache_unchanged": true
+    }
+  ],
+  "patch_packaging": {
+    "tested_patch_sha256": "fa9d8972e8f560639a47f2e23003ad23c9a0775a0135a433b16ca1906b3a0778",
+    "published_patch_sha256": "9756790105110f8fd4ed610d8e12c9269d2992a331fb8a0a530134204b3b7600",
+    "tested_isolated_patch_sha256": "dc88deb5c8d6fb019650fd8c0761a1038c9cc3c7656d46c321c6df179fde1933",
+    "published_isolated_patch_sha256": "555e965edaf1a9bcdcac9c09db59a3f40934ec8dde374a6765c56ef7993f430b",
+    "source_bytes_exact_across_all_changed_files": true,
+    "change": "U0 patch metadata only; compiled source and numeric gates unchanged",
+    "raw_location": "tested-patches/ in local evidence archive"
+  },
+  "public_patch_sha256": "9756790105110f8fd4ed610d8e12c9269d2992a331fb8a0a530134204b3b7600",
+  "model_validation": {
+    "configuration": {
+      "tp": 2,
+      "dtype": "float16",
+      "max_model_len": 4352,
+      "max_num_batched_tokens": 512,
+      "chunked_prefill": true,
+      "prefix_caching": false,
+      "completion_tokens": 32,
+      "devices": [
+        2,
+        3
+      ]
+    },
+    "raw_seconds": {
+      "baseline": [
+        13.56551813299302,
+        13.524816753983032,
+        13.467264207021799
+      ],
+      "candidate": [
+        13.376095780986361,
+        13.33131294202758,
+        13.374056167027447
+      ]
+    },
+    "median_seconds": {
+      "baseline": 13.524816753983032,
+      "candidate": 13.374056167027447
+    },
+    "all_token_ids_match": true,
+    "baseline_requests": 18,
+    "candidate_requests": 83,
+    "candidate_steady_seconds": 313.6169058230007,
+    "candidate_steady_requests": 65,
+    "workers": {
+      "baseline": [
+        {
+          "pid": 222299,
+          "rank": 0,
+          "logical_device": "/dev/tcaicard2",
+          "weight_devices": [
+            "sdaa:0"
+          ],
+          "weight_dtypes": [
+            "torch.float16"
+          ],
+          "selected_global_layers": [
+            {
+              "name": "model.layers.5.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.11.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.17.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.23.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.29.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.35.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.41.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.47.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            }
+          ],
+          "extension": "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-accumulate-simd-20261007/candidate/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+          "loaded_extension": "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-accumulate-simd-20261007/candidate/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+          "extension_sha256": "c727f57fdd20d226e9e839c513c641e751e4295317690f6cb4a5408ee93260a4",
+          "core": "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-accumulate-simd-20261007/candidate/libteco_gemma_flash.so",
+          "core_sha256": "e88dd5c34e6cee2bec005dfb5b8696a555e48d83c6c68be2dffc25e3e37f47a8",
+          "mapped_cores": [
+            "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-accumulate-simd-20261007/candidate/libteco_gemma_flash.so"
+          ],
+          "runtime_sha256": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8",
+          "max_model_len": 4352,
+          "max_num_batched_tokens": 512,
+          "tp": 2,
+          "chunked_prefill": true,
+          "prefix_caching": false,
+          "peak_allocated_bytes": 14759126528,
+          "peak_reserved_bytes": 15174991872
+        },
+        {
+          "pid": 222300,
+          "rank": 1,
+          "logical_device": "/dev/tcaicard3",
+          "weight_devices": [
+            "sdaa:1"
+          ],
+          "weight_dtypes": [
+            "torch.float16"
+          ],
+          "selected_global_layers": [
+            {
+              "name": "model.layers.5.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.11.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.17.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.23.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.29.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.35.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.41.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.47.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            }
+          ],
+          "extension": "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-accumulate-simd-20261007/candidate/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+          "loaded_extension": "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-accumulate-simd-20261007/candidate/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+          "extension_sha256": "c727f57fdd20d226e9e839c513c641e751e4295317690f6cb4a5408ee93260a4",
+          "core": "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-accumulate-simd-20261007/candidate/libteco_gemma_flash.so",
+          "core_sha256": "e88dd5c34e6cee2bec005dfb5b8696a555e48d83c6c68be2dffc25e3e37f47a8",
+          "mapped_cores": [
+            "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-accumulate-simd-20261007/candidate/libteco_gemma_flash.so"
+          ],
+          "runtime_sha256": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8",
+          "max_model_len": 4352,
+          "max_num_batched_tokens": 512,
+          "tp": 2,
+          "chunked_prefill": true,
+          "prefix_caching": false,
+          "peak_allocated_bytes": 14759126528,
+          "peak_reserved_bytes": 15174991872
+        }
+      ],
+      "candidate": [
+        {
+          "pid": 222726,
+          "rank": 0,
+          "logical_device": "/dev/tcaicard2",
+          "weight_devices": [
+            "sdaa:0"
+          ],
+          "weight_dtypes": [
+            "torch.float16"
+          ],
+          "selected_global_layers": [
+            {
+              "name": "model.layers.5.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.11.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.17.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.23.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.29.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.35.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.41.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.47.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            }
+          ],
+          "extension": "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-rescale-simd-20261007/candidate/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+          "loaded_extension": "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-rescale-simd-20261007/candidate/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+          "extension_sha256": "c727f57fdd20d226e9e839c513c641e751e4295317690f6cb4a5408ee93260a4",
+          "core": "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-rescale-simd-20261007/candidate/libteco_gemma_flash.so",
+          "core_sha256": "d61208eeba2362714f9aab67d74d8f3dd9e57121991c90f0b5a17f62ee0fe4ef",
+          "mapped_cores": [
+            "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-rescale-simd-20261007/candidate/libteco_gemma_flash.so"
+          ],
+          "runtime_sha256": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8",
+          "max_model_len": 4352,
+          "max_num_batched_tokens": 512,
+          "tp": 2,
+          "chunked_prefill": true,
+          "prefix_caching": false,
+          "peak_allocated_bytes": 14759126528,
+          "peak_reserved_bytes": 15174991872
+        },
+        {
+          "pid": 222727,
+          "rank": 1,
+          "logical_device": "/dev/tcaicard3",
+          "weight_devices": [
+            "sdaa:1"
+          ],
+          "weight_dtypes": [
+            "torch.float16"
+          ],
+          "selected_global_layers": [
+            {
+              "name": "model.layers.5.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.11.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.17.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.23.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.29.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.35.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.41.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            },
+            {
+              "name": "model.layers.47.self_attn.attn",
+              "head_size": 512,
+              "heads": 8,
+              "kv_heads": 1,
+              "window": null,
+              "scale": 1.0
+            }
+          ],
+          "extension": "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-rescale-simd-20261007/candidate/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+          "loaded_extension": "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-rescale-simd-20261007/candidate/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+          "extension_sha256": "c727f57fdd20d226e9e839c513c641e751e4295317690f6cb4a5408ee93260a4",
+          "core": "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-rescale-simd-20261007/candidate/libteco_gemma_flash.so",
+          "core_sha256": "d61208eeba2362714f9aab67d74d8f3dd9e57121991c90f0b5a17f62ee0fe4ef",
+          "mapped_cores": [
+            "/root/SichuanUniversity_AI_accelerator-gemma/op_learning/attention/gemma-d512-rescale-simd-20261007/candidate/libteco_gemma_flash.so"
+          ],
+          "runtime_sha256": "f0326a3d3bc89535e51c7ca96b468cfc88fa89053c7113a48e504b6cdd4facc8",
+          "max_model_len": 4352,
+          "max_num_batched_tokens": 512,
+          "tp": 2,
+          "chunked_prefill": true,
+          "prefix_caching": false,
+          "peak_allocated_bytes": 14759126528,
+          "peak_reserved_bytes": 15174991872
+        }
+      ]
+    },
+    "end_to_end_gain_claim": false,
+    "owned_services_released": true
+  },
+  "official_operator_pr": "https://github.com/Tecorigin/teco-ops/pull/41",
+  "unexecuted": [
+    "Current-head official CI/full official wheel",
+    "Official py311 model environment",
+    "Committee full accuracy",
+    "New long-input model benchmark"
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "model": "MiniCPM5-1B",
+  "capture_scope": "own_real_sdaa_fixed_prompt",
+  "capture_metadata_sha256": "862daf86cbe8de8ab2796055eaa40330aa84e918edb182a6d2720a08b253e3df",
+  "cases": [
+    {
+      "shape": [
+        7,
+        1536
+      ],
+      "mode": "plain",
+      "eps": 1e-06,
+      "source": "model_actual",
+      "modules": [
+        "model.layers.0.input_layernorm"
+      ]
+    },
+    {
+      "shape": [
+        7,
+        1536
+      ],
+      "mode": "add",
+      "eps": 1e-06,
+      "source": "model_actual",
+      "modules": [
+        "model.layers.0.post_attention_layernorm",
+        "model.layers.1.input_layernorm",
+        "model.layers.1.post_attention_layernorm",
+        "model.layers.2.input_layernorm",
+        "model.layers.2.post_attention_layernorm",
+        "model.layers.3.input_layernorm",
+        "model.layers.3.post_attention_layernorm",
+        "model.layers.4.input_layernorm",
+        "model.layers.4.post_attention_layernorm",
+        "model.layers.5.input_layernorm",
+        "model.layers.5.post_attention_layernorm",
+        "model.layers.6.input_layernorm",
+        "model.layers.6.post_attention_layernorm",
+        "model.layers.7.input_layernorm",
+        "model.layers.7.post_attention_layernorm",
+        "model.layers.8.input_layernorm",
+        "model.layers.8.post_attention_layernorm",
+        "model.layers.9.input_layernorm",
+        "model.layers.9.post_attention_layernorm",
+        "model.layers.10.input_layernorm",
+        "model.layers.10.post_attention_layernorm",
+        "model.layers.11.input_layernorm",
+        "model.layers.11.post_attention_layernorm",
+        "model.layers.12.input_layernorm",
+        "model.layers.12.post_attention_layernorm",
+        "model.layers.13.input_layernorm",
+        "model.layers.13.post_attention_layernorm",
+        "model.layers.14.input_layernorm",
+        "model.layers.14.post_attention_layernorm",
+        "model.layers.15.input_layernorm",
+        "model.layers.15.post_attention_layernorm",
+        "model.layers.16.input_layernorm",
+        "model.layers.16.post_attention_layernorm",
+        "model.layers.17.input_layernorm",
+        "model.layers.17.post_attention_layernorm",
+        "model.layers.18.input_layernorm",
+        "model.layers.18.post_attention_layernorm",
+        "model.layers.19.input_layernorm",
+        "model.layers.19.post_attention_layernorm",
+        "model.layers.20.input_layernorm",
+        "model.layers.20.post_attention_layernorm",
+        "model.layers.21.input_layernorm",
+        "model.layers.21.post_attention_layernorm",
+        "model.layers.22.input_layernorm",
+        "model.layers.22.post_attention_layernorm",
+        "model.layers.23.input_layernorm",
+        "model.layers.23.post_attention_layernorm",
+        "model.norm"
+      ]
+    },
+    {
+      "shape": [
+        1,
+        1536
+      ],
+      "mode": "plain",
+      "eps": 1e-06,
+      "source": "model_actual",
+      "modules": [
+        "model.layers.0.input_layernorm"
+      ]
+    },
+    {
+      "shape": [
+        1,
+        1536
+      ],
+      "mode": "add",
+      "eps": 1e-06,
+      "source": "model_actual",
+      "modules": [
+        "model.layers.0.post_attention_layernorm",
+        "model.layers.1.input_layernorm",
+        "model.layers.1.post_attention_layernorm",
+        "model.layers.2.input_layernorm",
+        "model.layers.2.post_attention_layernorm",
+        "model.layers.3.input_layernorm",
+        "model.layers.3.post_attention_layernorm",
+        "model.layers.4.input_layernorm",
+        "model.layers.4.post_attention_layernorm",
+        "model.layers.5.input_layernorm",
+        "model.layers.5.post_attention_layernorm",
+        "model.layers.6.input_layernorm",
+        "model.layers.6.post_attention_layernorm",
+        "model.layers.7.input_layernorm",
+        "model.layers.7.post_attention_layernorm",
+        "model.layers.8.input_layernorm",
+        "model.layers.8.post_attention_layernorm",
+        "model.layers.9.input_layernorm",
+        "model.layers.9.post_attention_layernorm",
+        "model.layers.10.input_layernorm",
+        "model.layers.10.post_attention_layernorm",
+        "model.layers.11.input_layernorm",
+        "model.layers.11.post_attention_layernorm",
+        "model.layers.12.input_layernorm",
+        "model.layers.12.post_attention_layernorm",
+        "model.layers.13.input_layernorm",
+        "model.layers.13.post_attention_layernorm",
+        "model.layers.14.input_layernorm",
+        "model.layers.14.post_attention_layernorm",
+        "model.layers.15.input_layernorm",
+        "model.layers.15.post_attention_layernorm",
+        "model.layers.16.input_layernorm",
+        "model.layers.16.post_attention_layernorm",
+        "model.layers.17.input_layernorm",
+        "model.layers.17.post_attention_layernorm",
+        "model.layers.18.input_layernorm",
+        "model.layers.18.post_attention_layernorm",
+        "model.layers.19.input_layernorm",
+        "model.layers.19.post_attention_layernorm",
+        "model.layers.20.input_layernorm",
+        "model.layers.20.post_attention_layernorm",
+        "model.layers.21.input_layernorm",
+        "model.layers.21.post_attention_layernorm",
+        "model.layers.22.input_layernorm",
+        "model.layers.22.post_attention_layernorm",
+        "model.layers.23.input_layernorm",
+        "model.layers.23.post_attention_layernorm",
+        "model.norm"
+      ]
+    }
+  ]
+}

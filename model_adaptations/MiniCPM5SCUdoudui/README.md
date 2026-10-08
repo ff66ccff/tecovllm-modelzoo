@@ -258,3 +258,68 @@ greedy32 runs at the default configured context 32768. Every output
 ID matches this model's reference; runtime/test sources are unchanged.
 This validates startup and short requests. Full official accuracy,
 performance evaluation and long-context requests remain pending.
+
+## Optional pinned E29 RMS epilogue (2026-10-08)
+
+This independently validated option changes only the official RMS plain/add
+second output loops to SIMD. Keep official attention and accepted vendor
+SwiGLU. It does not select PR37's current DMA kernel. The measured B reused
+preserved E29 binaries; only scalar A was freshly rebuilt in this attempt.
+A/B generated flags and compiler hashes match; independent MiniCPM results
+and actual runtime mappings are in validation/rms_epilogue_simd_20261008.json.
+
+Build isolated source and a small executable package, without pip installation,
+a wheel, global dependency changes or copied weights. Existing SDK/HAL is
+required; fail if the pinned source object or local HAL is unavailable.
+
+```bash
+set -euo pipefail
+b=model_adaptations/MiniCPM5SCUdoudui
+rms_source=/dev/shm/minicpm-e29-source
+rms_exec=/tmp/minicpm-e29-package
+rms_tmp=/tmp/minicpm-e29-build-tmp
+test ! -e "$rms_source" && test ! -e "$rms_exec" && test ! -e "$rms_tmp"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
+set +u; source /opt/tecoai/setvars.sh; set -u
+test "$(readlink -f /home/py312/bin/python)" = /usr/local/python/bin/python3.12
+tecocc --version
+test -f /root/thirdparty/teco-hal/lib/teco_hal.0.0.2.bc
+git clone --no-checkout https://github.com/Tecorigin/teco-ops.git "$rms_source"
+git -C "$rms_source" fetch --no-tags origin refs/pull/37/head
+git -C "$rms_source" checkout --detach e29b53c256f366e6eee538d656bfbb56e867cefc
+test "$(git -C "$rms_source" rev-parse HEAD)" = e29b53c256f366e6eee538d656bfbb56e867cefc
+echo '41a517c23ae849f0d36cbdb2746ea2b75e21e5f2efe4dbaf44b6ed99a62193be  '"$rms_source/teco/ual/kernel/rms_norm/rms_norm_fp16.scpp" | sha256sum -c -
+ln -s /root/thirdparty/teco-hal "$rms_source/thirdparty/teco-hal"
+mkdir -p "$rms_tmp" "$rms_exec/tecoops"
+(
+  cd "$rms_source"
+  export PATH=/home/py312/bin:$PATH
+  export TMPDIR="$rms_tmp" MAX_JOBS=2 CMAKE_BUILD_PARALLEL_LEVEL=2
+  export WITH_TORCH=ON WITH_INFERENCE_PLUGIN=OFF TORCH_DEVICE_BACKEND_AUTOLOAD=0
+  unset PYTHONPATH
+  /home/py312/bin/python setup.py build_ext --inplace > "$rms_tmp/build.log" 2>&1
+)
+cp "$rms_source/api/tecoops/__init__.py" "$rms_source/api/tecoops/libteco_ops.so" "$rms_source"/api/tecoops/_torch_ext.cpython-312-*.so "$rms_exec/tecoops/"
+sha256sum "$rms_exec"/tecoops/* > "$rms_tmp/package-sha256.txt"
+unset TORCH_DEVICE_BACKEND_AUTOLOAD TORCH_COMPILE_DISABLE VLLM_DISABLE_COMPILE VLLM_ENFORCE_EAGER VLLM_TORCH_COMPILE_LEVEL
+export PYTHONPATH="$rms_exec:${PYTHONPATH:-}"
+export LD_LIBRARY_PATH="$rms_exec/tecoops:${LD_LIBRARY_PATH:-}"
+export MINICPM_RMS_PACKAGE_ROOT="$rms_exec" SDAA_VISIBLE_DEVICES=1
+/home/py312/bin/python "$b/tests/test_rms_epilogue_sdaa.py" --metadata "$b/validation/rms_shapes_20261008.json" --out "$rms_tmp/focused.json"
+MINICPM_OP_PROFILE=official MINICPM_SILU_MUL_PROFILE=vendor_swiglu MINICPM_MAX_MODEL_LEN=2048 bash "$b/run.sh"
+```
+
+The startup uses existing PYTHONPATH/LD_LIBRARY_PATH initialization binding;
+there is no new selector or forward branch. The focused test checks RMS/cache/
+flash ABI availability and records actual package/core/extension hashes and
+unique mapped RMS core. Vendor SwiGLU comes from vendor sdaa::swiglu, independently
+of tecoops. Rebuilt artifact hashes may differ from the measured preserved B;
+retain the new build log and hashes, and rerun focused and model verification.
+
+The tested B source snapshot95b0 is not an official Git archive SHA. All559
+regular members match the canonical E29 source;558 files including all compiled
+sources match bytes, while only noncompiled doc/op_docs/rms_norm.md differs.
+Both complete greedy32 outputs match this model's reference, with default
+vLLM compile mode3/backend eager/cudagraphNONE, not enforce-eager. Shape-level
+speed measurements do not establish model speedup, official accuracy or full
+2048-token/long-context generation.

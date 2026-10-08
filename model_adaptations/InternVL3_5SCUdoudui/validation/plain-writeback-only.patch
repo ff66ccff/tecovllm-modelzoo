@@ -1,0 +1,8 @@
+--- a/teco/ual/kernel/rms_norm/rms_norm_fp16.scpp
++++ b/teco/ual/kernel/rms_norm/rms_norm_fp16.scpp
+@@ -136 +135,0 @@
+-        memcpy_wait(put_handle[buf_dbflag]);
+@@ -143,0 +143,3 @@
++    // Drain output DMA before freeing its SPM source. Unused handles are idle.
++    memcpy_wait(put_handle[0]);
++    memcpy_wait(put_handle[1]);

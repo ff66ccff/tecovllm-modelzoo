@@ -141,7 +141,8 @@
         "baseline_median": 0.06702280370518565,
         "candidate_median": 0.0255730003118515,
         "ratio": 2.6208424075341967,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "hidden model shape or explicit short/context boundary"
       },
       {
         "shape": [
@@ -163,7 +164,8 @@
         "baseline_median": 0.0916278047952801,
         "candidate_median": 0.05208579823374748,
         "ratio": 1.7591705974069631,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "hidden model shape or explicit short/context boundary"
       },
       {
         "shape": [
@@ -185,7 +187,8 @@
         "baseline_median": 0.06777389789931476,
         "candidate_median": 0.025728001492097974,
         "ratio": 2.6342465006514653,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "hidden model shape or explicit short/context boundary"
       },
       {
         "shape": [
@@ -207,7 +210,8 @@
         "baseline_median": 0.09159169858321548,
         "candidate_median": 0.052486901404336095,
         "ratio": 1.7450391646790722,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "hidden model shape or explicit short/context boundary"
       },
       {
         "shape": [
@@ -229,7 +233,8 @@
         "baseline_median": 0.06895979749970138,
         "candidate_median": 0.0275160011369735,
         "ratio": 2.5061707606574952,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "hidden model shape or explicit short/context boundary"
       },
       {
         "shape": [
@@ -251,7 +256,8 @@
         "baseline_median": 0.09544080239720643,
         "candidate_median": 0.05420889938250184,
         "ratio": 1.7606113292168017,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "hidden model shape or explicit short/context boundary"
       },
       {
         "shape": [
@@ -273,7 +279,8 @@
         "baseline_median": 0.24700539652258158,
         "candidate_median": 0.08434070041403174,
         "ratio": 2.9286619071222146,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "hidden model shape or explicit short/context boundary"
       },
       {
         "shape": [
@@ -295,7 +302,8 @@
         "baseline_median": 0.34917420125566423,
         "candidate_median": 0.18563150078989565,
         "ratio": 1.8810072631523462,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "hidden model shape or explicit short/context boundary"
       },
       {
         "shape": [
@@ -317,7 +325,8 @@
         "baseline_median": 3.397505299653858,
         "candidate_median": 1.0598242981359363,
         "ratio": 3.2057250486043145,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "hidden model shape or explicit short/context boundary"
       },
       {
         "shape": [
@@ -339,7 +348,8 @@
         "baseline_median": 4.798293800558895,
         "candidate_median": 2.4637647962663323,
         "ratio": 1.947545401992261,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "hidden model shape or explicit short/context boundary"
       },
       {
         "shape": [
@@ -361,7 +371,8 @@
         "baseline_median": 8.094398496905342,
         "candidate_median": 2.5185256032273173,
         "ratio": 3.213943303388668,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "hidden model shape or explicit short/context boundary"
       },
       {
         "shape": [
@@ -383,7 +394,8 @@
         "baseline_median": 11.438516899943352,
         "candidate_median": 5.863305099774152,
         "ratio": 1.9508650335088227,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "hidden model shape or explicit short/context boundary"
       },
       {
         "shape": [
@@ -405,7 +417,8 @@
         "baseline_median": 3.7081485032103956,
         "candidate_median": 1.413464394863695,
         "ratio": 2.6234467006634326,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "global-head boundary/stress32q/8kv; not accepted TP2 per-rank"
       },
       {
         "shape": [
@@ -427,7 +440,8 @@
         "baseline_median": 5.160705902380869,
         "candidate_median": 2.869622700382024,
         "ratio": 1.7983917891693009,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "global-head boundary/stress32q/8kv; not accepted TP2 per-rank"
       },
       {
         "shape": [
@@ -449,7 +463,8 @@
         "baseline_median": 0.9312655951362103,
         "candidate_median": 0.35897709894925356,
         "ratio": 2.5942200710353887,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "global-head boundary/stress32q/8kv; not accepted TP2 per-rank"
       },
       {
         "shape": [
@@ -471,7 +486,8 @@
         "baseline_median": 1.2938817031681538,
         "candidate_median": 0.7226672023534775,
         "ratio": 1.7904253838480948,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "global-head boundary/stress32q/8kv; not accepted TP2 per-rank"
       },
       {
         "shape": [
@@ -493,7 +509,8 @@
         "baseline_median": 8.903784299036488,
         "candidate_median": 3.3870934043079615,
         "ratio": 2.6287389322396546,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "global-head boundary/stress32q/8kv; not accepted TP2 per-rank"
       },
       {
         "shape": [
@@ -515,7 +532,8 @@
         "baseline_median": 12.392107502091676,
         "candidate_median": 6.8835415004286915,
         "ratio": 1.8002517310776616,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "global-head boundary/stress32q/8kv; not accepted TP2 per-rank"
       },
       {
         "shape": [
@@ -537,7 +555,8 @@
         "baseline_median": 2.2336312977131456,
         "candidate_median": 0.8528587990440428,
         "ratio": 2.618993085627763,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "global-head boundary/stress32q/8kv; not accepted TP2 per-rank"
       },
       {
         "shape": [
@@ -559,7 +578,8 @@
         "baseline_median": 3.104725095909089,
         "candidate_median": 1.726694602984935,
         "ratio": 1.7980742457536811,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "global-head boundary/stress32q/8kv; not accepted TP2 per-rank"
       },
       {
         "shape": [
@@ -581,7 +601,8 @@
         "baseline_median": 0.023155997041612864,
         "candidate_median": 0.020773999858647585,
         "ratio": 1.114662424144271,
-        "all_candidate_faster": true
+        "all_candidate_faster": true,
+        "shape_scope": "global-head boundary/stress32q/8kv; not accepted TP2 per-rank"
       },
       {
         "shape": [
@@ -603,7 +624,8 @@
         "baseline_median": 0.02341789659112692,
         "candidate_median": 0.023622997105121613,
         "ratio": 0.9913177606938695,
-        "all_candidate_faster": false
+        "all_candidate_faster": false,
+        "shape_scope": "global-head boundary/stress32q/8kv; not accepted TP2 per-rank"
       },
       {
         "shape": [
@@ -625,7 +647,8 @@
         "baseline_median": 0.021244899835437536,
         "candidate_median": 0.021158898016437888,
         "ratio": 1.0040645698529684,
-        "all_candidate_faster": false
+        "all_candidate_faster": false,
+        "shape_scope": "global-head boundary/stress32q/8kv; not accepted TP2 per-rank"
       },
       {
         "shape": [
@@ -647,7 +670,8 @@
         "baseline_median": 0.02319699851796031,
         "candidate_median": 0.02332190051674843,
         "ratio": 0.9946444330856132,
-        "all_candidate_faster": false
+        "all_candidate_faster": false,
+        "shape_scope": "global-head boundary/stress32q/8kv; not accepted TP2 per-rank"
       }
     ],
     "cpu_original_thresholds": {
@@ -1044,7 +1068,9 @@
     "baseline_harness_limits": [
       "CPU residual bit identity failed unchanged baseline; original residual<.01 gate retained; candidate-versus-baseline bits mandatory",
       "Odd half DMA D31+odd row block rejected unchanged baseline; valid even non-multiple16 tail dimensions30/126/130 passed"
-    ]
+    ],
+    "shape_clarification_20261007": "Current live TP2 workers have16q/4kv heads, D128. Historical32q/8kv rows retain values/correctness but are global-head stress, not per-rank performance. True TP2 matrix in rms_plain_writeback_20261007.json.",
+    "measurement_scope": "synchronized perf_counter operator-call latency including Python/dispatch, not event-only device kernel time"
   },
   "build_provenance": {
     "baseline": {

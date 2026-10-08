@@ -142,9 +142,10 @@ FP16 output loops: widen, multiply by rstd then weight in FP32, narrow, and
 retain the scalar tail. Reduction order, residual rounding, DMA, stream and
 ABI remain unchanged. The default launcher/runtime above are unchanged.
 
-The 32 focused cases match baseline output/residual bits, including real
-hidden4096 and q/k128 shapes, stream and tail probes. Three identical
-micro trials improve actual long-prefill shapes; raw triples, medians and
+The 32 focused cases match baseline output/residual bits, including
+hidden4096 model/boundary cases and q/k128 global-head stress, stream and tail
+probes. Historical q/k32/8-head rows are not TP2 per-rank measurements.
+Three identical micro trials improve the tested long shapes; raw triples, medians and
 original CPU oracle limits/differences are in
 `validation/rms_epilogue_simd_20261007.json`. Baseline odd-half DMA and CPU
 rounding limitations are recorded rather than attributed to this patch.
@@ -215,3 +216,54 @@ The recorded test-library hashes identify the tested build, while the pinned
 source and patch identify what to rebuild. Re-run the independent focused
 and fixed-input model gates for a new build; the source commit alone does
 not prove another build or model's performance.
+
+
+## Plain RMSNorm output writeback overlap (2026-10-07)
+
+This isolated patch moves only the plain output-DMA wait to the existing
+same-output-buffer reuse point and drains both output handles before freeing
+SPM. Input/output ping-pong buffers are separate. The add kernel, reduction
+order, FP16 rounding, row layout, stream and ABI remain unchanged; public
+run.sh/runtime defaults are unchanged.
+
+[Independent proof](validation/rms_plain_writeback_20261007.json) preserves
+all 48 focused cases, CPU oracle differences with original .005/.01 thresholds,
+output/residual bit equality against current E29, reuse stress, Fake/fullgraph,
+actual TP2 shapes and every A-before/B/A-after raw triple/median. Same public
+TP2 FP16 ctx4352 fixed text/image greedy32 passed with two warmups/three trials;
+candidate steady passed 317.157 seconds / 16 rounds / 48 requests. Actual worker maps,
+145 selected norms per worker and peaks 11.713 allocated / 13.039 reserved GiB/rank
+are recorded. Capture-limited call receipts do not count every model forward.
+
+A separate read-only metadata supplement (no generation/timing) verifies
+36 attention modules per worker, TP2, 16 query / 4 KV heads, D128, q/k norm weights [128]
+FP16 on SDAA and epsilon 1e-6. Historical 32/8-head q/k results are global-head
+stress; their original values and precision conclusions remain intact.
+
+The timer is synchronized perf_counter operator-call latency including
+Python/dispatch, not pure device-kernel time. Actual TP2 long q/k plain calls
+are 12.2–13.2% lower versus both A arms; hidden [1811/4352,4096] calls about 1.7%.
+Short-shape/control observations (including minor negatives and changes in
+unchanged add) are retained without a speed claim. Model A-to-B timings are
+observations only: no E2E gain or official task-accuracy claim.
+
+For isolated rebuilding, start from official PR37
+e29b53c256f366e6eee538d656bfbb56e867cefc or documentation head
+2949f7061a05af0f4cb2b88fb3344380e3dfc4e0: both have canonical kernel SHA256
+41a517c23ae849f0d36cbdb2746ea2b75e21e5f2efe4dbaf44b6ed99a62193be.
+Apply [the public U0 patch](validation/plain-writeback-only.patch), then use
+the preceding vendor-Python/SDK isolated bdist_wheel/extraction/startup
+PYTHONPATH recipe. No global package or model weight changes are needed.
+
+    git -C "$OPS_SRC" checkout --detach e29b53c256f366e6eee538d656bfbb56e867cefc
+    git -C "$OPS_SRC" apply --unidiff-zero --check "$ADAPTATION/validation/plain-writeback-only.patch"
+    git -C "$OPS_SRC" apply --unidiff-zero "$ADAPTATION/validation/plain-writeback-only.patch"
+    sha256sum "$OPS_SRC/teco/ual/kernel/rms_norm/rms_norm_fp16.scpp"
+
+Expected candidate SHA256:
+93e8e80d08d401fffaa3060bf8e6e24bd989ab59fd8cb09c079228710f66d5b7.
+The U0-applied bytes exactly match tested source; tested U3 is retained in raw
+evidence. Tested baseline core/extension hashes start d26791a5/c7d4a8c0;
+candidate hashes start ed1358d6/e34873d8 (full hashes in proof). Rebuilt binaries
+must record their own hashes and re-run gates; source identity does not prove
+another build's performance. No binary artifact is included.

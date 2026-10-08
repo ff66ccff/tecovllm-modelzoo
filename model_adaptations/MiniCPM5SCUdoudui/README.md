@@ -289,6 +289,7 @@ git -C "$rms_source" fetch --no-tags origin refs/pull/37/head
 git -C "$rms_source" checkout --detach e29b53c256f366e6eee538d656bfbb56e867cefc
 test "$(git -C "$rms_source" rev-parse HEAD)" = e29b53c256f366e6eee538d656bfbb56e867cefc
 echo '41a517c23ae849f0d36cbdb2746ea2b75e21e5f2efe4dbaf44b6ed99a62193be  '"$rms_source/teco/ual/kernel/rms_norm/rms_norm_fp16.scpp" | sha256sum -c -
+mkdir -p "$rms_source/thirdparty"
 ln -s /root/thirdparty/teco-hal "$rms_source/thirdparty/teco-hal"
 mkdir -p "$rms_tmp" "$rms_exec/tecoops"
 (

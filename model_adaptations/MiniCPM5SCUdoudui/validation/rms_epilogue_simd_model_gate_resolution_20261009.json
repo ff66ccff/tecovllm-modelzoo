@@ -1,0 +1,210 @@
+{
+  "date": "2026-10-09",
+  "model": "MiniCPM5-1B",
+  "branch": "model/minicpm5-1b",
+  "step": "Resolve the MICRO_GO_MODEL_GATE_PENDING state of the 2026-10-08 E29 RMSNorm second-pass epilogue SIMD attempt",
+  "resolution": "MODEL_GATE_WAS_ALREADY_EXECUTED__NO_STABLE_MODEL_GAIN__DISCARD",
+  "decision": "discard",
+  "device_run_in_this_step": false,
+  "card_occupied_in_this_step": false,
+  "why_no_new_device_run": "The model-level A/B gate requested for this step had already been executed and receipted on 2026-10-08 against the SAME single hypothesis (only the two second-pass plain/add epilogue loops changed to SIMD). Re-running an identical gate would duplicate a recorded measurement and occupy the shared single 64GB TECO_AICARD_01. The step's own instruction says to say so instead of redoing it. This receipt therefore VERIFIES the recorded gate from its raw artefacts instead of repeating it, and resolves the contradictory PENDING flags.",
+  "premise_corrections": [
+    {
+      "id": "C1",
+      "claim_checked": "'the model-level gate was never run, so there is no model claim'",
+      "verdict": "NOT SUPPORTED - the model-level gate WAS run",
+      "evidence": "Recorded in model_adaptations/MiniCPM5SCUdoudui/validation/rms_epilogue_simd_20261008.json under /models/A and /models/B, executed 2026-10-08 02:28:07Z-02:39:24Z, with raw clients under logs/minicpm5-1b/rmsnorm-epilogue-simd-20261008/model-A-retry1/ and model-B/, plus stage_results.json (model_A_pass true, model_B_pass true, B_steady_seconds 301.92812288494315) written 02:42Z."
+    },
+    {
+      "id": "C2",
+      "claim_checked": "'a device microbenchmark showed ~1.10% model-median difference'",
+      "verdict": "MISATTRIBUTED - 1.10% is the MODEL-level 3-run median difference, not a device microbenchmark number",
+      "evidence": "Model arm medians: A 2439.6632940042764 ms vs B 2412.7150650019757 ms = 1.1045880416584%. The shape-level (device micro) numbers are far larger: 7x1536 plain D=1536 eps=1e-6 focused medians A 0.028248949 ms / B 0.014639951 ms (about 48% lower) / A-after 0.027848451 ms."
+    },
+    {
+      "id": "C3",
+      "claim_checked": "'the currently installed tecoops wheels are NOT the E29 build, so the pinned E29 recipe has to be built/installed first'",
+      "verdict": "FIRST HALF CONFIRMED, SECOND HALF NOT NECESSARY",
+      "evidence": "Installed /home/py312/lib/python3.12/site-packages/tecoops (mtime 2026-07-28): libteco_ops.so sha256 fe27930e91ce41ccdc2234d4ec9e71951a9539d02cf6cde2902508f58830f27c, _torch_ext.cpython-312-loongarch64-linux-gnu.so sha256 658a3b5e9b64db7e6192deeffa98bd29db3d7919e7a75993a888e242bda3a42f. E29 candidate: libteco_ops.so d26791a5c1f9d902f2449baf62c58490aafa455cab357f8b93bbc029f525da97, extension c7d4a8c02138d0742e1da46e9aff79515d75b364b02171fd0b03e34db5cc3f4b. They differ. However no build or install was needed: a preserved E29 build already exists on disk and the branch's documented use is a process-local PYTHONPATH package, not a site-packages install (global site-packages must not be modified)."
+    }
+  ],
+  "why_the_pending_flags_exist": {
+    "kind": "write-ordering artefact, not a skipped gate",
+    "timeline_utc_20261008": [
+      "02:16 focused-results.json written - model_run false, model_300_run false",
+      "02:21 attempt.json written - result.status MICRO_GO_MODEL_GATE_PENDING, model_run false",
+      "02:23:45 first model-A bootstrap failure (CPU-only TORCH_DEVICE_BACKEND_AUTOLOAD=0 leaked into the child) - raw log preserved",
+      "02:25 decision.json written - decision GO, scope 'own4 real shape focused only; model gate pending root authorization'",
+      "02:28:07-02:28:29 model A arm executed (baseline, retry1)",
+      "02:32:46-02:39:29 model B arm executed (candidate, with steady run)",
+      "02:42 rms_epilogue_simd_20261008.json and stage_results.json written - both model arms recorded"
+    ],
+    "conclusion": "attempt.json, focused-results.json and decision.json were last written BEFORE root authorized the device and before either model arm ran, and were never re-written afterwards. Their PENDING/false values are stale. They were preserved unedited by this step; the resolution is recorded here and in attempt.json's status field."
+  },
+  "independent_verification_20261009": {
+    "no_device_used": true,
+    "method": "Re-hashed the primary raw artefacts and re-derived every reported number from them.",
+    "raw_client_sha256": {
+      "A": {
+        "path": "logs/minicpm5-1b/rmsnorm-epilogue-simd-20261008/model-A-retry1/client.json",
+        "sha256": "4a7af8630a5a6e4699bb95a237d762f7397e00e00de7c133636f7d48269f251b",
+        "matches_receipt_raw_client_sha256": true
+      },
+      "B": {
+        "path": "logs/minicpm5-1b/rmsnorm-epilogue-simd-20261008/model-B/client.json",
+        "sha256": "d8fa9fdd0149b4725992d45d7704f869400585adb7caba493386784bf154a5d3",
+        "matches_receipt_raw_client_sha256": true
+      }
+    },
+    "on_disk_package_hashes_recomputed": {
+      "baseline": {
+        "path": "op_learning/minicpm5-1b/rmsnorm-epilogue-simd-20261008/baseline/tecoops",
+        "libteco_ops.so": "7fc428538a0f01d5eeb1863a56955accc14ae52d1ee95e59fb3dd9ebc7ff6b84",
+        "_torch_ext.cpython-312-loongarch64-linux-gnu.so": "7d02b580ed7fd023a0c46cbf63fcb45e863f32c2c0068569a404f7c553fb8c29",
+        "matches_receipt": true
+      },
+      "candidate": {
+        "path": "/root/SichuanUniversity_AI_accelerator/op_learning/norm/internvl-rms-epilogue-simd-20261007/candidate/tecoops",
+        "libteco_ops.so": "d26791a5c1f9d902f2449baf62c58490aafa455cab357f8b93bbc029f525da97",
+        "_torch_ext.cpython-312-loongarch64-linux-gnu.so": "c7d4a8c02138d0742e1da46e9aff79515d75b364b02171fd0b03e34db5cc3f4b",
+        "matches_receipt": true
+      }
+    },
+    "server_logs_show_model_ready": {
+      "A": "logs/minicpm5-1b/rmsnorm-epilogue-simd-20261008/model-A-retry1/server.log contains 1 'Application startup complete'",
+      "B": "logs/minicpm5-1b/rmsnorm-epilogue-simd-20261008/model-B/server.log contains 1 'Application startup complete'"
+    },
+    "runtime_environment_confirmed_from_driver_logs": {
+      "torch": "2.12.0a0+git0d62256",
+      "torch_sdaa": "20260623.8.51.dev0+gitd942f23",
+      "vllm": "0.20.2.dev0+g132765e35.d20260728",
+      "transformers": "4.57.6"
+    },
+    "arm_settings_identical_except_the_package": {
+      "MINICPM_OP_PROFILE": "official",
+      "MINICPM_SILU_MUL_PROFILE": "vendor_swiglu",
+      "MINICPM_MAX_MODEL_LEN": "2048",
+      "SDAA_VISIBLE_DEVICES": "1",
+      "dtype": "torch.float16",
+      "tp": 1,
+      "device": "sdaa:0",
+      "enforce_eager": false,
+      "compile_mode": "3",
+      "compile_backend": "eager",
+      "cudagraph_mode": "NONE",
+      "rms_modules_selected": "49 x TecoopsRMSNorm float16 sdaa:0 numel1536 epsilon 1e-06"
+    }
+  },
+  "exact_commands_of_the_verified_gate": {
+    "launcher": "bash model_adaptations/MiniCPM5SCUdoudui/run.sh --worker-extension-cls model_probe.MiniRMSGateProbe",
+    "harness": "/home/py312/bin/python op_learning/minicpm5-1b/rmsnorm-epilogue-simd-20261008/run_model_gate.py --variant baseline|candidate --metadata model_adaptations/MiniCPM5SCUdoudui/validation/rms_shapes_20261008.json --expected model_adaptations/MiniCPM5SCUdoudui/validation/baseline_token_ids.json --port 18191 --outdir logs/minicpm5-1b/rmsnorm-epilogue-simd-20261008/model-A-retry1|model-B --micro-go logs/minicpm5-1b/rmsnorm-epilogue-simd-20261008/decision.json [--baseline-client logs/minicpm5-1b/rmsnorm-epilogue-simd-20261008/model-A-retry1/client.json] [--steady 300]",
+    "arm_selection": "process-local PYTHONPATH/LD_LIBRARY_PATH pointing at baseline/tecoops (arm A) or the preserved E29 candidate/tecoops (arm B); run.sh, the runtime overlay and the profiles were NOT modified between arms",
+    "note": "The --micro-go token consumed by run_model_gate.py was decision.json (decision == 'GO'); stage_results.json holds decision 'GO optional E29' and is the focused summary, not the harness gate token"
+  },
+  "arms": {
+    "A_baseline_controlled_rebuild": {
+      "variant": "baseline",
+      "package": "op_learning/minicpm5-1b/rmsnorm-epilogue-simd-20261008/baseline/tecoops (fresh CPU RAM build_ext of the pre-SIMD source, no wheel)",
+      "libteco_ops_sha256": "7fc428538a0f01d5eeb1863a56955accc14ae52d1ee95e59fb3dd9ebc7ff6b84",
+      "extension_sha256": "7d02b580ed7fd023a0c46cbf63fcb45e863f32c2c0068569a404f7c553fb8c29",
+      "smoke_greedy32": 2,
+      "smoke_token_ids_equal_branch_baseline": true,
+      "warmup_raw_ms": [
+        2526.5072229667567,
+        2452.918748022057,
+        2449.8212069738656
+      ],
+      "measured_raw_ms": [
+        2439.6632940042764,
+        2468.2493879809044,
+        2416.493065014947
+      ],
+      "median_ms": 2439.6632940042764,
+      "span_ms": 51.756322965957224,
+      "steady_seconds": 0.3716373930219561,
+      "steady_requests": 0,
+      "steady_run_executed": false,
+      "allocated_bytes": 13867795456,
+      "reserved_bytes": 14969470976,
+      "peak_allocated_bytes_after": 13868604928,
+      "released": true
+    },
+    "B_candidate_E29": {
+      "variant": "candidate",
+      "package": "/root/SichuanUniversity_AI_accelerator/op_learning/norm/internvl-rms-epilogue-simd-20261007/candidate/tecoops (preserved E29 build, reused - not rebuilt)",
+      "libteco_ops_sha256": "d26791a5c1f9d902f2449baf62c58490aafa455cab357f8b93bbc029f525da97",
+      "extension_sha256": "c7d4a8c02138d0742e1da46e9aff79515d75b364b02171fd0b03e34db5cc3f4b",
+      "e29_source_commit": "e29b53c256f366e6eee538d656bfbb56e867cefc",
+      "e29_kernel_sha256": "41a517c23ae849f0d36cbdb2746ea2b75e21e5f2efe4dbaf44b6ed99a62193be",
+      "smoke_greedy32": 2,
+      "smoke_token_ids_equal_branch_baseline": true,
+      "warmup_raw_ms": [
+        2437.3469999991357,
+        2418.9652890199795,
+        2440.12823299272
+      ],
+      "measured_raw_ms": [
+        2418.1028910097666,
+        2396.589677024167,
+        2412.7150650019757
+      ],
+      "median_ms": 2412.7150650019757,
+      "span_ms": 21.513213985599577,
+      "steady_seconds": 301.92812288494315,
+      "steady_requests": 110,
+      "steady_all_exact32": true,
+      "allocated_memory_slope_bytes_per_second": 0.0,
+      "allocated_last_minus_first_bytes": 0,
+      "released": true
+    }
+  },
+  "timing_analysis": {
+    "delta_median_ms": 26.94822900230065,
+    "delta_median_percent": 1.1045880416584,
+    "B_median_lower_than_A_median": true,
+    "B_runs_below_A_median": "3/3",
+    "A_min_ms": 2416.493065014947,
+    "B_max_ms": 2418.1028910097666,
+    "range_overlap_ms": 1.6098259948194027,
+    "ranges_separated": false,
+    "relative_spread_percent": {
+      "A": 2.121458417783,
+      "B": 0.891873861252
+    },
+    "n_per_arm": 3,
+    "verdict": "The medians move in the favourable direction and all three B runs sit below the A median, but the fastest A run (2416.493065014947 ms) is faster than the slowest B run (2418.1028910097666 ms): the two 3-sample ranges overlap by 1.6098259948194027 ms. A 1.10% median shift is therefore NOT separated from the measured run-to-run noise at n=3, and no model-level speedup is claimed."
+  },
+  "decision_rule_applied": {
+    "correctness_clean": true,
+    "timing_direction_consistent": "partially - 3/3 B runs below the A median, but the ranges overlap",
+    "outside_measured_noise": false,
+    "rule": "keep only if correctness-clean AND the 3-run timing direction is consistent AND outside the measured noise",
+    "outcome": "discard"
+  },
+  "scope_limits_what_this_does_not_prove": [
+    "No model-level speedup: the 1.10% median delta is not separated from run-to-run noise at n=3.",
+    "The baseline arm is a controlled fresh rebuild of the pre-SIMD source (7fc428538a0f01d5eeb1863a56955accc14ae52d1ee95e59fb3dd9ebc7ff6b84 / 7d02b580ed7fd023a0c46cbf63fcb45e863f32c2c0068569a404f7c553fb8c29), NOT the currently installed site-packages tecoops (fe27930e91ce41ccdc2234d4ec9e71951a9539d02cf6cde2902508f58830f27c / 658a3b5e9b64db7e6192deeffa98bd29db3d7919e7a75993a888e242bda3a42f). The installed-wheel-versus-E29 model comparison has never been run.",
+    "Arm A was run before arm B and no model-level A-after (drift control) was recorded; ordering drift at model level is therefore NOT controlled, even though the shape-level focused A/B/A-after showed no drift (A-after 0.027848451 vs A 0.028248949 ms).",
+    "The >=300 s steady run was executed on arm B only (301.92812288494315 s / 110 requests); arm A's steady run was not executed.",
+    "Whole distinct binaries may still carry layout effects; identical normalized flags do not prove identical generated code size/placement.",
+    "Temporary fixed-prompt FP16 regression only: no official accuracy, no committee test-set number (the official test set has never been delivered - docs/competition/open-questions.md B03), no long-context or full-2048 generation claim.",
+    "N1/N7 D1536 shape-level gains do not establish model-level gains.",
+    "This step used no device and occupied no card."
+  ],
+  "production_effect": {
+    "production_change": false,
+    "rollback_needed": false,
+    "reason": "E29 was never wired into model_adaptations/MiniCPM5SCUdoudui/run.sh or the runtime overlay; it exists only as a process-local PYTHONPATH package used by the A/B harness. Discarding it therefore requires no revert, and the accepted official attention + vendor_swiglu runtime is untouched.",
+    "installed_site_packages_modified": false,
+    "weights_modified": false
+  },
+  "artefacts_verified": [
+    "model_adaptations/MiniCPM5SCUdoudui/validation/rms_epilogue_simd_20261008.json (frozen historical receipt - NOT edited; sha256 8aef5d4d7c8307220c5921cc329133c189d750f88b1dcb4e0e5dd96c67c23c88)",
+    "model_adaptations/MiniCPM5SCUdoudui/validation/baseline_token_ids.json",
+    "op_learning/minicpm5-1b/rmsnorm-epilogue-simd-20261008/{attempt.json,focused-results.json,source-proof.json,public-runtime-sourcehash.json,stage_results.json}",
+    "logs/minicpm5-1b/rmsnorm-epilogue-simd-20261008/{model-A-retry1,model-B}/{client.json,runner.json,server.log}",
+    "logs/minicpm5-1b/rmsnorm-epilogue-simd-20261008/{A,B,A-after}.json, {A,B}-driver.log, decision.json, focused-summary.json"
+  ],
+  "sibling_of": "model_adaptations/MiniCPM5SCUdoudui/validation/rms_epilogue_simd_20261008.json (frozen; this file resolves its PENDING companion state, it does not overwrite it)",
+  "authored_by": "worker card step (verification only, no device run)"
+}

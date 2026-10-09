@@ -26,6 +26,12 @@ and explicitly uses `/home/py312/bin/python` (resolved target
 reuse of graphs from the previous operator binding. Override the local path,
 port, host, and sequence limit with `INTERNVL_MODEL`, `INTERNVL_PORT`,
 `INTERNVL_HOST`, and `INTERNVL_MAX_MODEL_LEN`.
+The official CI entry point `tools/ci_pipline/run_ci.py` drives this tree's
+`model_adaptations/InternVL3_5SCUdoudui/run.sh`, which uses FP16 / TP2 /
+`--limit-mm-per-prompt '{"image": 1}'` / `--no-enable-chunked-prefill` and the
+overridable `--max-model-len` default of 4352. The team's internal launcher
+`scripts/serve_internvl.sh` (private accelerator repo, not part of this submission)
+states the same contract and the same 4352 default, so both entries state one capacity.
 The historical baseline was tested with TP2, FP16, and a sequence limit of 4096.
 The candidate changes only the default sequence limit to 4352 for the official
 T2 4096-token prompt plus 100-token output. On 2026-10-05, both TP workers

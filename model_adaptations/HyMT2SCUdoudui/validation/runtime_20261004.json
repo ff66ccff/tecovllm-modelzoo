@@ -114,6 +114,28 @@
       890,
       5464
     ],
+    "request_form": {
+      "form": "chat template applied to the prompt as a user message (this line's own clients default to it; see scripts/steady_state_hy_mt2.py:31-32,71-72 and scripts/bench_e2e_device_ab.py:61)",
+      "equivalent_paths": [
+        "POST /v1/chat/completions with messages=[{role:user, content:<fixed_prompt>}]",
+        "POST /v1/completions with the prompt rendered by tokenizer.apply_chat_template(..., tokenize=False, add_generation_prompt=True)"
+      ],
+      "both_paths_reproduce_greedy32_ids": true,
+      "raw_prompt_not_covered": "Sending the literal raw fixed_prompt text to /v1/completions is NOT covered by this baseline: it produces a different token stream (observed first token 185 vs 6400 on 2026-10-10). The recorded baseline was produced with the chat template applied.",
+      "reproduced_with": {
+        "model_name": "Hy-MT2-1.8B",
+        "endpoints": [
+          "/v1/chat/completions",
+          "/v1/completions (chat-template rendered)"
+        ],
+        "max_tokens": 32,
+        "temperature": 0,
+        "top_p": 1,
+        "top_k": -1,
+        "seed": 0,
+        "environment": "clean checkout of tecovllm-modelzoo-SCUdoudui main a9fa1c5e, MODEL_ROOT=/gpfs/model, FP16 TP1 ctx8192, 2026-10-10"
+      }
+    },
     "export_greedy32_match": true,
     "concurrency4_8": true,
     "steady_seconds": 303.19188399999985,

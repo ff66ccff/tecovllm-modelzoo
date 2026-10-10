@@ -410,7 +410,7 @@
     "tests/test_vllm_mlp_caller.py": "36c7faef349ed6fea1970bf0360b53a60ba024ac",
     "tests/test_vllm_rms_norm.py": "569d4733497c273672288b39a3e762b04df926b9",
     "tests/test_vllm_swiglu.py": "724d9feed8a46691a121080094b2d4d5a1faf753",
-    "validation/runtime_20261004.json": "3d8bb5565bd2954cad8493442055b07fb7e85b55"
+    "validation/runtime_20261004.json": "815c2123c2e477be5a7cd00f17da9f32dd16fd29"
   },
   "changed_source_sha256": {
     "run.sh": "f2e620d21827c57f075ee1414d7b60f3574b14257f798dd5bcfd1af716a13236",

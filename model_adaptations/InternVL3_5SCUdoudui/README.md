@@ -273,3 +273,83 @@ evidence. Tested baseline core/extension hashes start d26791a5/c7d4a8c0;
 candidate hashes start ed1358d6/e34873d8 (full hashes in proof). Rebuilt binaries
 must record their own hashes and re-run gates; source identity does not prove
 another build's performance. No binary artifact is included.
+
+---
+
+> **路径说明（面向模型仓读者）**：下文两节里出现的 `op_learning/**`、`models/deformable-detr/**`
+> 与 `scripts/**` 属于本队**私有加速器仓**，不在本包（模型仓提交）内；这里保留与加速器仓交付记录
+> **逐字一致**的原文，证据路径仅供追证。`model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/**`
+> 则**是本包内容**。
+
+### `custom_ops` 双副本与解析来源（2026-10-10 冻结前发现；同日 worker 内实测复核）
+
+本仓同时存在两份 `custom_ops`：根级 `custom_ops/**` 与交付副本
+`model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/**`（后者是提交给模型仓的那份）。
+**本线两者当前逐字节相同**（含 `overlay/sitecustomize.py` `ae0bb38b…`、`__init__.py` `46b713a9…`），
+且**绑定发生在 `site` 初始化阶段**：先被搜到的那个 `overlay/sitecustomize.py`
+（`<frozen site>` 的 `execsitecustomize` 帧）会立刻 `import custom_ops`，
+**早于 `python -m` 把 cwd 插到 `sys.path[0]`**。所以「从仓库根启动」本身不改变绑定，
+真正决定来源的是**启动器写进 `PYTHONPATH` 的那两份路径**。
+
+下表两行均经 **TP worker 内 `/collective_rpc`** 实测（`VLLM_SERVER_DEV_MODE=1` +
+诊断用 `worker_extension_cls`；只读、不改交付文件、不引入热路径 `getenv`），
+每形态两个 worker 结论一致：
+
+| 启动形态（cwd 均为仓库根） | worker 内 `custom_ops.__file__` | 收据 |
+| :--- | :--- | :--- |
+| `scripts/smoke_internvl.sh` / `scripts/serve_internvl.sh`（现状；`PYTHONPATH=${REPO_ROOT}/custom_ops/overlay:${REPO_ROOT}`） | **仓库根** `custom_ops/__init__.py` | `worker-origin-rpc-B2-serve.json`（pid 785331 / 785332） |
+| 交付入口 `model_adaptations/InternVL3_5SCUdoudui/run.sh`（`PYTHONPATH=<delivery>/runtime/overlay:<delivery>/runtime`） | **交付 runtime** `custom_ops/__init__.py` | `worker-origin-rpc-B1-runsh.json`（pid 781058 / 781059） |
+| 上表第二行再加 `PYTHONSAFEPATH=1` / `python -P` | 结论不变（`-P` 只影响 cwd/`''`，不影响 `PYTHONPATH` 顺序） | —— |
+
+> **更正记录（2026-10-10，同一冻结窗口内）**：本条第一版矩阵由 `python -c` / `python -` 探针得出。
+> 该口径**不代表服务行为**（`-c`/`-` 会在 `site` 处理之前就把 cwd 放进 `sys.path[0]`；
+> 服务侧 `sitecustomize` 在 `site` 初始化阶段已导入 `custom_ops`，之后 runpy 再插 cwd 改不了绑定）。
+> 现按 worker 内 RPC 结果就地更正：**结论方向不变**（现状⇒根级、`run.sh`⇒交付副本），
+> 但**机制**是「启动器 `PYTHONPATH` 决定先命中哪个 overlay，且该导入发生在 `site` 阶段」。
+> 另有进程内实证：用 py3.11 启动时 overlay 在 `site` 阶段即因缺 `tecoops` 而 fail-closed，
+> 栈帧直接给出当时命中的是 `custom_ops/...` 还是 `runtime/custom_ops/...`
+> （`op_learning/runtime/entrypoint-parameterization-internvl-20261010/site-init-resolution-traceback.txt`）。
+
+**影响与建议**：本线因两份内容相同而**无行为差异**，但这是潜在维护风险——一旦两份分叉，
+从仓库根启动会静默使用根级副本。需要把模型级证据严格绑定到提交副本时，请使用交付入口或上表
+第二行的显式 `PYTHONPATH`；解析矩阵、逐字节一致性证据、worker 内收据与绑定后的模型级重跑见
+`op_learning/runtime/custom-ops-resolution-internvl-20261010/` 与
+`op_learning/runtime/entrypoint-parameterization-internvl-20261010/`。
+**不要**删除根级副本（共享启动器依赖它），也**不要**让模型仓分支携带根级副本。
+
+### 切换到官方 py3.11 环境（解释器可覆盖 + 能力校验，2026-10-10）
+
+三个入口的解释器都可用 `PYTHON=<解释器>` 覆盖，**默认仍是厂商 `/home/py312/bin/python`**
+（AGENTS.md 硬约束 1 的默认口径不变）；覆盖仅用于切换到官方环境：
+
+```bash
+# 官方环境（ModelZoo py3.11 / PyTorch 2.7.1）；<py3.11> 需自行准备的解释器路径
+PYTHON=<py3.11>/bin/python \
+    bash scripts/smoke_internvl.sh "${MODEL_ROOT}/OpenGVLab/InternVL3_5-8B" 32 2
+PYTHON=<py3.11>/bin/python \
+    bash model_adaptations/InternVL3_5SCUdoudui/run.sh --enforce-eager
+```
+
+服务入口另修一处**静默换解释器**的漏洞：`scripts/serve_internvl.sh` 原先把 `vllm serve` 交给
+shell 按 `PATH` 解析（`PATH` 已前置 `${VENDOR_PY_ROOT}/bin`），因此 `PYTHON=<官方解释器>`
+会通过能力校验、服务端却被 `vllm` 脚本的 shebang 换回厂商解释器。现改为
+`"${PYTHON}" "${VLLM_CLI}" serve …`（`VLLM_CLI` 由 `command -v vllm` 一次性解析，
+缺失即 rc=1），保证**被校验的解释器就是真正跑服务的解释器**。
+
+守卫已从「`readlink -f` 必须等于 `/usr/local/python/bin/python3.12`」改为**能力校验**：
+该解释器能 `import torch`、能 `import torch_sdaa`，且 `torch.sdaa.is_available()` 为真、
+设备数 ≥ 1。因此官方 py3.11 环境**通过**该校验，而不具备 `torch_sdaa` 的解释器
+（例如系统 `/usr/bin/python3`）被明确拒绝。**任何失败都非零退出，禁止静默降级到系统 python。**
+
+实测（2026-10-10，三解释器，CPU 侧即可判定）：
+
+| 解释器 | 能力校验 | 后续行为 |
+| :--- | :--- | :--- |
+| `/home/py312/bin/python`（厂商，默认） | PASS（torch 2.12.0a0+…、`is_available()=True`、设备 4 / 钉死后 2） | 正常冒烟与服务（本次实测 rc=0、32-token IDs 与冻结基线一致） |
+| `/home/py311/bin/python`（官方口径，torch 2.7.1 + torch_sdaa） | PASS（`is_available()=True`、4 设备） | 本机**尚无** py3.11 的 `vllm`/`tecoops`，入口在**缺资产**处 fail-closed 退出（`Failed to import 'tecoops' for the RMSNorm overlay`，rc=1），**不是**静默降级 |
+| `/usr/bin/python3`（系统，torch 2.10.0，无 torch_sdaa） | **FAIL → rc=1** | 不启动 |
+
+补齐官方环境的步骤：`tecoops` 必须用该解释器**配对构建**后放到本目录之外的独立路径并前插
+`PYTHONPATH`，并以 `tecoops.__file__` 自证来源（防 shadowing）；训练侧同法见 Deformable 线
+`models/deformable-detr/docs/bootstrap-py311.md` §2。**本线尚未在 py3.11 上跑通模型**，
+故不宣称官方环境适配完成；上表以外所有模型级数字仍来自厂商 py3.12 + Torch-SDAA。

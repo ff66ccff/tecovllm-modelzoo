@@ -7,11 +7,53 @@ set +u
 source /opt/tecoai/setvars.sh
 set -u
 export SDAA_ENABLE_COREDUMP_ON_EXCEPTION=0
-PYTHON=/home/py312/bin/python
-if [ "$(readlink -f "$PYTHON")" != /usr/local/python/bin/python3.12 ]; then
-    echo 'FATAL: expected vendor /home/py312/bin/python' >&2
+
+# 解释器选择：可用 PYTHON=<解释器> 覆盖（官方 py3.11 环境用该入口），默认值仍是
+# 厂商 /home/py312/bin/python —— AGENTS.md 硬约束 1 的默认口径不变。
+PYTHON="${PYTHON:-/home/py312/bin/python}"
+
+if [ ! -x "${PYTHON}" ]; then
+    echo "FATAL: 解释器不存在或不可执行: ${PYTHON}（可用 PYTHON=<解释器> 覆盖）" >&2
     exit 1
 fi
+
+# 能力校验（不是路径等式）：必须能 import torch 与 torch_sdaa，且 torch.sdaa
+# 报告设备可用。官方 py3.11 环境通过该校验；不具备 torch_sdaa 的解释器被拒绝。
+# fail-closed：解释器缺失或能力不足一律非零退出，禁止静默降级到系统 python。
+INTERP_PROBE="$("${PYTHON}" - <<'PY' 2>&1
+import sys
+
+ok = True
+
+
+def check(good, msg):
+    global ok
+    ok = ok and bool(good)
+    print(("OK   " if good else "FAIL ") + msg)
+
+
+try:
+    import torch
+    check(True, f"import torch -> {torch.__version__}")
+    import torch_sdaa  # noqa: F401  (register the SDAA backend)
+    check(True, "import torch_sdaa -> OK")
+    avail = bool(torch.sdaa.is_available())
+    count = int(torch.sdaa.device_count())
+    check(avail and count >= 1, f"torch.sdaa.is_available()={avail} device_count={count}")
+except Exception as exc:  # diagnostic path only
+    check(False, f"{type(exc).__name__}: {exc}")
+
+sys.exit(0 if ok else 1)
+PY
+)" && INTERP_OK=1 || INTERP_OK=0
+printf '%s\n' "${INTERP_PROBE}" | sed 's/^/[interpreter] /'
+if [ "${INTERP_OK}" -ne 1 ]; then
+    echo "FATAL: 解释器能力校验失败: ${PYTHON}" >&2
+    echo "  要求：可 import torch 与 torch_sdaa，且 torch.sdaa.is_available() 为真。" >&2
+    echo "  请先 source /opt/tecoai/setvars.sh；官方 py3.11 环境用 PYTHON=<py3.11 解释器>。" >&2
+    exit 1
+fi
+
 MODEL_ROOT="${MODEL_ROOT:-/gpfs/model}"
 MODEL_PATH="${INTERNVL_MODEL:-${MODEL_ROOT}/OpenGVLab/InternVL3_5-8B}"
 

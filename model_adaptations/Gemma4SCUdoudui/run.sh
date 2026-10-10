@@ -38,7 +38,21 @@ vllm() {
                 fi ;;
         esac
     done
-    exec /home/py312/bin/python -m vllm.entrypoints.cli.main "${task_argv[@]}"
+    # Interpreter entry: overridable + capability-checked + fail-closed.  Resolved here rather
+    # than at source time so the official parser contract can still source this launcher
+    # unchanged; an explicit PYTHON override must prove the same capability instead of matching
+    # a path, and the launcher never falls back to the system python.
+    local python_entry="${PYTHON:-/home/py312/bin/python}"
+    if [ ! -x "${python_entry}" ]; then
+        echo "ERROR: python interpreter ${python_entry} not found or not executable (fail-closed; never falls back to the system python)" >&2
+        return 1
+    fi
+    if ! "${python_entry}" -c 'import torch, torch_sdaa; assert torch.sdaa.is_available()' >/dev/null 2>&1; then
+        echo "ERROR: ${python_entry} lacks the required capability (import torch + torch_sdaa + torch.sdaa.is_available()); source /opt/tecoai/setvars.sh, and for py3.11 install the matching tecoops/torch_sdaa assets (docs/bootstrap-py311.md)" >&2
+        return 1
+    fi
+    exec "${python_entry}" -m vllm.entrypoints.cli.main "${task_argv[@]}"
+
 }
 
 vllm serve /gpfs/model/google/gemma-4-12B-it \

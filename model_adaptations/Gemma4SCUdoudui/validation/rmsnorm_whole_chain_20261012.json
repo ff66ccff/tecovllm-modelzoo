@@ -1,0 +1,167 @@
+{
+  "schema": "gemma-4-12b-it delivery evidence digest",
+  "date": "2026-10-12",
+  "claim": "RMSNorm whole-chain single-kernel binding (tecoops.rms_norm) on all 337 Gemma4 RMSNorm sites",
+  "delivery_default": "GEMMA4_RMSNORM_STATS=whole (compat = initialization-time fallback)",
+  "library": {
+    "libteco_ops_sha256": "1e756307a94a2eb871856b3830b417f97f26914906f3a75fe51e61cdab2782a5",
+    "ops_source": "team teco-ops main 459992a2 (unchanged by this work)"
+  },
+  "config": {
+    "tp": 2,
+    "dtype": "float16",
+    "gpu_memory_utilization": 0.92,
+    "max_model_len": 2048,
+    "max_num_batched_tokens": 2048,
+    "enforce_eager": false,
+    "prompt": "Explain in one sentence why the sky appears blue.",
+    "max_tokens": 32,
+    "temperature": 0.0
+  },
+  "model_level_ABA": {
+    "mode": "3 rotated rounds A1(compat) -> B(whole) -> A2(compat), own process, 1 warmup + 1 timed",
+    "A1_seconds": [
+      12.4904,
+      11.293,
+      12.7618
+    ],
+    "B_seconds": [
+      9.1702,
+      8.2073,
+      9.2957
+    ],
+    "A2_seconds": [
+      12.5859,
+      12.7229,
+      12.5492
+    ],
+    "A1_median": 12.4904,
+    "B_median": 9.1702,
+    "A2_median": 12.5859,
+    "B_over_A1": -26.582,
+    "A2_over_A1_drift": 0.7646,
+    "max_B_lt_min_A": true,
+    "per_round_B_over_A1": [
+      -26.58,
+      -27.32,
+      -27.16
+    ],
+    "all_arms_token_ids_equal_to_baseline": true
+  },
+  "device_side_call_census": {
+    "note": "per TP worker call counts; 337 = RMSNorm sites per forward. enforce_eager=False replays a captured graph, so the Python counter fires once per capture, NOT 337x32; this proves full 337-site replacement and zero silent fallback, not a per-token call count.",
+    "whole": {
+      "per_worker": [
+        {
+          "rms_norm_whole": 337,
+          "rms_norm_whole_add": 0,
+          "rms_norm_epilogue": 0,
+          "rms_norm_epilogue_add": 0
+        },
+        {
+          "rms_norm_whole": 337,
+          "rms_norm_whole_add": 0,
+          "rms_norm_epilogue": 0,
+          "rms_norm_epilogue_add": 0
+        }
+      ],
+      "sum_over_workers": {
+        "rms_norm_whole": 674,
+        "rms_norm_whole_add": 0,
+        "rms_norm_epilogue": 0,
+        "rms_norm_epilogue_add": 0
+      },
+      "n_workers_with_calls": 2
+    },
+    "compat": {
+      "per_worker": [
+        {
+          "rms_norm_whole": 0,
+          "rms_norm_whole_add": 0,
+          "rms_norm_epilogue": 337,
+          "rms_norm_epilogue_add": 0
+        },
+        {
+          "rms_norm_whole": 0,
+          "rms_norm_whole_add": 0,
+          "rms_norm_epilogue": 337,
+          "rms_norm_epilogue_add": 0
+        }
+      ],
+      "sum_over_workers": {
+        "rms_norm_whole": 0,
+        "rms_norm_whole_add": 0,
+        "rms_norm_epilogue": 674,
+        "rms_norm_epilogue_add": 0
+      },
+      "n_workers_with_calls": 2
+    }
+  },
+  "steady_300s": {
+    "whole": {
+      "elapsed_s": 306.3836,
+      "requests": 38,
+      "errors": 0,
+      "spot_ok": true,
+      "all_requests_match": true,
+      "latency": {
+        "n": 38,
+        "min_s": 7.906,
+        "max_s": 8.4393,
+        "median_s": 8.0414,
+        "mean_s": 8.0627
+      },
+      "peak_gib_per_worker": [
+        12.083337783813,
+        12.083337783813
+      ],
+      "lib_sha16": [
+        "1e756307a94a2eb8"
+      ]
+    },
+    "compat": {
+      "elapsed_s": 55.2035,
+      "requests": 5,
+      "errors": 0,
+      "spot_ok": true,
+      "all_requests_match": true,
+      "latency": {
+        "n": 5,
+        "min_s": 10.9119,
+        "max_s": 11.121,
+        "median_s": 11.0532,
+        "mean_s": 11.0407
+      },
+      "peak_gib_per_worker": [
+        12.083270549774,
+        12.083270549774
+      ],
+      "lib_sha16": [
+        "1e756307a94a2eb8"
+      ]
+    }
+  },
+  "official_operator_gate": {
+    "op": "zoo/teco/rms_norm",
+    "cases": 8,
+    "runs": "pass1 8/8 + pass2 8/8",
+    "per_case_max_error": [
+      0.0,
+      0.000606796,
+      0.0,
+      0.000919963,
+      0.0,
+      0.000810373,
+      0.0,
+      0.0
+    ],
+    "threshold": 0.001,
+    "note": "identical to the archived delivery baseline; library bytes unchanged => no layout tax"
+  },
+  "honest_boundaries": [
+    "the model-level figure is a decode wall-clock / 32-token greedy measurement on this line's own harness, not an official Average Hardware Time",
+    "the gain comes from removing 5x337 = 1685 kernel launches per decode step (launch-floor removal); it must not be extrapolated to other models or shapes",
+    "the measured figure is far above the pre-window scaling prediction (7.40%); that prediction is covered, not confirmed",
+    "the 300 s steady window was measured at ctx2048/MBT2048, not at the default 4352/512 profile"
+  ]
+}

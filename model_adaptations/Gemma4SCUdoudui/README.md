@@ -1,386 +1,295 @@
-# Gemma 4 12B-it (SCU 都队)
+# Gemma-4-12B-it（SCU 都队）
 
-This text-generation adaptation uses the installed TecoVLLM/SDAA stack and
-read-only `MODEL_ROOT` weights. Its process-local initialization binds Gemma's
-D256 sliding-window decode and D512 global decode; vendor packages are unchanged.
+## 模型概述
 
-## Launch the validated configuration
+Gemma-4-12B-it 是 Google 的文本生成大模型，约 12B 参数（fp16 权重约 23.9 GB），48 层解码器：40 层
+sliding attention（head_dim 256，窗口 1024）+ 8 层 full attention（head_dim 512，单 KV head），
+hidden 3840，MLP 中间维 15360（GeGLU/tanh 近似），词表 262144，embedding 与 lm_head 共享。
+本 checkpoint 另含 vision/audio 侧张量，本适配只使用文本主干。
+
+本适配在**本队 TecovLLM（vLLM 分支）+ Torch-SDAA 软件栈**上完成 TP2 / FP16 的端到端推理，并接入
+本队自研的 tecoops C++ 算子。所有模型侧改动都是**进程内的（overlay）**：不修改 site-packages、
+不修改厂商包、不复制权重。
+
+- **进程内注册与调用点绑定**（`overlay/` + `runtime/`，进程初始化期一次完成，热路径零分支）：
+  `gemma4_unified` config 注册、tokenizer `extra_special_tokens` 兼容、多模态专属权重跳过、
+  attention 调用点（D256 sliding decode 走尾随 1024 KV 窗口 + 非因果融合 SDPA；D512 global decode
+  走显式 math，或可选的官方隔离 kernel）、**RMSNorm 调用点（默认绑定整链单 kernel 的
+  `tecoops.rms_norm`）**、M=1 decode 线性层绑定 `tecoops.weight_stream_gemv`。
+- **自研 tecoops C++ 算子**（来自本队 teco-ops 仓）：`rms_norm`、`rms_norm_compat`、
+  `reshape_and_cache`、`flash_attn_varlen_func`（D256/D512 特化）、`weight_stream_gemv`。
+- **难度系数 1.0**（赛题序号 1）。
+- 历史沿革：2026-09-19 立项短探测 → 09-25 打通 CP1（overlay 注册 + 窗口归一化 + math attention）
+  → 10-02…10-05 算子与容量档（2048/2304/4352）→ 10-07…10-11 flash_attention 多轮向量化/布局优化
+  → 10-11 `rms_norm_compat` → 10-12 `weight_stream_gemv` 与 RMSNorm 整链单 kernel 绑定 + 300 s 稳态门禁。
+  逐轮原始记录见模型仓 `experiments/gemma-4-12b-it.md`；本树的 `validation/*.json` 是当时收据。
+
+## 模型权重下载
+
+> **本模型使用组委会预置权重，按只读方式引用：不重复下载、不转储副本**（仓库硬约束 1）。
+> 因此本文件**不提供** `modelscope download` 之类命令——权重不是下载来的。
+
+- 默认路径：`${MODEL_ROOT:-/gpfs/model}/google/gemma-4-12B-it`，本机实际为
+  `/gpfs/model/google/gemma-4-12B-it`（仅只读引用，适配过程不写入该目录）。
+- 目录内容：`config.json`、`generation_config.json`、`chat_template.jinja`、
+  `tokenizer.json` / `tokenizer_config.json`、`model.safetensors`（23.9 GB）等。
+- 权重位置不在 `/gpfs/model` 下时，用环境变量覆盖，**无需移动或复制权重**：
 
 ```bash
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
+export MODEL_ROOT=/your/model/root          # 服务将加载 $MODEL_ROOT/google/gemma-4-12B-it
+# 或直接指定：
+export GEMMA_PATH=/your/path/to/gemma-4-12B-it
+```
+
+`run.sh` 会设置 `HF_HUB_OFFLINE=1` 与 `TRANSFORMERS_OFFLINE=1`，禁止联网取权重。
+> ⚠️ 官方 CI 脚本 `tools/ci_pipline/run_ci.py` 会从 `run.sh` 中**字面**读取该模型路径并作为
+> `speed.sh --tokenizer-path` 传给评测客户端（见"已知限制"）。若权重被迁走，请让
+> `/gpfs/model` 指向真实根目录（例如软链接），否则服务能正常启动、但官方性能步骤会因该字面
+> 路径不存在而失败。
+
+## 模型注册
+
+### 1) 环境
+
+```bash
 source /opt/tecoai/setvars.sh
-export PATH="/home/py312/bin:${PATH}"
-export SDAA_ENABLE_COREDUMP_ON_EXCEPTION=0
+export PATH=/home/py312/bin:$PATH          # 厂商 Python 3.12
+```
+
+### 2) tecoops 算子库（本队 teco-ops 仓构建，**不安装进全局 site-packages**）
+
+```bash
+set +u; source /opt/tecoai/setvars.sh; set -u   # 提供 /opt/tecoai/lib64（libsdaart.so 等）
+cd <teco-ops-repo>
+export WITH_TORCH=ON WITH_INFERENCE_PLUGIN=OFF
+/home/py312/bin/python setup.py build_ext --inplace
+# 产物：build/teco/lib/libteco_ops.so 与 api/tecoops/_torch_ext*.so
+export LD_LIBRARY_PATH=<teco-ops-repo>/build/teco/lib:/opt/tecoai/lib64:${LD_LIBRARY_PATH:-}
+export PYTHONPATH=<teco-ops-repo>/api:${PYTHONPATH:-}
+# 库身份自检（初始化期一次；fail-closed 退出码）。**不要**用 len(tecoops.__all__) > 0
+# 当判据 —— 环境里 cycle-14 的旧 wheel 也通过它，却缺 rms_norm_compat 与
+# flash_attention 的 D256/D512 特化符号（实测，见本文件"已知限制"第 8 条）。
+TORCH_DEVICE_BACKEND_AUTOLOAD=0 /home/py312/bin/python \
+  model_adaptations/Gemma4SCUdoudui/scripts/gemma4/selfcheck_tecoops.py
+# 期望输出 tecoops.__file__ + libteco_ops.so sha256 + 能力探针，末行 SELFCHECK PASS、rc=0
+```
+
+> **必需步骤**：先按上面 build + 把本队 ops 安装目录前置到 `PYTHONPATH`（或 `pip install
+> --target`），再跑 `run.sh`。交付包**不含** `tecoops`；缺包/缺符号时 overlay 刻意
+> **fail-closed**（`SystemExit(1)`，不是崩溃）。ops 源码 pin：`teco-ops` 队内 `main`
+> `dda33c5b`（= `4adfd05e` + 7 个测试件；`libteco_ops.so` / `_torch_ext` 字节不变）。
+> 库身份与实测口径见 `model_adaptations/Gemma4SCUdoudui/validation/rmsnorm_whole_chain_20261012.json`
+> （`libteco_ops_sha256 = 1e756307a94a2eb871856b3830b417f97f26914906f3a75fe51e61cdab2782a5`）。
+> **实测边界**：当前默认档只需要 `tecoops.rms_norm` 与 `weight_stream_gemv`，而环境里
+> cycle-14 的旧 wheel `388dd710a8357ee9…` 恰好导出这两个 python 名 ⇒ 不前置交付安装目录时
+> overlay **会静默降级**到旧库并进入 main（三个绑定点照常打印），**不报错**。因此上面的
+> 自检必须作为启动前门禁，不能依赖"缺符号就会 fail-closed"。
+
+> 若跳过 `source /opt/tecoai/setvars.sh`，`import tecoops` 会报
+> `ImportError: libsdaart.so: cannot open shared object file`——`libteco_ops.so` 依赖厂商运行库，
+> 因此 `/opt/tecoai/lib64` 必须在 `LD_LIBRARY_PATH` 上。
+
+### 3) 模型注册（进程内，启动时自动完成）
+
+`run.sh` 已把 `overlay/` 与 `runtime/` 前置到 `PYTHONPATH` 并置 `GEMMA4_OVERLAY=1`，启动时依次完成：
+config 注册、tokenizer 兼容、多模态权重跳过、attention/RMSNorm/线性层调用点绑定。
+缺**符号**时启动即报错（fail-closed）。**但"库解析到哪一份"必须靠上面的能力探针**：
+实测不前置交付安装目录时，`import tecoops` 落到全局 `site-packages` 的旧 wheel，
+当前默认档所需的两个符号它都有 ⇒ overlay 三个绑定点照常打印并进入 main（静默降级）。
+
+### 4) 自检
+
+**无卡（不需要加速卡，只需厂商 Python 与源码）**：
+
+```bash
+bash -n model_adaptations/Gemma4SCUdoudui/run.sh                      # 语法
+/home/py312/bin/python -m py_compile model_adaptations/Gemma4SCUdoudui/overlay/*.py \
+    model_adaptations/Gemma4SCUdoudui/runtime/custom_ops/*/*.py       # 语法
+```
+
+**CPU 单测（无卡）**：跑的是**交付子树里的**那份测试文件 × 交付 `runtime/custom_ops` 代码
+（该文件与仓库根 `scripts/gemma4/test_operator_overlay.py` **blob 逐位相同**，L11 纪律：
+门禁验的字节 == 发布字节）：
+
+```bash
+cd <repo-root>
+TORCH_DEVICE_BACKEND_AUTOLOAD=0 \
+PYTHONPATH=model_adaptations/Gemma4SCUdoudui/overlay:model_adaptations/Gemma4SCUdoudui/runtime \
+  /home/py312/bin/python \
+  model_adaptations/Gemma4SCUdoudui/scripts/gemma4/test_operator_overlay.py
+# 期望（实测）：T1.0-T1.5 / T3.x / T4.0 / T5.0 / T6.0 / T7.0 / T9.0-T9.3 PASS
+#   （T1.4/T1.5 = custom_ops 必须解析到交付 runtime/custom_ops 的防漂移断言）
+# 但**套件整体 rc=1**：T2.0（overlay 绑定）与 T8.0（window 归一化）需要
+#   GEMMA4_OVERLAY=1 + SDAA 栈，无卡时由 harness 记为 `[FAIL] ... :: skipped` 并汇总
+#   `FAILED (2)`。这是既有的判据形态，不是回归。
+```
+
+**需要 SDAA 栈（先 `source /opt/tecoai/setvars.sh`，且会加载 `torch_sdaa`）**：
+
+```bash
+# 启动失败必须 fail-closed：选定 D512 扩展缺失/不完整时不得进入 main
+cd model_adaptations/Gemma4SCUdoudui && /home/py312/bin/python tests/test_startup_failure.py
+```
+
+实测结果（SDAA 栈就绪）：
+
+```json
+{"passed": true, "cases": [{"case": "missing_selected_library", "exit_code": 1, "main_unreachable": true},
+                          {"case": "incomplete_selection",      "exit_code": 1, "main_unreachable": true}]}
+```
+
+> 该用例会以 overlay 启动一个子解释器（`import torch` 时自动加载 `torch_sdaa`），因此
+> **不能**在 `TORCH_DEVICE_BACKEND_AUTOLOAD=0` 下运行——那样 overlay 会在更早的位置失败，
+> 诊断信息不同，断言会报错（本文件上一版把它错列为"无卡"，已更正）。
+>
+> 另外：该用例曾**失败**，根因不在用例而在 overlay —— `sitecustomize` 里普通的 `raise`
+> 会被 CPython `site.py` 吞掉（stderr 只留 `Error in sitecustomize`），**解释器照常继续并跑到
+> main**，即"没绑上 overlay 也照样启动"的静默降级。已改为打印诊断后 `raise SystemExit(1)`，
+> 使 fail-closed 真正落在进程级；设备无关对照实验（普通异常 rc=0 且打印 MAIN_REACHED；
+> `SystemExit(1)` rc=1 且不打印）见 `readme-c16/failclosed/`。
+
+## 启动推理服务
+
+```bash
 export MODEL_ROOT=/gpfs/model
-export GEMMA_TP_SIZE=2 GEMMA_UTIL=0.92
-export GEMMA_MAX_MODEL_LEN=4352 GEMMA_MAX_BATCHED_TOKENS=512
-b=model_adaptations/Gemma4SCUdoudui
-bash "$b/run.sh"
+bash model_adaptations/Gemma4SCUdoudui/run.sh
 ```
 
-The current default is the 4352-token capacity profile on port 8003, with
-served name `gemma-4-12B-it`. The actual literal serve command is accepted by
-the unmodified official `tools/ci_pipline/run_ci.py`; environment overrides
-are resolved once before the vendor entrypoint. The official T2 request and
-full-context boundary checks recorded below pass at this configuration. They
-establish capacity and stability only; official accuracy, T3/T4, and current
-owner CI remain pending.
+`run.sh` 内实际下发的 serve 命令（**CI 已固定，请勿改参**；下方为参数清单，实际路径取 `$GEMMA_PATH`）：
 
-The entry locks `/home/py312/bin/python` and `VLLM_DISABLE_COMPILE_CACHE=1`.
-It uses FP16, automatic KV-cache dtype, TP2, disabled prefix caching, enabled
-chunked prefill, and the installed default `VLLM_COMPILE` mode with its SDAA eager
-backend. It does not select `--enforce-eager`. `GEMMA_HOST`, `GEMMA_PORT`,
-`GEMMA_PATH`, `GEMMA_UTIL` and the length variables configure startup; additional
-CLI arguments can be passed to `run.sh` for diagnostics.
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| `<模型路径>` | `$GEMMA_PATH`（默认 `$MODEL_ROOT/google/gemma-4-12B-it`） | 只读引用预置权重 |
+| `--served-model-name` | `gemma-4-12B-it` | 官方 CI 支持的模型名 |
+| `--tensor-parallel-size` | `2`（`GEMMA_TP_SIZE`） | 该 checkpoint 需 TP2 才能放进单卡显存 |
+| `--gpu-memory-utilization` | `0.92`（`GEMMA_UTIL`） | |
+| `--max-model-len` | `16640`（`GEMMA_MAX_MODEL_LEN`） | 覆盖官方**固定性能用例** T1 2048 / T2 4096 / T3 8192 / T4 16384（各 +100 输出）。`4352` 会让 T3/T4 被服务端 **400 拒绝**，而 `run_ci.py::parse_performance` 要求每例 `Failed==0`（否则 CI FAILED） |
+| `--max-num-batched-tokens` | `512`（`GEMMA_MAX_BATCHED_TOKENS`） | |
+| `--trust-remote-code` | 开 | 需要 checkpoint 自带实现 |
+| `--no-enable-prefix-caching` | 开 | 官方 CI 强制要求 |
+| `--enable-chunked-prefill` | 开 | |
+| `--hf-overrides` | `{"architectures":["Gemma4ForCausalLM"]}` | 文本主干架构 |
+| `--dtype` | `float16` | 本线验证 dtype |
+| `--host` / `--port` | `0.0.0.0` / `8003`（`GEMMA_HOST` / `GEMMA_PORT`） | |
 
-Without the optional extension below, global D512 decode uses the existing
-single-KV-head math implementation. D256 decode retains the trailing 1024 KV
-positions and fused non-causal SDPA. Both choices bind during construction.
-Math prefill uses the window-aware entry described below; the vendor
-`reshape_and_cache` ABI remains unchanged. The overlay also
-registers `gemma4_unified`, adapts the installed tokenizer API, and skips
-vision/audio-only checkpoint tensors for this text model.
-
-## Optional isolated D512 global decode
-
-This packages the previously accepted combination of official teco-ops
-PR [36](https://github.com/Tecorigin/teco-ops/pull/36),
-[41](https://github.com/Tecorigin/teco-ops/pull/41) and
-[42](https://github.com/Tecorigin/teco-ops/pull/42). It adds no new kernel or
-window entry. Its FP16 TP2 contract is Hq8/Hkv1/D512, HND block32, one query
-token per sequence and scale 1.0. D256 and prefill still use the paths above.
-
-Use an existing teco-ops Git checkout containing base
-`de27305efed0a17ae926d21d5415d8b915614649` and the supplied teco-hal installation.
-The output directory must be new; the helper archives that base, applies the
-included patch, links teco-hal, and builds without installing a wheel globally.
+启动后就绪与 32-token 冒烟：
 
 ```bash
-export TECO_OPS_SOURCE=/path/to/teco-ops
-export TECO_HAL=/path/to/teco-hal
-export D512_BUILD="$PWD/build/gemma-d512"
-/home/py312/bin/python "$b/scripts/gemma4/build_d512_official.py" \
-  --source-repo "$TECO_OPS_SOURCE" --teco-hal "$TECO_HAL" --output "$D512_BUILD"
-export GEMMA_D512_OFFICIAL_EXTENSION="$D512_BUILD/api/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so"
-export GEMMA_D512_OFFICIAL_SHA256="$(sha256sum "$GEMMA_D512_OFFICIAL_EXTENSION" | cut -d ' ' -f1)"
-bash "$b/run.sh"
+curl -s http://127.0.0.1:8003/health
+curl -s http://127.0.0.1:8003/v1/completions -H 'Content-Type: application/json' \
+  -d '{"model":"gemma-4-12B-it","prompt":"Explain in one sentence why the sky appears blue.",
+       "max_tokens":32,"temperature":0}'
 ```
 
-The loader checks the extension digest and unique `libteco_gemma_flash.so`
-dependency, records the actually loaded core digest, and binds only supported
-global layers. Missing or mismatched selections terminate startup, including
-under optimized Python. The output mutation and Fake implementation are explicit.
+说明：`run.sh` 用一个 `vllm()` shell 函数在 **exec 之前**把模型路径参数改写成 `$GEMMA_PATH`、
+并按 `$GEMMA_HOST`/`$GEMMA_PORT` 覆盖 `--host`/`--port`，其余 serve 参数逐字不动；因此
+`MODEL_ROOT` / `GEMMA_PATH` 的覆盖**对实际加载的权重生效**（已用无卡 argv 实验验证：默认与
+`MODEL_ROOT=<软链接别名>` 两种情况下都能在下发 argv 中看到对应路径，且别名 `readlink -f`
+指向同一份只读权重，未复制权重）。服务要求厂商 Python 具备 `torch` + `torch_sdaa` +
+`torch.sdaa.is_available()`；缺失时启动即失败（不做系统 Python 回退）。
 
-## Validation
+## 精度验证
 
-The D512 focused scripts accept `--build-provenance PATH` for a freshly built
-library. The receipt is checked against the official base, combined patch SHA,
-the realpaths of the recorded and running vendor Python, and the selected
-extension/core byte digests. Recorded library paths may differ if the selected
-files were copied, provided both digests match. Omitting the option retains
-the frozen extension/core SHA checks. After the documented build and library
-selection, use the returned receipt for both focused scripts:
+> **组委会标准测例与精度达标线尚未下发，因此当前只能给出"临时回归通过"，不是最终精度结论。**
+> 待测例下发后补正式精度表。
 
-```bash
-/home/py312/bin/python "$b/tests/test_d512_build_provenance.py"
-SDAA_VISIBLE_DEVICES=0 /home/py312/bin/python "$b/tests/verify_d512_4352.py" --out d5124352_operator.json --build-provenance /path/to/build-provenance.json
-SDAA_VISIBLE_DEVICES=0 /home/py312/bin/python "$b/tests/verify_d512_poisoned_tail.py" --out d5124352_poisoned_tail.json --build-provenance /path/to/build-provenance.json
-```
+| 项目 | 口径 | 结果 | 证据 |
+|------|------|------|------|
+| 固定 prompt 贪婪 32 token（主判据） | 裸文本 prompt `Explain in one sentence why the sky appears blue.`；`temperature=0`、`max_tokens=32`；TP2 / FP16 | **32 个 token ID 与冻结基线逐位一致**，文本连贯无复读；`107, 101, 818, 7217, 7412, 3730, 1547, 529, …` | 冻结基线 `op_learning/attention/gemma-d512-model/baseline_token_ids.json` |
+| RMSNorm 整链单 kernel 绑定（交付默认档） | 3 轮 A1(compat)→B(whole)→A2(compat) 轮转，每臂独立进程 + 1 预热 + 1 计时 | **9/9 臂 32/32 token ID 与冻结基线逐位一致** | `validation/rmsnorm_whole_chain_20261012.json` |
+| 300 s 连续请求稳态抽检 | 同一 prompt 连续请求，`elapsed=306.3836 s` | **38 请求 / 0 错误 / 38×32 token 全部逐位一致**（首/中/尾亦然） | 同上 |
+| 官方算子用例 | `zoo/teco/rms_norm` 8 例，官方固定命令口径 | **16/16 PASSED**（两个 pass 各 8/8），逐 case `max_error` 与交付基线逐位相同（`0` / `6.06796e-04` / `0` / `9.19963e-04` / `0` / `8.10373e-04` / `0` / `0`，阈值 `1.00e-03`） | 同上；换绑定未改动算子库字节 |
 
-The 2026-10-07 fresh isolated public build passes all six provenance unit tests,
-eight ordinary operator cases, 12 boundary case/stream records (max absolute
-error 0.001107931 against the unchanged 0.02 limit), and six poisoned-tail
-records with zero control-to-poison delta and exact cache preservation. The
-unchanged public TP2/FP16/4352-context entry completed 83 requests with exact
-32-token IDs, including 65 steady requests over 322.430396 seconds. Its three
-timing values and worker memory peaks are recorded in
-`validation/build_provenance_20261007.json`; no speedup is claimed. The isolated
-combination is runtime-equivalent to current operator PRs 36/41/42, but is not a
-full merged upstream wheel or a new official accuracy result. This run covers
-short model prompts; the existing long-context receipts retain their own scope.
+另有仓库级临时回归（MMLU-Pro Computer Science 200 行，仓库接受区间 **0.73–0.93**）已完成并留档于模型仓
+`logs/gemma-4-12b-it/precision200-20261005/`：`mean_acc = 0.835`（200/200 有效响应、correct 167）见
+`evaluator_rev2.stdout.txt` 的 `│ gemma-4-12B-it │ mmlu_pro │ mean_acc │ computer science │ 200 │ 0.835 │ default │` 行，
+逐请求原件为 `…/evalscope/predictions/gemma-4-12B-it/mmlu_pro_computer science.jsonl`（sha256 `676c5a29af9cc4eb…`，
+与 evaluator 最终回执 `files[".jsonl"]` 记录逐字相同）。**该次运行是 selected-D512 档（设了 `GEMMA_D512_*`）**，
+与组委会 CI 的默认档不同；**它不是组委会标准测例**，故本表不列分数、也不作为精度结论（**临时回归、非 CP2**）。
 
-```bash
-# CPU/Fake/fullgraph and constructor/loader rejection tests, without selection:
-env -u GEMMA_D512_OFFICIAL_EXTENSION -u GEMMA_D512_OFFICIAL_SHA256 \
-  PYTHONPATH="$b/runtime" /home/py312/bin/python "$b/scripts/gemma4/test_d512_official_cpu.py"
-# After selecting the isolated extension:
-PYTHONPATH="$b/runtime" /home/py312/bin/python \
-  "$b/op_learning/attention/gemma-d512-model/verify_operator.py" operator.json
-# Against the separately started selected server:
-/home/py312/bin/python "$b/op_learning/attention/gemma-d512-model/verify_model.py" \
-  --base http://127.0.0.1:8003 --out model.json --steady 300 --concurrency
-```
+**未执行/未验证**：组委会标准测例、多模态输入、当前 owner CI。
+**T3/T4（8K/16K）容量与边界已于 2026-10-13 在交付默认档实测**（每例 `Total==Success==10`、`Failed==0`、completion 恰 100；
+16640 接受、16641 = 400）—— 详见本文件「性能验证」段的容量档收据与 `docs/competition/c22-gemma.md` §八；
+**精度**（mmlu_pro 等）仍未在默认档做满量验证。
 
-`validation/runtime_20261004.json` freezes source identities and results. Eight
-real-shape cases across two streams pass (max absolute error 0.001029968),
-including fullgraph, padded metadata and noncontiguous queries. Two fixed
-greedy32 runs, concurrency 1/4/8 and 302.171015 seconds / 65 steady requests
-match every reference token ID. The fixed prompt has 11 input tokens.
+## 性能验证
 
-With TP2/util0.92/max-length2048, two warmups then three HTTP measurements,
-the unselected export takes 13.543721 / 13.553259 / 13.569659 seconds
-(median 13.553259); the selected export takes 12.941327 / 12.768881 / 12.942871
-(median 12.941327), a 4.515% reduction for this fixed greedy32 case. This
-reproduces the accepted combination; it does not isolate PR36, PR41 or PR42,
-or assign a separate speedup to packaging. Profile data is excluded from timing.
+### 1) 模型级（同会话 A/B/A，3 轮轮转；口径 = 单请求端到端墙钟 / 32-token 贪婪解码）
 
-The public build command also completes in a fresh directory, and its new
-library passes all eight operator cases plus a fresh exported greedy32 run.
-Worker receipts record source/library hashes, FP16 SDAA weights and peak memory.
-The tested stack is PyTorch 2.12.0a0+git0d62256, Torch-SDAA
-20260623.8.51.dev0+gitd942f23, vLLM 0.20.2.dev0+g132765e35.d20260728 and
-driver/runtime 3.2.0 (custom DNN 3.2.1a0).
+配置：TP2 / FP16 / `gpu_memory_utilization=0.92` / `max_model_len=2048` /
+`max_num_batched_tokens=2048` / 未开 chunked prefill / `enforce_eager=False`；每臂独立进程，1 次预热 + 1 次计时。
 
-This is temporary text regression evidence. Official task accuracy and current
-head owner CI remain pending. Full 8192-token generation and multimodal inputs
-are untested. The original 302-second gate uses the prior frozen isolated core.
-`validation/runtime_20261005.json` adds a separate fresh public build: all
-eight operator cases and 83 greedy32 responses pass, including 306.875936
-seconds / 65 steady requests. Both workers load its recorded core digest.
-Fresh same-input timings are math 13.153049603 / 13.290304534 / 13.146468690
-seconds (median 13.153049603) and selected D512 13.006247967 / 13.010500995 /
-13.060514411 (median 13.010500995), a 1.084% reduction for this fixed case.
-This repeats the combined path comparison; it does not isolate a PR or
-establish an independent packaging speedup. Installed teco-ops wheel
-equivalence to current upstream heads is not inferred from its version string.
-Code retains the included BSD notices and the originating repository licenses.
+| 变更 | A1 三次原值 (s) | B 三次原值 (s) | A2 三次原值 (s) | 中位数 B/A1 | A2/A1 漂移 |
+|------|------------------|-----------------|------------------|--------------|-------------|
+| RMSNorm 整链单 kernel 绑定（`whole`，交付默认档） | 12.4904 / 11.2930 / 12.7618 | **9.1702 / 8.2073 / 9.2957** | 12.5859 / 12.7229 / 12.5492 | **−26.58 %**（9.1702 vs 12.4904） | +0.76 % |
+| `weight_stream_gemv`（M=1 decode 权重流式） | 13.7013 / 13.1179 / 12.8105 | **12.6963 / 12.6556 / 12.6236** | 13.1516 / 13.5271 / 13.1431 | **−3.52 %**（12.6556 vs 13.1179） | +0.26 % |
 
-## Evaluation-client tokenizer compatibility
+两条结论的效应均远大于漂移（C1a 为 34.8×），且 9 个 B 值全部低于 9 个 A 值（`max(B) < min(A)`）；
+两轮都同时通过了 32-token token-ID 逐位一致检查（不是只看墙钟）。
 
-The installed tokenizer API expects a dict for `extra_special_tokens`, while
-this checkpoint supplies a list. Use the explicit client-only overlay before
-starting EvalScope; it reuses the existing normalization function without
-installing model, attention or config overlays:
+**诚实边界**：① `−26.58 %` 的来源是**消除每次 decode step 的 5×337 = 1685 次 kernel 发射**
+（把 RMSNorm 的 eager 统计量链与 epilogue 合并为一次发射），属**发射开销/延迟地板**类收益，
+**不可外推到其它模型、其它形状或其它算子**；② 该实测值**远高于**事前折算预测（7.40 %）——
+是"预测被实测覆盖"，不是"预测命中"，说明用 standalone→model 通过率外推会系统性低估此类改动；
+③ 上表是**本队自建模型的墙钟口径**，不是官方 `Average Hardware Time`；④ 最长的官方 T3/T4 场景
+与当前 owner CI 未执行。
 
-```bash
-b="$PWD/model_adaptations/Gemma4SCUdoudui"
-GEMMA4_EVAL_TOKENIZER=1 PYTHONPATH="$b/eval_overlay" \
-  bash tools/ci_pipline/speed.sh gemma-4-12B-it \
-  /gpfs/model/google/gemma-4-12B-it 0.0.0.0 8003
-/home/py312/bin/python "$b/tests/verify_eval_tokenizer.py"
-```
+### 2) 服务级时延（历史窗口，配置与当前默认档不同，仅作参考，勿与上表混用）
 
-Source the SDK and put `/home/py312/bin` first on PATH as in the launch example.
-The client overlay requires explicit activation and changes only process-local
-tokenizer initialization. It preserves raw tokenizer.json encoding IDs; config,
-weights and installed source files remain unchanged. This focused client gate
-is not a model smoke, official accuracy, full CI or performance result. Server
-context-budget validation is a separate attempt.
+| 口径 | 输入 / 输出 / 并发 | 配置 | TTFT | TPOT / 单 token | 端到端 |
+|------|--------------------|------|------|------------------|--------|
+| HTTP 服务（2026-09-25 窗口） | 11 / 32 / 1 | ctx2048、math attention | 0.4870 / 0.4856 / 0.4969 s（中位 **0.487 s**） | — | 13.7134 / 13.9108 / 14.0798 s（中位 **13.91 s**，**2.228 tok/s**） |
+| 本队离线 LLM（交付默认档 + 300 s 稳态窗口内 38 次请求） | 11 / 32 / 1 | ctx2048/MBT2048，RMSNorm `whole` | — | **251 ms/token**（中位单请求 8.0414 s ÷ 32） | 单请求中位 **8.0414 s**（min 7.9060 / max 8.4393） |
+| 同上，对照档 `compat` | 11 / 32 / 1 | 同上，RMSNorm `compat` | — | 345 ms/token（11.0532 s ÷ 32） | 单请求中位 **11.0532 s** |
+| 官方 T2 收据（ctx4352/batch512） | 4096 / 100 / 1 | 默认档 | — | inter-token 中位 **0.4276 s** | — |
 
-## Historical official T1 input and output budget (2304-token profile)
+未在当前默认档（16640/512）重测 TTFT/TPOT；上表各行的配置与窗口已在表内注明。
 
-The former 2304-token context/batch profile reserved room for the official
-2048-input / 100-output T1 case. That T1 run is historical; the current
-launcher default is 4352/512. Its TP2, FP16, util0.92 attention implementation,
-KV layout and prefix/chunked behavior are recorded at their original scope.
-This was a capacity enabler, not an accuracy or speedup result.
-`validation/ci_budget2304_20261005.json` records eight longer-context D512
-operator cases (maximum absolute error 0.0010442734),
-same-config math/selected controls with four matching greedy32 responses and
-four matching exact-2048-input greedy100 responses, plus five startup argv
-cases. KV capacity is 2855 tokens.
+**容量档 T1–T4 能力收据（2026-10-13，交付默认档 math + `GEMMA_MAX_MODEL_LEN=16640`，同形态 warmup 1024+10 / max_tokens 100 / `ignore_eos` / parallel 1 / number 10）：****每例 `Total==Success==10`、`Failed==0`、completion 恰 100**；实际 prompt 区间 T1 [2048,2050] / T2 [4096,4097] / T3 [8192,8194] / T4 [16384,16385]；warmup 1/1/0；request span 314.9 / 362.2 / 467.8 / 689.0 s。边界：16640 接受、**16641 = 400**（含 16640 上下文限制）。**这是容量 enabler，不承诺提速**；原始件见 `docs/competition/c22-gemma.md` 索引。
 
-With the explicit client tokenizer overlay, the unchanged official T1 arguments
-and 1K/10-token warmup complete: all ten T1 database rows succeed and return
-100 output tokens. The measured request span is
-457.818861 seconds; total validated steady
-duration is 457.818861 seconds. Four greedy32 responses
-before/after T1 match the committed reference. Both workers load the frozen
-isolated D512 core; owned services are released.
+### 3) 算子级（官方固定测例口径：`./build/demo --gid=0 --perf_repeat=50 --warm_repeat=3 --gtest_repeat=1 --case_path=zoo/teco/<op>/test_case/<case>.prototxt | grep "Average Hardware Time"`，报平均值）
 
-The 2048-profile timings above retain their original scope. Reproduce them with
-`GEMMA_MAX_MODEL_LEN=2048 GEMMA_MAX_BATCHED_TOKENS=2048 bash "$b/run.sh" --no-enable-chunked-prefill`.
-T1 capacity/stability did not establish a new speedup or official accuracy.
-The separate 4352 profile now passes the official T2 capacity/stability request
-as described below. T3/T4 (8K/16K), multimodal evaluation, the official
-accuracy suite and current owner CI remain pending.
+| 算子 / 用例 | 结果 |
+|-------------|------|
+| `rms_norm` case_0…7 | AHT (ms) `0.027797 / 0.034965 / 0.014652 / 0.018166 / 0.011346 / 0.014249 / 0.0026272 / 0.0026868`，8/8 PASSED，阈值 `1.00e-03`，`max_error` 与交付基线逐位相同 |
+| 模型内 RMSNorm 段微基准（337 次调用/step，一次同步） | 参考 eager 链 **186.203 ms/step** → `rms_norm_compat`（拆分形态）**128.146 ms/step** → `rms_norm`（整链单 kernel）**19.810 ms/step** |
+| `weight_stream_gemv` 有效带宽（自建真实 shape，3 轮 × 5 次轮转中位，GB/s） | gate_up 30720×3840 `75.6 → 124.1`；down 3840×15360 `30.4 → 123.1`；q_sliding `62.2 → 104.6`；k_sliding `51.4 → 87.8`；o_sliding `31.3 → 102.7`；q_global `67.7 → 112.6`；o_global `31.7 → 113.0`；k_global `25.4 → 39.8` |
 
-After starting the selected server, reproduce the official warmup and T1
-individually with vendor Python (all request arguments are unchanged):
+### 已知限制
 
-```bash
-b="$PWD/model_adaptations/Gemma4SCUdoudui"
-for task_shape in 1024:10:1 2048:100:10; do
-  IFS=: read -r task_prompt task_output task_number <<< "$task_shape"
-  GEMMA4_EVAL_TOKENIZER=1 PYTHONPATH="$b/eval_overlay" \
-    /home/py312/bin/python /home/py312/bin/evalscope perf \
-    --model gemma-4-12B-it --url http://127.0.0.1:8003/v1/chat/completions \
-    --api openai --tokenizer-path /gpfs/model/google/gemma-4-12B-it \
-    --dataset random --min-prompt-length "$task_prompt" --max-prompt-length "$task_prompt" \
-    --max-tokens "$task_output" --min-tokens "$task_output" \
-    --extra-args '{"ignore_eos": true}' --parallel 1 --number "$task_number"
-done
-```
-
-## Window-aware math prefill (2026-10-05)
-
-The math prefill entry accepts contiguous appended chunks with `q_len <= kv_len`.
-For local W1024 layers it gathers only
-`[max(0, kv_len - q_len - 1024 + 1), kv_len)`; global layers retain full history.
-The existing right-aligned math mask, flash entry, shared gather and decoder are
-unchanged. Required pages must be valid. Retired prefix pages and poisoned old
-values outside that interval are not read, including old offsets in the first
-retained boundary page. The global null-page check is specific to this Gemma
-TP2 manager64-to-kernel32 contract (reserved subpages 0/1).
-
-The portable focused test checks actual local Q8/K4/D256/W1024 and global
-Q8/K1/D512 against an independent CPU FP32 absolute-position oracle. It uses
-the vendor cache-write ABI with continuous HND caches, noncontiguous K/V tails,
-physical page permutations, mixed q1/padding, required-null rejection and
-persistent serial chunks on default/nondefault streams. Run on an owned free
-device after exporting `LD_LIBRARY_PATH` and sourcing `/opt/tecoai/setvars.sh`:
-
-```bash
-b="$PWD/model_adaptations/Gemma4SCUdoudui"
-SDAA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 \
-  /home/py312/bin/python "$b/tests/verify_windowed_math.py" \
-  --allow-device --output windowed_math_operator.json
-```
-
-Public-source validation passes 84 numerical cases, 12 serial cases and 252
-required-null rejections; maximum oracle error is 0.000542039 and serial versus
-whole error is 0.0000621676, with exact cache values. The unchanged public
-launcher passes fixed greedy32, a 2048-token input and mixed 11/1057 requests
-against the model's own references. An optional 2304-context chunk512 run also
-passes real scheduler metadata and at least 300 seconds of output/cache
-stability. `validation/windowed_math_20261005.json` retains the source hashes,
-execution/final-test license lineage and independent private three-run values.
-These results establish chunked-prefill capability; they do not establish an
-official accuracy score, 3492+ context capacity, graph capture or a new speedup.
-
-Those 2304-token measurements used the explicitly configured historical
-profile; chunked prefill was enabled only for the recorded chunk512 run. The
-current launcher defaults to maxlen4352/batch512 with chunked prefill enabled
-and prefix caching disabled. Its independent public-path focused and model
-checks are recorded below. The math metadata checks synchronize on the host; graph
-capture support was not tested. Runtime diagnostics and private metadata
-hooks are excluded from the portable product tests.
-
-
-## 4352-token capacity profile (2026-10-05)
-
-The current default is TP2, FP16, utilization 0.92, max model length 4352,
-max batched tokens 512, chunked prefill enabled, and prefix caching disabled.
-D256/window1024 decode, the window-aware math prefill source, cache ABI,
-overlay and accepted optional D512 kernel were not changed by this capacity
-configuration. The profile covers the official T2 request budget of 4096 input
-plus 100 output tokens, as well as a 4320-input plus 32-output endpoint at
-4352 total tokens.
-
-The service's actual SDK hybrid-pool receipt reports 511 manager blocks and a
-4352-token request-memory lower bound from the live hybrid specs and allocated
-pool. This is the SDK capacity calculation, not a maximum inferred from cache
-views. The worker memory measurements have separate scopes: startup peak
-allocated was 13.745507717 GiB; after resetting the counters before T2, the
-request-window peak was 12.236205578 GiB; end allocated was 12.052499771 GiB;
-reserved was 14.1328125 GiB. The reset-window peak does not include startup.
-
-The unchanged official warmup and T2 arguments were used: random dataset,
-1024 prompt / 10 output / one request for warmup, then fixed 4096 prompt / 100
-output, `ignore_eos=true`, parallel 1 and 10 requests for T2. All ten T2 rows
-succeeded and produced 100 output tokens; observed prompt counts were 4096–4098.
-The SQLite request span from the first request start through the last completion
-was 506.650664 seconds. This is a capacity/stability receipt, not a latency
-comparison or accuracy score.
-
-Before and after the math-service T2 window, fixed greedy32 IDs matched their
-same-configuration reference. Two 4096-input greedy32 responses were exact
-same-configuration repeats; the receipt explicitly provides no 2304-profile or
-external reference for that prompt. A 4320-input plus 32-output request reached
-the 4352 endpoint and matched the saved math reference. The longest MMLU chat
-fixture contained 2468 input tokens with a 1024-token output budget; the service
-accepted it and naturally stopped after 454 output tokens. That request had no
-precision score and is not an accuracy result.
-
-The optional selected D512 service used the same 4352/512 configuration. Its
-fixed, 4096-input, concurrent short/long, post-run fixed, and boundary outputs
-were checked against this model's math references. The 4320+32 endpoint
-completed, followed by 13 successful steady requests over 308.918429 seconds;
-the boundary request was repeated afterward. This is capacity and stability
-evidence, not a D512 speedup claim. The public-path D512 focused tests also
-pass: the main gate records 12 case/stream rows and 24 reported stream
-invocations, max absolute error 0.001107931 against the unchanged 0.02 limit,
-and exact cache preservation. The poisoned-tail gate records 6 rows / 12
-reported invocations, maximum error 0.000973701, control-to-poison output delta
-0, and bitwise-exact cache preservation at the same 0.02 limit.
-
-The frozen private and final public-path math entries each pass 160 numerical
-cases, 12 serial cases, and 480 required-null rejections, with maximum absolute
-error 0.001144115 and serial-versus-whole error 0.0001220703125. Cache contents
-are exact. Both routes use the same kernel and unchanged oracle thresholds.
-
-For the focused checks, first source the SDK and supply an idle device owned by
-the current run. The math test requires the explicit device opt-in flag. The
-D512 scripts use the original extension-path and SHA environment interface;
-the extension must be the accepted file and have its matching core beside it.
-The D512 SHA values below identify the tested artifact. The public focused
-receipts record execution through these relative-path entries:
-
-```bash
-b="$PWD/model_adaptations/Gemma4SCUdoudui"
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
-source /opt/tecoai/setvars.sh
-SDAA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 /home/py312/bin/python "$b/tests/verify_windowed_math4352.py" --allow-device --output math4352_operator.json
-export GEMMA_D512_OFFICIAL_EXTENSION=/path/to/accepted/_torch_ext.cpython-312-loongarch64-linux-gnu.so
-export GEMMA_D512_OFFICIAL_SHA256=9339b3756b49f9a4e2ec32e98f6b5e2f812d7790ceab360601238f77f517c7cb
-SDAA_VISIBLE_DEVICES=0 /home/py312/bin/python "$b/tests/verify_d512_4352.py" --out d5124352_operator.json
-SDAA_VISIBLE_DEVICES=0 /home/py312/bin/python "$b/tests/verify_d512_poisoned_tail.py" --out d5124352_poisoned_tail.json
-```
-
-The consolidated `validation/ci_budget4352_20261005.json` retains source/test
-lineage, all ten T2 metric values, memory scopes and raw manifest hashes. All
-130 listed raw files were independently hash-verified after local transfer.
-T3/T4, the full 200-example repo-CI precision suite, current owner CI, graph
-capture, multimodal evaluation and current upstream-head wheel equivalence
-remain unexecuted or unverified. This capacity change makes no new speedup or
-final competition accuracy claim. Historical 2048/2304 results retain their
-original configuration and measurement scope.
-
-## D512 SV accumulation SIMD (2026-10-07)
-
-The archived optional D512 build now vectorizes only the Step E FP32 additions
-in the BM32 specialization. The accumulation order, softmax, DMA, FP16 packing,
-ABI and D256/generic specializations are unchanged. The clean official-main
-reconstruction has patch SHA256
-`5308055b25e87d217574561f4e9545f36d2e779092d83c7d3bcc305176995ca7`.
-Use the build helper's current generated provenance JSON when testing a fresh
-build; the legacy artifact commands above retain their historical scope.
-
-Own paired D512 decode80 and prefill8 invocation rows are bitwise equal to the
-baseline, with the original .02 reference tolerance. Ordinary,4352-boundary
-and poisoned-tail public gates also pass. Same-input,warmup5,10calls×3 micro
-medians for KV4352 and mixed batches improve about3.1–3.3%. All three raw
-values are in `validation/d512_accumulate_simd_20261007.json`.
-
-Own TP2/FP16/context4352 fixed greedy32 outputs match on83 candidate requests,
-including65 steady requests over318.317824s. Model A→B→A medians are
-13.543346 /12.935510 /12.969123 seconds; the last baseline overlaps the
-candidate, so this change claims no end-to-end speedup. Actual worker core
-hashes and peak allocations are retained in the proof. Current-head official
-CI,official py311 and final committee accuracy remain unverified.
-
-## D512 accumulator rescale SIMD (2026-10-07)
-
-The current archived optional build adds floatv16 FP32 multiplication only in
-the BM32 Step B accumulator rescale. Each element uses the same scale at the
-same point; earlier Step E additions, softmax, packing, DMA, tiles and ABI keep
-their previous behavior. The current U0 combined patch SHA256 is
-`9756790105110f8fd4ed610d8e12c9269d2992a331fb8a0a530134204b3b7600`. Historical receipts above retain their original patch
-and binary identities; use the fresh build helper's generated provenance for
-the current published source.
-
-Own paired decode80 and prefill8 records are bitwise equal to the accepted
-baseline; original .02 reference tolerance, ordinary/fullgraph-eager,4352
-boundary and poison gates pass. Warmup5/10calls per trial,3 trials produce
-long-KV medians10.248963→9.855969ms (N1),13.116348→12.612844ms (N4) and
-42.709625→41.112411ms (N8), a3.74–3.84% micro reduction. The post-candidate
-baseline reproduces the earlier medians. All raw triples are retained in
-`validation/d512_rescale_simd_20261007.json`.
-
-Own TP2/FP16/context4352/chunk512 fixed greedy32 outputs match on
-83 candidate requests, including65
-steady requests over313.616906s. Worker DSO
-identities,eight D512 bindings and memory peaks are retained in that proof.
-The ordered model timings are validation only; no end-to-end gain is claimed.
-Current-head official CI/full wheel,official py311,committee accuracy and new
-long-input model benchmarks have not been run.
+1. 组委会标准测例与精度达标线**尚未下发**，CP2 未勾选，本文件的精度部分是**临时回归通过**。
+2. 官方 CI 脚本 `tools/ci_pipline/run_ci.py` 用 `re.search(r"vllm\s+serve\s+(\S+)")` 从 `run.sh`
+   **字面**读取模型路径（`run_ci.py:50`），并作为 `speed.sh --tokenizer-path`（`run_ci.py:196`）。
+   因此 `run.sh` 中保留了一个**不执行**的字面默认路径（`if false; then vllm serve /gpfs/model/...; fi`）：
+   若把该位置写成变量，解析器会抓到字符串 `"$GEMMA_PATH"` 而使官方性能步骤失败。权重迁址时请让该
+   字面路径可解析。
+3. D512 global decode 的官方隔离 kernel 为可选组件（`GEMMA_D512_OFFICIAL_EXTENSION`），
+   默认走 math。**滑动窗口在默认档由 overlay 的 math 路径施加**（prefill 与 decode 都施加，
+   见**交付实际执行的** `runtime/custom_ops/prefill_attention/op.py` 的
+   `_attend_math`/`sdpa_decode_attention_math` 与单测
+   `model_adaptations/Gemma4SCUdoudui/scripts/gemma4/test_operator_overlay.py`（交付子树内那份，与仓库根同名文件 blob 逐位相同）的 T7.0/T9）；无窗口的 `sdpa_prefill_attention` 在 Gemma 上不可达（两个 head_dim 都 ≥ 256）。
+   **路径口径（2026-10-13 实测更正）**：`run.sh` 的 `PYTHONPATH` 只前置交付子树的
+   `overlay/` 与 `runtime/`，`custom_ops` 从 `runtime/custom_ops/` 导入；仓库根的
+   `custom_ops/` 被 git 跟踪但**不在交付子树内**，且**没有 `__init__.py`**；交付子树里只有
+   `runtime/custom_ops/`。机制：**regular package（有 `__init__.py`）胜过 namespace
+   package，与 `sys.path` 顺序无关**（把仓库根放在最前也一样）⇒ 交付执行的是
+   `runtime/custom_ops/`，**根副本不执行**。此后一切指向仓库根 `custom_ops/**` 的引用都不代表交付行为。
+4. 多模态（vision/audio）为 No-Go：该 checkpoint 只有 `vision_embedder.*` 而没有与 vLLM
+   `vision_tower.*` 对齐的塔权重，overlay 无法补出权重。
+5. 当前默认档的 TTFT/TPOT 未重测；T3/T4、graph capture、当前 owner CI 未执行。
+6. `run.sh` 的模型路径参数是 `"$GEMMA_PATH"`，但官方解析器需要字面量：若权重迁移，请让
+   `/gpfs/model` 可解析（见第 2 条）。
+7. **许可证口径**：本队对**本交付目录**的改动以 **Apache-2.0** 提交；仓库根 `LICENSE` 是**上游继承的 BSD-3**
+   （blob 与上游同值，**不改**）。该差异**待向组委会确认**。
+8. 本文件已按"手动执行新 README 的命令"逐条核对，并据此更正了三处：`import tecoops` 必须让
+   `/opt/tecoai/lib64` 在 `LD_LIBRARY_PATH` 上；`tests/test_startup_failure.py` 需 SDAA 栈、
+   不是无卡用例；overlay 的启动期失败原先只打印诊断（`raise` 被 `site.py` 吞掉），已改为
+   `raise SystemExit(1)` 才真正 fail-closed。
+9. **交付态"跑的是哪个库"实测（2026-10-13，设备无关）**：交付包不含 `tecoops`，
+   `run.sh` 只前置 `overlay:runtime` ⇒ `import tecoops` 落到 `/home/py312/.../site-packages/tecoops`
+   （lib sha256 `388dd710a8357ee9294ccada17fa3f4003a9bc5aa107bec744184fa008cbbcc0`，278 176 B）。
+   该库 8 个导出，**没有** `rms_norm_compat` / `ms_deform_attn_*` / `rotary_embedding`，且
+   `teco_slave_flash_attention_half_d256` / `_d512` 符号计数 = 0（交付库 = 7 / 1）。
+   在交付 `run.sh` 的 `PYTHONPATH` 下 overlay 实际行为 = **静默降级并进入 main（rc=0）**，
+   不是 fail-closed。反面对照：把交付安装目录前置后同一脚本 `SELFCHECK PASS` / rc=0。
+   ⇒ 启动前必须跑 `model_adaptations/Gemma4SCUdoudui/scripts/gemma4/selfcheck_tecoops.py`（本文件「模型注册」第 2 条已写为必需步骤）。

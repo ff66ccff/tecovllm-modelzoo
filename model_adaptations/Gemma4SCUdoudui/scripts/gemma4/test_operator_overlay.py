@@ -1,29 +1,4 @@
 #!/usr/bin/env python
-# BSD 3-Clause License Copyright (c) 2023, Tecorigin Co., Ltd. All rights
-# reserved.
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-# Redistributions of source code must retain the above copyright notice,
-# this list of conditions and the following disclaimer.
-# Redistributions in binary form must reproduce the above copyright notice,
-# this list of conditions and the following disclaimer in the documentation
-# and/or other materials provided with the distribution.
-# Neither the name of the copyright holder nor the names of its contributors
-# may be used to endorse or promote products derived from this software
-# without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-
 """CPU 单元测试：port 进来的官方算子 overlay（D2）。
 
 可在纯 CPU 上验证的部分：
@@ -76,6 +51,43 @@ def main() -> int:
     check("T1.1 block_attention 暴露 forward", callable(sdaa_block_attention_forward))
     check("T1.2 prefill_attention 暴露 sdpa_prefill_attention", callable(sdpa_prefill_attention))
     check("T1.3 reshape_and_cache 暴露 sdaa_reshape_and_cache", callable(sdaa_reshape_and_cache))
+
+    # 防漂移（L11：门禁验的字节 == 发布字节）：本套件必须对着"交付实际执行的代码"跑。
+    # 交付 run.sh 的 PYTHONPATH 是 <delivery>/overlay:<delivery>/runtime，而 custom_ops 是
+    # runtime/ 下的子目录；仓库根也有一个 custom_ops/（被 git 跟踪、不在交付子树内、无
+    # __init__.py），机制上 regular package 胜过 namespace package、与 sys.path 顺序无关
+    # ⇒ 交付执行的是 runtime/custom_ops/。下面两条断言 fail-closed。
+    import custom_ops as _custom_ops
+
+    def _c22_find_delivery_custom_ops():
+        """从本文件向上找 <root>/model_adaptations/Gemma4SCUdoudui/runtime/custom_ops。
+        这样同一个字节的文件放在仓库根或放在交付子树里都能自证（两种布局都能向上找到）。"""
+        cur = os.path.dirname(os.path.abspath(__file__))
+        for _ in range(8):
+            cand = os.path.join(cur, "model_adaptations", "Gemma4SCUdoudui",
+                                "runtime", "custom_ops")
+            if os.path.isdir(cand):
+                return os.path.realpath(cand)
+            parent = os.path.dirname(cur)
+            if parent == cur:
+                break
+            cur = parent
+        return None
+
+    _mod_path = os.path.realpath(_custom_ops.__file__)
+    _pkg_dir = os.path.dirname(_mod_path)
+    _structural = (os.path.basename(_pkg_dir) == "custom_ops"
+                   and os.path.basename(os.path.dirname(_pkg_dir)) == "runtime")
+    check("T1.4 custom_ops 解析到 *runtime/custom_ops*（结构断言，任意布局成立）",
+          _structural, f"resolved={_mod_path}")
+    _expected = _c22_find_delivery_custom_ops()
+    if _expected is None:
+        check("T1.5 custom_ops == 交付子树 runtime/custom_ops（精确断言）", False,
+              "无法从本文件向上定位 model_adaptations/Gemma4SCUdoudui/runtime/custom_ops")
+    else:
+        check("T1.5 custom_ops == 交付子树 runtime/custom_ops（精确断言）",
+              _mod_path == os.path.join(_expected, "__init__.py"),
+              f"resolved={_mod_path} expected={os.path.join(_expected, '__init__.py')}")
 
     # ---- T2 overlay 绑定 ----
     try:
@@ -163,33 +175,88 @@ def main() -> int:
     else:
         check("T8.0 需 GEMMA4_OVERLAY=1 才能检查 window 补丁", False, "skipped")
 
-    # ---- T7 Gemma sliding-window math kernel ----
-    # The self-developed path uses right-aligned causal positions and keeps
-    # exactly [q_pos-window+1, q_pos].  This is the model-side kernel contract
-    # for Gemma D256 sliding layers; D512 passes window_size=None (global).
-    q7 = torch.randn(6, 1, 3, dtype=torch.float32)
-    kc7 = torch.randn(2, 1, 4, 3, dtype=torch.float32)
-    vc7 = torch.randn_like(kc7)
-    bt7 = torch.tensor([[0, 1]], dtype=torch.int64)
+    # ---- T7 Gemma sliding-window math kernel（按交付 runtime/custom_ops 语义重写）----
+    # 交付副本对 fixture 有硬契约：block_size 必须 32、page id 有下界（windowed >=1 /
+    # global >=2）、metadata 必须 int32、query_start_loc 累积端点必须自洽。
+    # 旧版 T7.0 用 bs=4 的小 fixture，在交付副本上直接 RuntimeError
+    # ("requires matching head dimension and block32") —— 那是"测试 vs 交付"不一致，
+    # 本次按交付语义重写。K/V 用**逐页显式写入**构造，并对索引做 round-trip 自检。
+    def _c22_fixture(kv, nq, hs, w_page_offset=2, seed=7):
+        torch.manual_seed(seed)
+        nblk = kv // 32
+        kc = torch.zeros(nblk + w_page_offset, nq, 32, hs, dtype=torch.float32)
+        vc = torch.zeros(nblk + w_page_offset, nq, 32, hs, dtype=torch.float32)
+        kl = torch.randn(kv, nq, hs, dtype=torch.float32)
+        vl = torch.randn(kv, nq, hs, dtype=torch.float32)
+        for j in range(nblk):
+            for t in range(32):
+                kc[w_page_offset + j, :, t, :] = kl[j * 32 + t]
+                vc[w_page_offset + j, :, t, :] = vl[j * 32 + t]
+        bt = (torch.arange(nblk, dtype=torch.int32) + w_page_offset).unsqueeze(0)
+        logical = torch.arange(kv)
+        rt = kc[bt[0][logical // 32], :, logical % 32, :]
+        assert torch.equal(rt, kl), "T7 fixture round-trip failed"
+        return kc, vc, bt, kl, vl
+
+    def _c22_ref(q, kl, vl, qpos, w, scale=0.5):
+        qt = q.transpose(0, 1).unsqueeze(0)
+        kt = kl.transpose(0, 1).unsqueeze(0)
+        vt = vl.transpose(0, 1).unsqueeze(0)
+        sc = (qt @ kt.transpose(-1, -2)) * scale
+        kpos = torch.arange(kl.shape[0])
+        m = kpos[None, :] > qpos[:, None]
+        if w is not None:
+            m = m | (kpos[None, :] < (qpos[:, None] - (w - 1)))
+        pr = torch.softmax(sc.masked_fill(m[None, None], float("-inf")), dim=-1)
+        return (pr @ vt).squeeze(0).transpose(0, 1)
+
+    # T7.0：小窗口（window=3）的掩码语义 —— kv=32 单页、window=3
+    kc7, vc7, bt7, kl7, vl7 = _c22_fixture(32, 1, 3)
+    q7 = torch.randn(32, 1, 3, dtype=torch.float32)
     got7 = sdpa_prefill_attention_math(
-        q7, kc7, vc7, bt7, torch.tensor([0, 6]), torch.tensor([6]),
-        0.5, True, window_size=3,
-    )
-    k7 = torch.cat((kc7[0, :, :4, :], kc7[1, :, :2, :]), dim=1)
-    v7 = torch.cat((vc7[0, :, :4, :], vc7[1, :, :2, :]), dim=1)
-    q7t = q7.transpose(0, 1).unsqueeze(0)
-    k7t = k7.unsqueeze(0)
-    v7t = v7.unsqueeze(0)
-    scores7 = (q7t @ k7t.transpose(-1, -2)) * 0.5
-    pos7 = torch.arange(6)
-    mask7 = (torch.arange(6)[None, :] > pos7[:, None]) | (
-        torch.arange(6)[None, :] < (pos7[:, None] - 2)
-    )
-    scores7 = scores7.masked_fill(mask7[None, None], float("-inf"))
-    ref7 = (torch.softmax(scores7, dim=-1) @ v7t).squeeze(0).transpose(0, 1)
-    check("T7.0 D256 sliding window=3 与独立参考一致",
+        q7, kc7, vc7, bt7, torch.tensor([0, 32], dtype=torch.int32),
+        torch.tensor([32], dtype=torch.int32), 0.5, True, window_size=3)
+    ref7 = _c22_ref(q7, kl7, vl7, torch.arange(32), 3)
+    check("T7.0 sliding window=3 与独立右对齐参考一致",
           torch.allclose(got7, ref7, atol=1e-6),
           f"maxdiff={(got7-ref7).abs().max():.2e}")
+
+    # ---- T9 prefill 长度 > 窗口：窗口必须被真的施加 ----
+    kv9, w9 = 1536, 1024
+    kc9, vc9, bt9, kl9, vl9 = _c22_fixture(kv9, 2, 3, seed=11)
+    q9 = torch.randn(kv9, 2, 3, dtype=torch.float32)
+    got9 = sdpa_prefill_attention_math(
+        q9, kc9, vc9, bt9, torch.tensor([0, kv9], dtype=torch.int32),
+        torch.tensor([kv9], dtype=torch.int32), 0.5, True, window_size=w9)
+    ref9 = _c22_ref(q9, kl9, vl9, torch.arange(kv9), w9)
+    check(f"T9.0 full prefill kv={kv9} > window={w9} 与独立右对齐参考一致",
+          torch.allclose(got9, ref9, atol=1e-5),
+          f"maxdiff={(got9-ref9).abs().max():.2e}")
+    ref9_full = _c22_ref(q9, kl9, vl9, torch.arange(kv9), None)
+    check("T9.1 窗口未被忽略（结果 != 全因果参考）",
+          not torch.allclose(got9, ref9_full, atol=1e-5),
+          f"maxdiff_vs_full_causal={(got9-ref9_full).abs().max():.2e}")
+
+    # T9.2 appended-chunk 形态（chunked prefill 产生的形状）：q=512 / kv=1536
+    q9b = torch.randn(512, 2, 3, dtype=torch.float32)
+    got9b = sdpa_prefill_attention_math(
+        q9b, kc9, vc9, bt9, torch.tensor([0, 512], dtype=torch.int32),
+        torch.tensor([kv9], dtype=torch.int32), 0.5, True, window_size=w9)
+    ref9b = _c22_ref(q9b, kl9, vl9, torch.arange(512) + (kv9 - 512), w9)
+    check("T9.2 appended chunk q=512/kv=1536/window=1024 与独立参考一致",
+          torch.allclose(got9b, ref9b, atol=1e-5),
+          f"maxdiff={(got9b-ref9b).abs().max():.2e}")
+
+    # T9.3 kv <= window 时窗口是 no-op（必须等于全因果）
+    kc9c, vc9c, bt9c, kl9c, vl9c = _c22_fixture(512, 2, 3, seed=13)
+    q9c = torch.randn(512, 2, 3, dtype=torch.float32)
+    got9c = sdpa_prefill_attention_math(
+        q9c, kc9c, vc9c, bt9c, torch.tensor([0, 512], dtype=torch.int32),
+        torch.tensor([512], dtype=torch.int32), 0.5, True, window_size=1024)
+    ref9c = _c22_ref(q9c, kl9c, vl9c, torch.arange(512), None)
+    check("T9.3 kv<=window => 等于全因果（窗口为 no-op）",
+          torch.allclose(got9c, ref9c, atol=1e-5),
+          f"maxdiff={(got9c-ref9c).abs().max():.2e}")
 
     print()
     if FAILURES:

@@ -23,63 +23,89 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-"""Initialization-bound isolated D512 global decode; no global tecoops changes."""
+"""Initialization-bound D512 global decode on the **delivered** tecoops operator (default tier).
+
+cycle-27 / task-9 (AGENTS §2.3 delivery-runnability): ``tecoops.flash_attn_varlen_func`` (the
+D256/D512 paged varlen flash attention delivered by teco-ops main) was previously reachable only
+through the isolated extension selected by ``GEMMA_D512_OFFICIAL_EXTENSION``.  That variable is
+unset in the delivery configuration, so ``OFFICIAL_DECODE`` was ``None`` and the 8 head_dim-512
+global layers stayed on the in-repo math fallback (``_decode_math`` ->
+``sdpa_decode_attention_math`` -> ``_attend_math``).
+
+This module binds the delivered operator itself, at **import / construction time**, as the
+**default** tier.  The selection happens once, in ``BlockAttentionImpl.__init__`` ->
+``bind_attention_impls`` -> ``bind_global_decode``; the forward hot path contains no backend
+branch, no fallback and no ``getenv`` (AGENTS.md rule 6).
+
+Fail-closed: the process must map exactly one ``libteco_ops.so`` (optionally pinned by
+``GEMMA4_D512_EXPECT_LIB``) and ``tecoops`` must export ``flash_attn_varlen_func``; the legacy
+isolated-extension variables must be unset, so the operator identity can never be ambiguous.
+Nothing else in the attention path changes: prefill, the D256 sliding layers, cache writes,
+RMSNorm and the linear stream are untouched.
+"""
 import hashlib
-import importlib.util
 import json
 import os
 from pathlib import Path
-import re
-import subprocess
 import sys
-import types
 
 import torch
+import tecoops
 
 
 def _sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def load_extension(path, expected_sha256):
-    path = Path(path).resolve(strict=True)
-    if path.name != "_torch_ext.cpython-312-loongarch64-linux-gnu.so":
-        raise RuntimeError("unexpected isolated extension basename")
-    if not re.fullmatch(r"[0-9a-fA-F]{64}", expected_sha256):
-        raise RuntimeError("extension SHA256 must contain 64 hex digits")
-    digest = _sha256(path)
-    if digest != expected_sha256.lower():
-        raise RuntimeError("isolated extension SHA256 mismatch")
-    dynamic = subprocess.run(
-        ["readelf", "-d", str(path)], check=True, capture_output=True, text=True,
-    ).stdout
-    needed = re.findall(r"\(NEEDED\).*\[(.*?)\]", dynamic)
-    cores = [name for name in needed if "teco" in name and "sdaa" not in name]
-    if cores != ["libteco_gemma_flash.so"]:
-        raise RuntimeError(f"unexpected isolated core dependencies: {cores}")
-    core = path.parent / "libteco_gemma_flash.so"
-    core = core.resolve(strict=True)
-    package_name = "_gemma_d512_official"
-    package = types.ModuleType(package_name)
-    package.__path__ = [str(path.parent)]
-    sys.modules[package_name] = package
-    name = package_name + "._torch_ext"
-    spec = importlib.util.spec_from_file_location(name, str(path))
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    spec.loader.exec_module(module)
-    maps = Path("/proc/self/maps").read_text()
-    loaded_cores = {
-        line.split()[-1] for line in maps.splitlines()
-        if "libteco_gemma_flash.so" in line
-    }
-    if loaded_cores != {str(core)}:
-        raise RuntimeError(f"unexpected loaded isolated core paths: {loaded_cores}")
-    print("[gemma-d512-official] LOAD " + json.dumps({
-        "extension": str(path), "extension_sha256": digest,
-        "core": str(core), "core_sha256": _sha256(core), "needed": needed,
-    }), file=sys.stderr, flush=True)
-    return module.flash_attn_varlen_func
+def _mapped_libteco_ops():
+    """Realpaths of every ``libteco_ops.so`` mapped into this process."""
+    out = set()
+    try:
+        with open("/proc/self/maps") as fh:
+            for line in fh:
+                path = line.split()[-1]
+                if path.endswith("libteco_ops.so"):
+                    out.add(str(Path(path).resolve()))
+    except OSError:
+        pass
+    return sorted(out)
+
+
+def _fail_closed_library_identity():
+    libs = _mapped_libteco_ops()
+    if not libs:
+        raise RuntimeError(
+            "D512 delivered decode: no libteco_ops.so mapped into this process")
+    expected = os.environ.get("GEMMA4_D512_EXPECT_LIB")
+    if expected:
+        if libs != [str(Path(expected).resolve())]:
+            raise RuntimeError(
+                "D512 delivered decode FAIL-CLOSED: mapped %r != expected %r"
+                % (libs, expected))
+    elif len(libs) != 1:
+        raise RuntimeError(
+            "D512 delivered decode FAIL-CLOSED: expected exactly one libteco_ops.so, "
+            "mapped %r" % (libs,))
+    return libs
+
+
+if os.environ.get("GEMMA_D512_OFFICIAL_EXTENSION") or os.environ.get("GEMMA_D512_OFFICIAL_SHA256"):
+    raise RuntimeError(
+        "D512 delivered decode: GEMMA_D512_OFFICIAL_EXTENSION/_SHA256 select the isolated "
+        "extension tier; unset them when the delivered tecoops binding is the default")
+
+if not hasattr(tecoops, "flash_attn_varlen_func"):
+    raise RuntimeError(
+        "D512 delivered decode requires tecoops.flash_attn_varlen_func; rebuild/stage a "
+        "libteco_ops.so and _torch_ext that export it")
+
+_MAPPED_LIBS = _fail_closed_library_identity()
+print("[gemma-d512-delivered] LOAD " + json.dumps({
+    "tecoops_file": getattr(tecoops, "__file__", None),
+    "mapped_libteco_ops": _MAPPED_LIBS,
+    "mapped_sha256": [_sha256(p) for p in _MAPPED_LIBS],
+    "kernel": "tecoops.flash_attn_varlen_func",
+}), file=sys.stderr, flush=True)
 
 
 def register_decode(kernel, namespace="gemma_d512_official"):
@@ -143,11 +169,7 @@ def register_decode(kernel, namespace="gemma_d512_official"):
     return decode
 
 
-_path = os.environ.get("GEMMA_D512_OFFICIAL_EXTENSION")
-_digest = os.environ.get("GEMMA_D512_OFFICIAL_SHA256")
-if bool(_path) != bool(_digest):
-    raise RuntimeError("D512 isolated extension path and SHA256 must both be set")
-OFFICIAL_DECODE = register_decode(load_extension(_path, _digest)) if _path else None
+OFFICIAL_DECODE = register_decode(tecoops.flash_attn_varlen_func)
 
 
 def decode_forward(self, out_view, query, key_cache, value_cache,

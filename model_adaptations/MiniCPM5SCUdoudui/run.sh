@@ -103,7 +103,16 @@ vllm() {
     exec /home/py312/bin/python -m vllm.entrypoints.cli.main serve "${serve_args[@]}"
 }
 
-vllm serve /gpfs/model/OpenBMB/MiniCPM5-1B \
+# CI parser note: tools/ci_pipline/run_ci.py `parse_run_sh()` strips comment lines and
+# takes the FIRST `vllm serve <token>` match as the model path (it is also passed to
+# speed.sh as --tokenizer-path).  A quoted `"$MODEL_PATH"` would be captured verbatim and
+# fail `os.path.exists`.  Keep this unreachable bare literal first; the launcher below
+# executes the variable form, and the local vllm() shim rewrites argv[1] from $MODEL_PATH.
+if false; then
+    vllm serve /gpfs/model/OpenBMB/MiniCPM5-1B
+fi
+
+vllm serve "$MODEL_PATH" \
     --served-model-name MiniCPM5-1B \
     --tensor-parallel-size 1 \
     --port 8000 \

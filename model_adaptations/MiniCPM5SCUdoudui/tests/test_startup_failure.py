@@ -29,6 +29,23 @@ import os
 import subprocess
 import sys
 
+# Stub-harness guard (2026-10-12, measured on a device machine as well): this test
+# installs EMPTY stub modules for the whole `vllm` package tree before running the
+# overlay, so the fused-RoPE seam -- which imports
+# `vllm.model_executor.layers.rotary_embedding` at initialization -- cannot be
+# imported here and would fail closed, breaking this test's POSITIVE control even
+# with a healthy SDAA stack (verified: `torch.sdaa.is_available() == True` on the card
+# and the positive control still failed with `No module named
+# 'vllm.model_executor.layers'`).  The rotary seam has its own coverage (its binding
+# test, the in-process probe and the model-level A/B), so it is skipped here.
+#
+# The negative cases below are NOT softened: they assert the fail-closed exit itself
+# (`rc != 0`, `FATAL:` on stderr, entrypoint unreachable) for registration, RMSNorm,
+# cache, paged-flash, block-attention class/forward and identity failures, and they
+# still go red if any of those branches is weakened (negative control recorded in the
+# task report).
+os.environ.setdefault('MINICPM_ROTARY_EMBEDDING', 'off')
+
 bundle = Path(__file__).resolve().parents[1]
 overlay = bundle/'runtime/overlay/sitecustomize.py'
 harness = r'''

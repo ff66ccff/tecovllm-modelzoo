@@ -40,17 +40,19 @@ ls -ld "$MODEL_ROOT/Tencent-Hunyuan/Hy-MT2-1.8B"
 
    本模型的 overlay 依赖本队算子库的四个能力：`rms_norm`（含 `+add`）、`rms_norm_compat`、`rotary_embedding`、`reshape_and_cache`。镜像**预装**的 wheel（`/home/py312/lib/python3.12/site-packages/tecoops`，其 `libteco_ops.so` sha256 = `388dd710a8357ee9294ccada17fa3f4003a9bc5aa107bec744184fa008cbbcc0`）**不含 `rotary_embedding` 与 `rms_norm_compat`**：直接 `bash run.sh` 会被 overlay 的 fail-closed 拦住并以 `SystemExit(1)` 退出（**这是刻意行为，不是崩溃**——宁可拒绝启动，也不静默回退到未适配路径）。
 
-   服务库必须来自**本队 ops 仓**（源 commit `dda33c5b4adb86dc81ef23e0ce7c9a2bcc690548`，父 `4adfd05e`；该提交是纯增量测试件，**编译产物与 `4adfd05e` 逐字节相同**）：
+   服务库必须来自**本队 ops 仓**（源 commit `beebae220f0e918460d2210e4064030e157d602d`；自 `4adfd05e` 起已依次落地 `79941c5f` / `d84f34f` / `54a1d65` / `98e18ca` / `e4e691d`，见下方 provenance 句）：
 
    ```bash
    source /opt/tecoai/setvars.sh            # 提供 libsdaart.so / libsddev.so 等运行库路径
-   TEAM_OPS=<本队 teco-ops 检出>             # 内容 = commit dda33c5b（或 4adfd05e，产物相同）
+   TEAM_OPS=<本队 teco-ops 检出>             # 内容 = commit beebae220f0e918460d2210e4064030e157d602d
    bash "$TEAM_OPS/build.sh" --build teco   # 构建 core：build/teco/lib/libteco_ops.so
    cd "$TEAM_OPS" && /home/py312/bin/python setup.py bdist_wheel
    /home/py312/bin/python -m pip install --no-deps --no-compile \
        --target /root/tmpwork/c22-hy/install-team "$TEAM_OPS"/dist/*.whl
    export PYTHONPATH=/root/tmpwork/c22-hy/install-team:${PYTHONPATH:-}
    ```
+
+   > 本 pin 已前移至 **`beebae2`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径）。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `beebae2` 为准。
 
    本线 2026-10-13 卡窗（`hy-c22`，`run.sh` 一行未改）实际服务的库身份（构建于 `/root/tmpwork/c20-longtail/ops-rope`，与该 ops 内容逐位相同；**跨构建根 sha 会不同，故判据是能力探针，不是裸 sha 相等**）：
 
@@ -70,7 +72,7 @@ ls -ld "$MODEL_ROOT/Tencent-Hunyuan/Hy-MT2-1.8B"
 
    注意：只设 `PYTHONPATH` 而不设 SDK 运行库路径时，`import tecoops` 会以 `ImportError: libsdaart.so: cannot open shared object file` 失败（torch 自动加载 torch_sdaa 所致），必须先 `source /opt/tecoai/setvars.sh` 或手工把 `/opt/tecoai/lib64` 与 torch/torch_sdaa 的 `lib` 目录加进 `LD_LIBRARY_PATH`。
 
-   **官方 PR #48 的 wheel 不可单独充当本模型的服务库**：该 PR 从上游 `main`（`de27305e`）发出，只含上游那版 `rms_norm` 与本队 rope 算子（实测其 `libteco_ops.so` sha256 = `d2c8e046147df63b0ae142e176fe1ac151537761f2eb968f3de00b60e1337424`，**无 `rms_norm_compat`**，能力探针判 `NOT_CAPABLE`）；本模型需要的 `rms_norm`（PR37 / H3a 形态）只存在于本队 ops 仓，必须按上面的 build + install 步骤取自本队 `main`（`dda33c5b` / `4adfd05e` 内容）。
+   **官方 PR #48 的 wheel 不可单独充当本模型的服务库**：该 PR 从上游 `main`（`de27305e`）发出，只含上游那版 `rms_norm` 与本队 rope 算子（实测其 `libteco_ops.so` sha256 = `d2c8e046147df63b0ae142e176fe1ac151537761f2eb968f3de00b60e1337424`，**无 `rms_norm_compat`**，能力探针判 `NOT_CAPABLE`）；本模型需要的 `rms_norm`（PR37 / H3a 形态）只存在于本队 ops 仓，必须按上面的 build + install 步骤取自本队 `main`（当前 pin `beebae2`；`dda33c5b` / `4adfd05e` 是其后被前移取代的旧 pin，见上方 provenance 句）。
 
 3. 算子绑定全部在进程初始化期完成（`runtime/overlay/sitecustomize.py`）：注册 opaque `torch.library` 算子并绑定 RMSNorm、SwiGLU、attention、`RotaryEmbedding` 与 M=1 decode 线性层（`tecoops.linear_stream`）；缺接口或绑定身份校验失败即 **fail-closed 终止启动**（`SystemExit(1)`），不会静默回退到未适配路径；
 4. **CI 解析器约束**：`tools/ci_pipline/run_ci.py:parse_run_sh()` 会剥掉注释行后取**第一个** `vllm serve <token>` 作为模型路径（并作为 `speed.sh` 的 `--tokenizer-path`）。因此 `run.sh` 里保留一个**不可达**的裸字面量块 `if false; then vllm serve /gpfs/model/...; fi`，真正执行的是 `vllm serve "$MODEL_PATH"`（本地 `vllm()` shim 在 exec 前把 argv[1] 改写成 `$MODEL_PATH`）。不要把那行改成带引号的变量，也不要把它挪到注释里。
@@ -162,6 +164,10 @@ SDAA_VISIBLE_DEVICES=0 /home/py312/bin/python "$b/tests/test_vllm_mlp_caller.py"
 **`+add` 精度余量冻结（A 档保留）**：最差 `+add` 用例 case_3（64×2048+res）`output max_error = 9.19963e-04` vs 阈值 `1.00e-03` ⇒ **余量 8.0%**（case_1 39.3%、case_5 19.0%；plain 五例与 residual_out 全 0）。零误差的替代形态 B 在同 build 下会使 `+add` 三例变慢 **+5.22% / +5.98% / +5.97%**，收益与风险不成立，故**保持 A 档**；只有门限收紧到 ≤9.0e-4（或明确按 1e-4/3e-4 判）时才切换。证据：`op_learning/hy-mt2-1.8b/cycle15-rmsnorm-precision-tradeoff-20261011/DECISION.md`、`op_learning/norm/hy-rmsnorm-add-margin-c16-20261011/`。
 
 TTFT / TPOT：**未测**（组委会性能测例与达标线未下发）。已有的端到端数字（32-token 单请求，chat 形式，TP1/FP16/ctx8192）为上述 A/B 的 A1/B/A2 各臂中位；另有一次同分支 baseline 口径中位 **3593.6 ms**（2026-10-07，`op_learning/graph/hy-cudagraph-full-decode-only-20261007/`），仅作记录，不与本 A/B 混用。
+
+## 已知限制
+
+> **已知限制（2026-10-14，交付库 `e4e691d` 测得）**：`e4e691d` 把 `flash_attention` 的 `<128>` 实例化移入**尾部新 TU**，使整库 device 代码布局重排，**`rms_norm` 的 8 个官方 case 因 code-layout 效应变慢**（逐例 `+0.35…+2.6 µs`，合计 `+11.88 µs`；同构建 A/B，`max_error` 逐位不变、`rms_norm_fp16.scpp` 源码 sha256 未变）。该效应**与算子源码无关**，且**换任何结构都只会把税转移给另一个算子**（例如把新 TU 移进 `flash_attention/` 目录会让 `rms_norm` 归零但使 `weight_stream_gemv` 慢 `−35%/−18%`）。本队选择维持 `e4e691d` 的 device 布局（其后 `beebae2` 只改 host 谓词，全部 device 目标码逐字节不变），理由是净账：`flash_attention` 官方 11 例表 `−1.58367 ms`，而 `weight_stream_gemv` 正是 Hy/InternVL 两条线模型级收益所绑定的算子。逐 case 原值与完整 A/B 见本队账本仓 `docs/competition/c25-lead-ledger-20261014.md` §8.4 与 §9.4。
 
 ## 许可证
 

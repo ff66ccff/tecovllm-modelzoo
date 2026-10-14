@@ -1,186 +1,172 @@
-# Hy-MT2-1.8B (SCU 都队)
+# Hy-MT2-1.8B
 
-This adaptation uses the read-only checkpoint under `MODEL_ROOT` and binds
-the existing vendor RMSNorm, SwiGLU, cache and attention APIs during process
-initialization. It does not modify the installed vendor packages or download
-weights. The tested runtime is FP16, TP1 (Hq16/Hkv4/D128), HND cache blocks32,
-global causal attention with the default scale and automatic FP16 cache,
-without KV sharing or prefix/chunked prefill.
+## 模型概述
 
-## Launch
+Hy-MT2-1.8B 是腾讯混元系列的稠密翻译语言模型（`HunYuanDenseV1ForCausalLM`）。本目录是 SCU 都队在太初（SDAA）平台上的推理适配，基于 TecovLLM（vLLM 0.20.2）与自研 `tecoops` 算子库：通过**进程初始化期的 overlay** 把算子绑定进模型，不修改任何 site-packages / torch / vLLM 文件，权重按只读方式引用。
+
+难度系数：**0.5**。
+
+已适配的算子（三层形态：C++ kernel → Python API → 模型调用点）：
+
+| 算子 | 形态 | 说明 |
+| --- | --- | --- |
+| `rms_norm`（含 residual `+add`） | 复用团队 `tecoops` 算子，启动期绑定 | PR37 形态；`+add` 精度余量按 A 档冻结（见「性能验证」） |
+| `rotary_embedding` | **本队新增 C++ 融合 kernel**（NeoX / fp16） | 启动期绑定 vLLM `RotaryEmbedding`（`get_rope` 与 `__init__` 两条缝） |
+| `linear_stream`（= `weight_stream_gemv`，M=1 decode 权重流式 GEMV） | 复用团队 `tecoops` 算子（上游 PR44），启动期绑定 | 绑定 `vllm.model_executor.layers.utils.default_unquantized_gemm`；M==1 走整行 slab 双缓冲 DMA，M>1 由 C++ host 回落厂商 `torch::linear`；默认开启，`HY_MT2_LINEAR_STREAM=0` 为 A/B 基线臂 |
+
+交付运行态：**FP16、TP1**（`run.sh` 固定 `--dtype float16`）。历史 Transformers/BF16 形态的对照结论属于另一条路径的独立证据，**不构成本交付的结论**。
+
+精度口径：组委会测例与达标线尚未下发，本目录只声明**临时回归通过**（见「精度验证」），不声明适配完成。
+
+## 模型权重下载
+
+使用组委会**预置只读**权重，通过 `$MODEL_ROOT` 引用；**不重复下载、不转储副本**。
+
+- `MODEL_ROOT` 默认 `/gpfs/model`；
+- 本模型权重目录：`$MODEL_ROOT/Tencent-Hunyuan/Hy-MT2-1.8B`；
+- 如需指向其它只读挂载点，导出 `MODEL_ROOT=<路径>` 即可，启动命令与 `run.sh` 均使用该变量（已用 symlink 别名做覆盖验证）。
 
 ```bash
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
+export MODEL_ROOT=/gpfs/model          # 只读引用，无需下载
+ls -ld "$MODEL_ROOT/Tencent-Hunyuan/Hy-MT2-1.8B"
+```
+
+## 模型注册
+
+本目录随推理仓一起交付，**不需要为本模型单独编译**：
+
+1. 推理仓自身按仓库说明安装（`tecovllm_models/` 提供模型注册），例如 `python setup.py develop` 或 `python setup.py bdist_wheel`；
+2. **必须先构建并「更新安装」本队 `tecoops` 算子库，再启动服务**（交付包**不自带** `tecoops`）。
+
+   本模型的 overlay 依赖本队算子库的四个能力：`rms_norm`（含 `+add`）、`rms_norm_compat`、`rotary_embedding`、`reshape_and_cache`。镜像**预装**的 wheel（`/home/py312/lib/python3.12/site-packages/tecoops`，其 `libteco_ops.so` sha256 = `388dd710a8357ee9294ccada17fa3f4003a9bc5aa107bec744184fa008cbbcc0`）**不含 `rotary_embedding` 与 `rms_norm_compat`**：直接 `bash run.sh` 会被 overlay 的 fail-closed 拦住并以 `SystemExit(1)` 退出（**这是刻意行为，不是崩溃**——宁可拒绝启动，也不静默回退到未适配路径）。
+
+   服务库必须来自**本队 ops 仓**（源 commit `dda33c5b4adb86dc81ef23e0ce7c9a2bcc690548`，父 `4adfd05e`；该提交是纯增量测试件，**编译产物与 `4adfd05e` 逐字节相同**）：
+
+   ```bash
+   source /opt/tecoai/setvars.sh            # 提供 libsdaart.so / libsddev.so 等运行库路径
+   TEAM_OPS=<本队 teco-ops 检出>             # 内容 = commit dda33c5b（或 4adfd05e，产物相同）
+   bash "$TEAM_OPS/build.sh" --build teco   # 构建 core：build/teco/lib/libteco_ops.so
+   cd "$TEAM_OPS" && /home/py312/bin/python setup.py bdist_wheel
+   /home/py312/bin/python -m pip install --no-deps --no-compile \
+       --target /root/tmpwork/c22-hy/install-team "$TEAM_OPS"/dist/*.whl
+   export PYTHONPATH=/root/tmpwork/c22-hy/install-team:${PYTHONPATH:-}
+   ```
+
+   本线 2026-10-13 卡窗（`hy-c22`，`run.sh` 一行未改）实际服务的库身份（构建于 `/root/tmpwork/c20-longtail/ops-rope`，与该 ops 内容逐位相同；**跨构建根 sha 会不同，故判据是能力探针，不是裸 sha 相等**）：
+
+   | 项 | sha256 |
+   | --- | --- |
+   | `libteco_ops.so` | `ab7754721d7cd64fec87c1379813c20a8d2fce2ea6e0e79ab00c2bff6193b5d8` |
+   | `_torch_ext.cpython-312-loongarch64-linux-gnu.so` | `1b747878912b80e9324ed425aeff991ad1134b266e52c602449579691e4333eb` |
+   | `test/build/demo`（算子级门禁用） | `9fa57be6c1b7b0b2f74f8bfc3bed185284b4a1a140cdff24d1f1f5709d008229` |
+
+   **自证命令**（启动前执行；打印包路径、库 sha256 与必需能力项）：
+
+   ```bash
+   TORCH_DEVICE_BACKEND_AUTOLOAD=0 PYTHONPATH=/root/tmpwork/c22-hy/install-team \
+     /home/py312/bin/python /root/tmpwork/c22-hy/probe_tecoops_capability.py --json-out /tmp/cap.json
+   # 期望 verdict=CAPABLE，capabilities 中 rms_norm / rms_norm_compat / rotary_embedding / reshape_and_cache 全为 true
+   ```
+
+   注意：只设 `PYTHONPATH` 而不设 SDK 运行库路径时，`import tecoops` 会以 `ImportError: libsdaart.so: cannot open shared object file` 失败（torch 自动加载 torch_sdaa 所致），必须先 `source /opt/tecoai/setvars.sh` 或手工把 `/opt/tecoai/lib64` 与 torch/torch_sdaa 的 `lib` 目录加进 `LD_LIBRARY_PATH`。
+
+   **官方 PR #48 的 wheel 不可单独充当本模型的服务库**：该 PR 从上游 `main`（`de27305e`）发出，只含上游那版 `rms_norm` 与本队 rope 算子（实测其 `libteco_ops.so` sha256 = `d2c8e046147df63b0ae142e176fe1ac151537761f2eb968f3de00b60e1337424`，**无 `rms_norm_compat`**，能力探针判 `NOT_CAPABLE`）；本模型需要的 `rms_norm`（PR37 / H3a 形态）只存在于本队 ops 仓，必须按上面的 build + install 步骤取自本队 `main`（`dda33c5b` / `4adfd05e` 内容）。
+
+3. 算子绑定全部在进程初始化期完成（`runtime/overlay/sitecustomize.py`）：注册 opaque `torch.library` 算子并绑定 RMSNorm、SwiGLU、attention、`RotaryEmbedding` 与 M=1 decode 线性层（`tecoops.linear_stream`）；缺接口或绑定身份校验失败即 **fail-closed 终止启动**（`SystemExit(1)`），不会静默回退到未适配路径；
+4. **CI 解析器约束**：`tools/ci_pipline/run_ci.py:parse_run_sh()` 会剥掉注释行后取**第一个** `vllm serve <token>` 作为模型路径（并作为 `speed.sh` 的 `--tokenizer-path`）。因此 `run.sh` 里保留一个**不可达**的裸字面量块 `if false; then vllm serve /gpfs/model/...; fi`，真正执行的是 `vllm serve "$MODEL_PATH"`（本地 `vllm()` shim 在 exec 前把 argv[1] 改写成 `$MODEL_PATH`）。不要把那行改成带引号的变量，也不要把它挪到注释里。
+
+## 启动推理服务
+
+`run.sh` 是唯一启动入口，serve 参数由组委会 CI 固定，**不要改参**：
+
+```bash
+export MODEL_ROOT=/gpfs/model
+export SDAA_VISIBLE_DEVICES=0
+b=model_adaptations/HyMT2SCUdoudui
+bash "$b/run.sh"
+```
+
+- 固定项：`--served-model-name Hy-MT2-1.8B`、TP1、`--dtype float16`、`--gpu-memory-utilization 0.90`、`--max-model-len 8192`、`--trust-remote-code`、`--no-enable-prefix-caching`、`--no-enable-chunked-prefill`；
+- 默认 host `0.0.0.0`、port `8001`；可用 `HY_MT2_HOST` / `HY_MT2_PORT` 覆盖（启动 shim 会把 host/port 替换为这两个变量的值）；
+- 其它可用覆盖：`HY_MT2_TP_SIZE`、`HY_MT2_UTIL`、`HY_MT2_MAX_MODEL_LEN`、`HY_MT2_MODEL`（模型路径）、`MODEL_ROOT`；`--dtype float16` 与两个 `--no-…` 为硬编码，无环境变量可改；
+- 官方评测入口：`/home/py312/bin/python tools/ci_pipline/run_ci.py "$b/run.sh"`。
+
+## 精度验证
+
+> **临时回归通过**：组委会测例与达标线未下发，本节**不给出组委会口径的精度分数**，也不声明适配完成。
+
+| 项目 | 口径 | 结果 | 证据 |
+| --- | --- | --- | --- |
+| 固定 prompt 贪婪生成 | `Explain why reproducible benchmarks matter.`，**chat 模板套 user 消息**（`/v1/chat/completions`，或 `/v1/completions` + `apply_chat_template(..., add_generation_prompt=True)`），`max_tokens=32`、`temperature=0`、`top_p=1`、`top_k=-1`、`seed=0` | 32/32 token id 与冻结基线**逐位一致** | 基线 `validation/runtime_20261004.json → reference.greedy32_ids`；`reference.export_greedy32_match=true`、`each_request_all32_ids_match=true`、`errors=0` |
+| 并发/稳态 | 同 build、并发 4/8、303.19 s / 313 请求 / 73 轮 | 全部 32 id 一致、0 错误 | `validation/runtime_20261004.json` |
+| 官方**仓契约**精度门禁（**非组委会最终测试集**） | WMT24++ `en-zh_cn` 前 200 条 + `evalscope/wmt22-comet-da` | `mean_comet` **0.8495**（baseline 0.8486），落官方接受区间 `[0.8386, 0.8586]` | `op_learning/runtime/hy-repo-precision-20261005-rev2/` |
+| 组委会 `run_ci.py` 端到端（**临时回归**，非 CP2；2026-10-13 实测） | `prec.sh` 原样：`wmt24pp` 200 例 / batch 8 / COMET 打分 | `wmt24pp` **actual=0.8509**（baseline 0.8486，接受区间 `[0.8386, 0.8586]`）**PASS**；同窗 `RUN_CI_EXIT=0` | 原件 `op_learning/hy-mt2-1.8b/c22-hy-ci-capacity-20261013/endtoend-20261013T100839Z/`：`results/precision_result.json`（sha256 `766adbbe5cdb2feaf5021b75b73aea374359f8222129f06f257779bc81606d2f`，内容 `{"wmt24pp": 0.8509}`）、`RUN_CI_EXIT.txt`（内容 `0`）、`run_ci.stdout.txt`（含 `精度对比 (Hy-MT2-1.8B): wmt24pp: actual=0.8509 baseline=0.8486 range=[0.8386, 0.8586] PASS`） |
+| 算子级数值 | 官方 `zoo/teco/rms_norm/test_case/*.prototxt`，DIFF3_MAX | 96/96 run ALL PASSED；`+add` 三例 `max_error` 6.06796e-04 / 9.19963e-04 / 8.10373e-04，其余 0，阈值 1.00e-03 | `op_learning/hy-mt2-1.8b/rmsnorm-official-perf-20261010/` |
+| 启动/绑定 fail-closed | 缺接口、身份校验失败、非 FP16 显式 dtype | 失败即终止启动（`SystemExit(1)`） | `tests/test_norm_guards.py`、`tests/test_cache_guards.py`、`tests/test_vllm_*.py`（**需 SDAA**：这些用例 import `torch_sdaa`，无卡时会以 `module 'torch' has no attribute 'sdaa'` 失败，属环境要求而非缺陷） |
+
+**请求形式很重要**：把字面 prompt 直接发 `/v1/completions` **不被上述基线覆盖**（实测首 token `185` vs 冻结基线 `6400`）。所有 32-token 门禁都必须按 chat 形式比对，否则会假失败。
+
+复现命令（在**推理仓根目录**执行；SDAA 用例需要设备与 SDK 环境）：
+
+```bash
+b=model_adaptations/HyMT2SCUdoudui
 source /opt/tecoai/setvars.sh
-export SDAA_ENABLE_COREDUMP_ON_EXCEPTION=0 SDAA_VISIBLE_DEVICES=0
-MODEL_ROOT=/gpfs/model bash model_adaptations/HyMT2SCUdoudui/run.sh
+export PYTHONPATH="$b/runtime:${PYTHONPATH:-}"
+SDAA_VISIBLE_DEVICES=0 /home/py312/bin/python "$b/tests/test_norm_guards.py"
+SDAA_VISIBLE_DEVICES=0 /home/py312/bin/python "$b/tests/test_cache_guards.py"
+SDAA_VISIBLE_DEVICES=0 /home/py312/bin/python "$b/tests/test_vllm_rms_norm.py"
+SDAA_VISIBLE_DEVICES=0 /home/py312/bin/python "$b/tests/test_vllm_swiglu.py"
+SDAA_VISIBLE_DEVICES=0 /home/py312/bin/python "$b/tests/test_vllm_attention.py"
+SDAA_VISIBLE_DEVICES=0 /home/py312/bin/python "$b/tests/test_vllm_mlp_caller.py"
 ```
 
-`run.sh` locks `/home/py312/bin/python`, disables stale compile-cache reuse,
-and preserves the installed SDAA default vLLM compiler (no enforce-eager).
-The required served name is `Hy-MT2-1.8B`; the default port is8001 and maximum
-model length8192. `HY_MT2_MODEL`, `HY_MT2_HOST`, `HY_MT2_PORT`, and
-`HY_MT2_MAX_MODEL_LEN` configure the local service. TP1/FP16 are the validated
-geometry; unsupported attention geometry/window/scale fails at initialization.
-Additional vLLM arguments can be supplied to the launcher.
+**已知限制**：
 
-## Runtime bindings
+- 只验证固定输入的短请求；配置上下文 8192，**未评测 8k 全长生成**；未做组委会口径精度评测，owner CI 与官方评测是独立门禁；
+- **交付运行时忽略模型 config 的 `rope_scaling`**：vLLM loader 把 `config.rope_parameters` 填成 `{"rope_type":"default"}`（`vllm/transformers_utils/config.py:386-388`），而本模型把动态缩放放在 `rope_scaling`，因此实际建的是 plain cache。这是**交付侧既有语义、非本队算子引入**，对融合算子无影响（算子只消费模型产出的 cache），但**可能与精度口径有关**，如实登记；
+- 保留厂商 FP16 次正规数（subnormal）冲刷行为；原始 CPU 算术并非普遍逐位等价（CPU 参考固定 `rtol/atol 0.002`）；
+- 镜像内已安装的 `tecoops` wheel（`libteco_ops.so` sha256 `388dd710a8357ee9294ccada17fa3f4003a9bc5aa107bec744184fa008cbbcc0`）**不含 `rotary_embedding` 与 `rms_norm_compat`**，不能服务本模型：必须按「模型注册」第 2 步 build + 更新安装**本队** ops 库，否则 overlay 会 fail-closed 退出；官方 PR #48 的 wheel 亦**不可**单独充当服务库（只含上游 `rms_norm` + 本队 rope，缺 `rms_norm_compat`）。本队库以隔离安装（`pip install --target` / `PYTHONPATH` 前置）方式使用，并逐臂记录 `libteco_ops.so` sha256 与能力探针结果；
+- **bf16 未适配**：交付运行态是 FP16，且 SDAA slave SIMD 头无 bf16 向量类型/转换；若将来按 config 原生 bf16 运行需另开独立验证。
 
-- RMSNorm invokes the original `tecoops.rms_norm` through two SDAA-only
-  mutation/Fake boundaries, with and without residual output. This prevents
-  Dynamo from tracing the raw pybind call and preserves the output contract.
-- The existing merged gate/up projection is retained. A Tensor-only opaque
-  SwiGLU boundary calls `torch.ops.sdaa.swiglu` with runtime integer sizes;
-  the Fake output uses symbolic Tensor dimensions. Passing token counts to
-  the vendor's `int` schema directly would specialize vLLM's dynamic axis.
-- The installed `BlockAttentionImpl.forward` stub is bound to the established
-  HND cache + vendor SDPA prefill/mixed + vendor BlockAttention decode
-  integration. Fused-QKV views are made contiguous only at the cache ABI.
-  Full prefill uses causal SDPA; mixed decode uses unmasked SDPA over its
-  past cache. Chunked prefill is explicitly disabled and rejected.
+## 性能验证
 
-The older Transformers BF16 RMSNorm/SwiGLU overlays and their measured
-3.16% SwiGLU device-time result remain separate evidence. vLLM already merges
-gate/up, so that HF result is not a performance claim for this export.
-These changes repair the public runtime entry; they introduce no new UAL.
+口径：**模型级** = 同一 build、同一固定 prompt、贪婪 32 token，每臂独立进程 + 预热 + 3 次计时取中位；**算子级** = 官方测例 + `./build/demo --gid=0 --perf_repeat=50 --warm_repeat=3 --gtest_repeat=1 --case_path=zoo/teco/rms_norm/test_case/<case>.prototxt` 的 `Average Hardware Time` 中位。
 
-## Validation
+### 模型级（融合 `rotary_embedding`，窗口 2026-10-12T13:01:42Z）
 
-Portable real-device tests, after sourcing the SDK:
+| 轮次 | A1（原生链）ms | B（融合）ms | A2 ms | 增益（vs A1） | 漂移 |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 3591.8 | 2993.8 | 3688.5 | +16.65% | 2.69% |
+| 2 | 3661.4 | 3007.5 | 3627.4 | +17.86% | 0.93% |
+| 3 | 3606.0 | 3006.8 | 3270.1 | +16.61% | 9.31% |
 
-```bash
-B=model_adaptations/HyMT2SCUdoudui
-mkdir -p /tmp/hy-validation
-PYTHONPATH="$B/runtime" /home/py312/bin/python "$B/tests/test_vllm_rms_norm.py" /tmp/hy-validation/rms
-PYTHONPATH="$B/runtime" /home/py312/bin/python "$B/tests/test_vllm_swiglu.py" /tmp/hy-validation/swiglu
-PYTHONPATH="$B/runtime" /home/py312/bin/python "$B/tests/test_vllm_attention.py" /tmp/hy-validation/attention
-PYTHONPATH="$B/runtime/overlay:$B/runtime" /home/py312/bin/python "$B/tests/test_vllm_mlp_caller.py" /tmp/hy-validation/mlp.json
-```
+**中位增益 +16.65%，中位漂移 2.69% ⇒ STRONG_GO**（预注册 ≥+5.0% GO / <+2.0% NO-GO，且增益绝对值大于漂移）。9 臂全部 32/32 token 与冻结基线一致；探针（进程内）A 档 `bound_modules=0 / rotary_calls=0`、B 档 `bound_modules=1 / rotary_calls=2112`。
 
-See `validation/runtime_20261004.json` for source/library identity, actual
-export startup, fixed greedy32 and steady reference receipts. Primitive
-RMS/SwiGLU boundaries match their original vendor calls bitwise. Independent
-CPU arithmetic uses fixed rtol/atol0.002 and retains known FP16 subnormal
-flush behavior. Attention uses an independent explicit bottom-right causal
-CPU NumPy FP64 reduction oracle (nrmse<=0.00390625, max_abs<=0.06).
-The Torch CPU BLAS packing path crashed on the513x513 oracle; the raw failure
-and debugger receipt are retained without changing global BLAS libraries.
+**机制（必须与数字同报）**：收益来自 **host 侧 launch 消除** —— 每请求去掉 **16 384** 次发射（原生链每层 17 次发射 → 融合后每层 1 次：17×32 = **544 → 32** launches/forward，−94.1%），**不是 GPU 计算收益**（kernel 自身 device 时间约 0.0018–0.0039 ms/层）；**不可外推**到把 RoPE 图捕获（torch.compile/CUDA-graph）的栈。
 
-The model reference checks cover the fixed prompt with32 generated IDs and
-concurrency/steady requests; full-length8k generation has not been evaluated.
-These tests do not establish official task accuracy or a vLLM speedup. The
-installed tecoops wheel has not been proved equivalent to current official
-PR35/37 heads. Owner CI and official task evaluation remain separate gates.
+### 算子级
 
-## Official CI launch parsing
+| 算子 | 测例（几何） | main → +SIMD → PR37head（AHT 中位 ms） | 相对 main |
+| --- | --- | --- | --- |
+| `rms_norm` plain | case_0 64×4096 | 0.122900 → 0.040922 → 0.040542 | −66.70% |
+| `rms_norm` +res | case_1 64×4096+res | 0.173940 → 0.092706 → 0.092715 | −46.70% |
+| `rms_norm` plain | case_2 64×2048 | 0.062402 → 0.021412 → 0.021204 | −65.69% |
+| `rms_norm` +res | case_3 64×2048+res | 0.087922 → 0.048013 → 0.048049 | −45.39% |
+| `rms_norm` plain | case_4 64×1536 | 0.047207 → 0.016546 → 0.016335 | −64.95% |
+| `rms_norm` +res | case_5 64×1536+res | 0.066546 → 0.036937 → 0.036997 | −44.49% |
+| `rms_norm` plain | case_6 64×128 (e1e-6) | 0.0059653 → 0.0034655 → 0.0033142 | −41.91% |
+| `rms_norm` plain | case_7 64×128 (e1e-5) | 0.0059424 → 0.0034368 → 0.0033251 | −42.16% |
 
-The launcher exposes its actual literal-default `vllm serve` argv through a
-local shell shim so the unchanged official `parse_run_sh` can read the model
-path, host and port. The shim executes those arguments through the pinned
-Python module entrypoint, replacing only the model path and first host/port
-values from the existing environment settings. The official parser is static:
-run it with the default `/gpfs/model` path, host `0.0.0.0` and port `8001`.
-Environment overrides remain available for direct launcher use.
+官方口径合计 **−41.9% ~ −66.7%**；收益主体是 SIMD epilogue（plain-DMA overlap + current-stream 在 64×D 上只再贡献 −0.93%/−0.97%/−1.28%，D=128 上 −4.37%/−3.25%；residual 路径 +0.01%~+0.16%，在极差内）。三臂库身份互异（由实际执行 `demo` 的 `ldd` 逐臂证明），96/96 run 全部通过。
 
-`validation/ci_contract_20261005.json` records the unchanged official parser,
-four argv cases identical to the previous vendor invocation, and two
-greedy32 runs at the default configured context 8192. Every output
-ID matches this model's reference; runtime/test sources are unchanged.
-This validates startup and short requests. Full official accuracy,
-performance evaluation and long-context requests remain pending.
+**`+add` 精度余量冻结（A 档保留）**：最差 `+add` 用例 case_3（64×2048+res）`output max_error = 9.19963e-04` vs 阈值 `1.00e-03` ⇒ **余量 8.0%**（case_1 39.3%、case_5 19.0%；plain 五例与 residual_out 全 0）。零误差的替代形态 B 在同 build 下会使 `+add` 三例变慢 **+5.22% / +5.98% / +5.97%**，收益与风险不成立，故**保持 A 档**；只有门限收紧到 ≤9.0e-4（或明确按 1e-4/3e-4 判）时才切换。证据：`op_learning/hy-mt2-1.8b/cycle15-rmsnorm-precision-tradeoff-20261011/DECISION.md`、`op_learning/norm/hy-rmsnorm-add-margin-c16-20261011/`。
 
+TTFT / TPOT：**未测**（组委会性能测例与达标线未下发）。已有的端到端数字（32-token 单请求，chat 形式，TP1/FP16/ctx8192）为上述 A/B 的 A1/B/A2 各臂中位；另有一次同分支 baseline 口径中位 **3593.6 ms**（2026-10-07，`op_learning/graph/hy-cudagraph-full-decode-only-20261007/`），仅作记录，不与本 A/B 混用。
 
-## Independent Hy PR37 SIMD epilogue validation (2026-10-07)
+## 许可证
 
-This Hy-only FP16 experiment uses official PR37 source revision
-`e29b53c256f366e6eee538d656bfbb56e867cefc` and kernel SHA256
-`41a517c23ae849f0d36cbdb2746ea2b75e21e5f2efe4dbaf44b6ed99a62193be`.
-Only the two RMSNorm second-pass output loops are vectorized; reduction order,
-residual rounding, DMA, stream and ABI are unchanged. Reusing this official
-source/artifact does not reuse another model's correctness or performance.
-Default `run.sh`, FP16 TP1 context8192 and runtime/compiler remain unchanged.
-The separate native BF16 capability experiment is DEFER and is not an accepted
-public profile or a reason to change the default dtype.
+本队改动以 **Apache-2.0** 提交；本目录**不含** `LICENSE` 文件，三仓根 `LICENSE` 为**上游 fork 继承的 BSD-3-Clause**（据终检报告，blob 与上游同值，**未改动**）。该字面差异**待向组委会确认**，本目录不做许可证改写。
 
-Own boundary evidence passes36/36 cases,4graphs, SDAA Fake and real CPU
-rejection at fixed atol/rtol0.002. Own profile micro shapes are hidden
-[1,2048]/[30,2048] plain/add, q[16,128]/[480,128], k[4,128]/[120,128].
-Framework boundary tokens1/8/32 are coverage, not all observed profile shapes.
-All8 baseline/candidate output/residual hashes match on identical seeded
-inputs. Three device and three wall values plus each median are retained in
-`validation/rms_epilogue_simd_20261007.json`. The8groups have stable device
-kernel improvements; wall includes a0.126163ms residual-prefill outlier and
-small negative changes. Claim device-kernel micro effects only, no wall or
-whole-model speedup. Two own fixed prompts each generate32greedy tokens
-matching the existing Hy reference and baseline. Official task accuracy is
-not established by these regression checks.
+## 沿革
 
-The original baseline/candidate model peaks were not captured. Independent
-same-profile supplemental baseline/candidate launches now pass both own
-prompts, matching promptIDs and all32generated IDs. Before/after worker
-inspection counts129actual `sitecustomize.install.<locals>.TecoopsRMSNorm`
-modules with SDAA FP16 weights and eps1e-5; the real model is
-`HunYuanDenseV1ForCausalLM`. Actual unique mapped extension/core paths and
-full hashes match the selected packages for both arms. Initialization binds
-`hunyuan_v1.RMSNorm` through the existing public overlay and
-`hy_mt2_public::rms_norm` / `hy_mt2_public::rms_norm_add` opaque APIs.
-
-Supplemental process peak allocated is14455050752bytes (13.462315GiB),
-reserved14816378880bytes (13.798828GiB), same before/after for both arms.
-It includes initialization and the fixed32-token profile; no request-window
-reset or original-A/B peak claim is made. This is metadata/peak completion
-of the same hypothesis, not a new performance benchmark. Both owned services
-stopped gracefully; device-release shows0MB/no process. The proof keeps
-original A/B missing-peak fields false and identifies the supplement
-separately. Selected modules/mappings and real generation establish the
-binding; callability inspection or extra native diagnostic calls do not
-measure every model forward. No wall/model speedup is claimed.
-
-For a source-only isolated rebuild, set `B` to this public package's absolute
-path, `OPS_SRC` to a fresh official teco-ops checkout in writable RAM,
-`HAL_ROOT` to the existing teco-hal0.0.2 dependency, and `PACKAGE_OUT` to a
-fresh executable directory. No private task DSO is required:
-
-```bash
-git -C "$OPS_SRC" checkout e29b53c256f366e6eee538d656bfbb56e867cefc
-# Alternative exact kernel reproduction: checkout8f896f2a9103cc9c684eb4488c9f885a38f15eb6
-# then git apply --check and git apply "$B/validation/epilogue-only.patch".
-# Do not apply the patch again to the promoted revision.
-source /opt/tecoai/setvars.sh
-PYTHON=/home/py312/bin/python
-test "$(readlink -f "$PYTHON")" = /usr/local/python/bin/python3.12
-export WITH_TORCH=ON WITH_INFERENCE_PLUGIN=OFF MAX_JOBS=2 CMAKE_BUILD_PARALLEL_LEVEL=2
-export TORCH_DEVICE_BACKEND_AUTOLOAD=0
-export TMPDIR=/tmp/rn26  # Short and executable; /dev/shm can be noexec.
-mkdir -p "$TMPDIR" "$OPS_SRC/thirdparty" "$OPS_SRC/dist"
-ln -s "$(readlink -f "$HAL_ROOT")" "$OPS_SRC/thirdparty/teco-hal"
-unset PYTHONPATH
-(cd "$OPS_SRC" && "$PYTHON" setup.py bdist_wheel --dist-dir "$OPS_SRC/dist")
-"$PYTHON" - "$OPS_SRC/dist" "$PACKAGE_OUT" <<'PY'
-import hashlib,json,pathlib,sys,zipfile
-wdir,out=map(pathlib.Path,sys.argv[1:]);wheel,=wdir.glob('*.whl')
-out.mkdir(parents=True,exist_ok=False)
-with zipfile.ZipFile(wheel) as z:
-    for name in z.namelist():
-        parts=pathlib.Path(name).parts
-        if len(parts)==2 and parts[0]=='tecoops' and (name.endswith('.so') or name.endswith('__init__.py')):
-            p=out/name;p.parent.mkdir(exist_ok=True);p.write_bytes(z.read(name))
-(out/'build-sha256.json').write_text(json.dumps({p.name:hashlib.sha256(p.read_bytes()).hexdigest()
-    for p in (out/'tecoops').iterdir()},indent=2))
-PY
-export PYTHONPATH="$PACKAGE_OUT"
-unset TORCH_DEVICE_BACKEND_AUTOLOAD
-bash "$B/run.sh"
-```
-
-The public launcher adds its existing overlays and binds this package once at
-initialization; no per-forward environment or backend selection is added.
-Record the locally rebuilt extension/core hashes and actual worker mappings,
-then run this Hy's focused and fixed-input model checks. Tested build hashes
-identify the measured artifacts; the pinned source identifies what to rebuild
-and does not promise identical binaries across build environments. No global
-site-packages install or model weight download/copy is required. Baseline
-`86576a…/6e10…` and candidate `d267…/c7d4…` are different built artifacts,
-with full hashes in the proof. Historical baseline generated compiler-cache
-hashes were not captured; shared source/recipe flags are not a measurement of
-that missing historical compiler cache.
+本目录此前为英文长文档，2026-10-12 按推理仓官方示例模板重写为中文七段结构；历史逐次实验、旧 SHA、废弃流程与更早的对照证据（含 Transformers/BF16 形态的独立结论）一律保留在 `experiments/hy-mt2-1.8b.md`、`op_learning/**` 与 `validation/*.json`，不再在 README 中复述。

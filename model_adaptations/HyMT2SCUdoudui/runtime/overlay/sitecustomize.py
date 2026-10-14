@@ -34,6 +34,81 @@ evidence; those results do not establish this vLLM export's performance.
 import sys
 
 
+def install_rotary_embedding_overlay() -> None:
+    """Bind vLLM's RotaryEmbedding to the delivered tecoops kernel (fp16)."""
+    import os
+
+    # A/B arm selector, read exactly once here (process initialization).  The
+    # default is the delivered arm; "off" keeps vLLM's native rotary chain for the
+    # baseline arm of a same-build A/B run.  Nothing on the forward path reads the
+    # environment.
+    if os.environ.get("HY_ROTARY_EMBEDDING", "on").lower() == "off":
+        print("[hy-mt2-overlay] HY_ROTARY_EMBEDDING=off: rotary embedding overlay "
+              "skipped (A/B baseline arm)", file=sys.stderr)
+        return
+
+    try:
+        import tecoops
+        import vllm.model_executor.layers.rotary_embedding as rope_module
+        from custom_ops.hy_mt2.rotary_fused import (
+            bind_instance,
+            official_rotary_embedding,
+            resolve_rotary_base,
+        )
+    except Exception as exc:  # pragma: no cover - depends on the SDAA image
+        raise RuntimeError(f"Hy-MT2 rotary overlay dependencies unavailable: {exc}") from exc
+
+    if not hasattr(tecoops, "rotary_embedding"):
+        raise RuntimeError("Hy-MT2 rotary overlay requires tecoops.rotary_embedding")
+
+    op = official_rotary_embedding(tecoops)
+    if op is None:
+        raise RuntimeError("Hy-MT2 rotary overlay failed to register the opaque op")
+
+    target = resolve_rotary_base(rope_module)
+    if target is None or not hasattr(target, "__init__"):
+        raise RuntimeError("Hy-MT2 rotary overlay could not resolve RotaryEmbeddingBase "
+                           "(searched the package attribute, its `base` submodule and "
+                           "the module path)")
+
+    count_calls = os.environ.get("HY_ROTARY_COUNT", "") == "1"
+    original_init = target.__init__
+    bound = {"n": 0}
+
+    # Seam 1: every rope instance is produced by the get_rope factory.
+    factory = getattr(rope_module, "get_rope", None)
+    if callable(factory):
+        def _get_rope(*args, **kwargs):
+            inst = factory(*args, **kwargs)
+            if bind_instance(inst, op, count=count_calls):
+                bound["n"] += 1
+            return inst
+
+        rope_module.get_rope = _get_rope
+        if rope_module.get_rope is not _get_rope:
+            raise RuntimeError("Hy-MT2 get_rope overlay identity check failed")
+
+    # Seam 2: direct construction (an OOT-registered class would bypass seam 1).
+    def _init(self, *args, **kwargs):
+        original_init(self, *args, **kwargs)
+        if bind_instance(self, op, count=count_calls):
+            bound["n"] += 1
+
+    target.__init__ = _init
+    if target.__init__ is not _init:
+        raise RuntimeError("Hy-MT2 rotary embedding overlay identity check failed")
+
+    import atexit
+
+    def _summary():
+        print(f"[hy-mt2-overlay] rotary overlay summary: instances_bound={bound['n']} "
+              f"count_calls={count_calls}", file=sys.stderr)
+
+    atexit.register(_summary)
+    print("[hy-mt2-overlay] RotaryEmbedding overlay bound to tecoops.rotary_embedding "
+          f"(instances bound so far: {bound['n']})", file=sys.stderr)
+
+
 def install() -> None:
     try:
         import torch
@@ -111,6 +186,9 @@ def install() -> None:
 
     hunyuan.RMSNorm = TecoopsRMSNorm
     hunyuan.HunYuanMLP.forward = fused_mlp_forward
+    install_rotary_embedding_overlay()
+    from custom_ops.hy_mt2.linear_stream import install_linear_stream
+    install_linear_stream()
     if hunyuan.RMSNorm is not TecoopsRMSNorm:
         raise RuntimeError("Hy-MT2 RMSNorm binding failed")
     if hunyuan.HunYuanMLP.forward is not fused_mlp_forward:

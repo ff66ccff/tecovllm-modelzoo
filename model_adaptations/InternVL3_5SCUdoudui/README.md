@@ -48,7 +48,7 @@ OPS_SRC=<teco-ops 检出目录>                       # 本队算子库源码（
 OPS_PREFIX=<交付算子库安装目录>                    # 例：$HOME/ivl-tecoops；不要写只在某台机器成立的绝对路径
 
 # 1) 从本队 teco-ops 仓构建 wheel（teco-hal 等依赖见该仓 README）
-git -C "$OPS_SRC" checkout 4adfd05e               # 本队 ops main（pin 口径 = 源码 commit）
+git -C "$OPS_SRC" checkout beebae220f0e918460d2210e4064030e157d602d   # 本队 ops main（pin 口径 = 源码 commit）
 "$PYTHON" "$OPS_SRC/setup.py" bdist_wheel --dist-dir "$OPS_SRC/dist"
 
 # 2) 隔离安装到独立目录（不覆盖全局 site-packages），并记录本轮 wheel 的 sha256
@@ -60,11 +60,13 @@ export PYTHONPATH="$OPS_PREFIX"
 MODEL_ROOT=/gpfs/model bash "$ADAPT/run.sh"
 ```
 
+> 本 pin 已前移至 **`beebae2`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径）。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `beebae2` 为准。
+
 **第 3 步不是可选项。** 本包**不含** `tecoops`（只有 Python 适配层）。官方 CI（`tools/ci_pipline/run_ci.py`）**不做任何安装**（它只 `parse_run_sh()` → `bash run.sh` → `prec.sh`/`speed.sh`），安装是交付方责任。若不显式前插交付算子库，`import tecoops` 会静默解析到环境里**任意已安装的 wheel**，且**不报错**。已实测的后果（2026-10-12 本线走查，未前插交付库时）：落到旧 wheel `388dd710…`，图像 total 从 **6.25 s 退化到 14.18 s**（prefill 注意力 216.89 ms/call vs 交付库 14.229 ms/call，36 层折合 **+7.30 s**；与 Step-2 独立记录的旧 wheel ΔTTFT **+7.808 s** 一致）。
 
 ### 怎么判定"这次跑的是不是交付库"（三层，按顺序看）
 
-1. **pin 口径 = 源码 commit + 本轮构建产物**：交付库 pin 在本队 teco-ops main **`4adfd05e`**，并记录**本轮** `libteco_ops.so` 的 sha256。
+1. **pin 口径 = 源码 commit + 本轮构建产物**：交付库 pin 在本队 teco-ops main **`beebae220f0e918460d2210e4064030e157d602d`**，并记录**本轮** `libteco_ops.so` 的 sha256。
    ⚠ **不得用 lib 字节做跨 build 判等**：lib 字节随 build root 变化（队内实测：同一份源码 `459992a2` 在不同 build root 产出过 `9b0746c7` / `93b75d34` / `a92ad51c` 三种字节）。sha256 只作 provenance 记录。
 2. **静默降级的判据用 build-root 无关的能力探针**（不需要任何私有环境变量）：
 
@@ -218,7 +220,10 @@ curl -s http://127.0.0.1:8002/v1/chat/completions -H 'Content-Type: application/
 5. 官方 kernelbench-sdaa 全量评测未执行（测例未下发）。
 6. **出处头覆盖不全（已知差距）**：交付包 26 个代码文件中仅 **5** 个带 BSD 出处头，其余 **21** 个（`run.sh`、`runtime/custom_ops/**`、`tests/**` 等）未带；本轮**未补齐** —— 补齐须**同时**改根副本与交付副本以避免新的 L11 不一致，并需重跑语法检查与 focused 回归，故登记为已知差距（对标：Gemma 25/31、Hy 17/18、MiniCPM 23/27）。
 7. **许可字面差异（待组委会确认）**：见下节「许可口径」。
-8. **M=1 decode 线性层绑定的已知限制**（2026-10-14 cycle-25 新增）：① `fb_align` 桶非零（`92`/rank）——来源是 M=1 的 **lm_head**：vLLM 把 LM head 切成 `151936/2 = 75968` 行、`75968 % 256 = 192`，结构性不满足 kernel 谓词，故 lm_head **仍走厂商 GEMM**（占权重流量 8.2 %）；② 交付库 `libteco_ops.so`（`98e18ca`）**不含** `linear_stream_stats` 计数器，发射清册是用「同源码 + 仅加计数器」的第二份构建（`api/torch_ext.cpp` 只多计数器与一个 `m.def`，M==1 谓词逐字未动）取得的；③ 快路径要求激活与权重同为 fp16，**改 bf16 会静默回落厂商**（算术等价、无加速、无可观测计数器）；④ 未重跑组委会标准精度测例 / 端到端 `run_ci.py`（改动只触 decode 线性调用点，正确性论据 = 冻结 greedy-32 逐位 + 307 s 稳态 `errors=0`）。
+8. **M=1 decode 线性层绑定的已知限制**（2026-10-14 cycle-25 新增）：① **已于 cycle-26（pin `beebae2`）解决**：`fb_align` 桶原为 `92`/rank，来源是 M=1 的 **lm_head**（vLLM 把 LM head 切成 `151936/2 = 75968` 行、`75968 % 256 = 192`，结构性不满足旧的 `n % 256 == 0` 谓词）；把 host 谓词放宽到 **`n % 64 == 0`**（依据引擎自身的 DMA 校验器：它与 `teco_hal_tile.hpp` 都只要求 **4 B** 对齐；旧的「16 B aligned」注释不成立）后，lm_head 走上 M=1 快路径：同窗清册 `fb_align 92 → 0`、`kernel_launches 12672 → 12764`（增量恰等于 lm_head 调用数），模型级文本 32-token 中位 `3.1747 → 2.8005 s = +11.787%`（9/9 臂 32/32 token 逐位一致、305.94 s 稳态 `errors=0`、峰值显存与对照逐位相同）；② 交付库 `libteco_ops.so`（`98e18ca`）**不含** `linear_stream_stats` 计数器，发射清册是用「同源码 + 仅加计数器」的第二份构建（`api/torch_ext.cpp` 只多计数器与一个 `m.def`，M==1 谓词逐字未动）取得的；③ 快路径要求激活与权重同为 fp16，**改 bf16 会静默回落厂商**（算术等价、无加速、无可观测计数器）；④ 未重跑组委会标准精度测例 / 端到端 `run_ci.py`（改动只触 decode 线性调用点，正确性论据 = 冻结 greedy-32 逐位 + 307 s 稳态 `errors=0`）。
+9. **已知限制（2026-10-14，交付库 `e4e691d` 测得）**：`e4e691d` 把 `flash_attention` 的 `<128>` 实例化移入**尾部新 TU**，使整库 device 代码布局重排，**`rms_norm` 的 8 个官方 case 因 code-layout 效应变慢**（逐例 `+0.35…+2.6 µs`，合计 `+11.88 µs`；同构建 A/B，`max_error` 逐位不变、`rms_norm_fp16.scpp` 源码 sha256 未变）。该效应**与算子源码无关**，且**换任何结构都只会把税转移给另一个算子**（例如把新 TU 移进 `flash_attention/` 目录会让 `rms_norm` 归零但使 `weight_stream_gemv` 慢 `−35%/−18%`）。本队选择维持 `e4e691d` 的 device 布局（其后 `beebae2` 只改 host 谓词，全部 device 目标码逐字节不变），理由是净账：`flash_attention` 官方 11 例表 `−1.58367 ms`，而 `weight_stream_gemv` 正是 Hy/InternVL 两条线模型级收益所绑定的算子。逐 case 原值与完整 A/B 见本队账本仓 `docs/competition/c25-lead-ledger-20261014.md` §8.4 与 §9.4。
+
+10. **M=1 快路径的准入面（2026-10-14 cycle-26，交付库 `beebae2`）**：放宽后的谓词只可能触及**此前回落厂商**的 shape。官方 `weight_stream_gemv` 两例是 `N = 256/512`（本就 `% 256 == 0`）⇒ **算子级无收益**（`−0.149% / +0.163%`，低于 0.4% 地板；24/24 DIFF1 PASSED 且各臂 `max_error` 逐位不变），收益是**模型级**的。本队另外三条线该谓词**结构不可达**：Hy-MT2-1.8B 每 rank lm_head `N = 120818`(TP1)/`60409`(TP2) 不是 64 的倍数；Gemma-4-12B 每 rank `N = 131072` 本就是 256 的倍数；MiniCPM5-1B 不绑定该算子。**本次未跑**：组委会标准精度测例 / 端到端 `run_ci.py`、HTTP `serve_internvl.sh` 口径、非 eager/编译路径、bf16（仍静默回落厂商）、`N = 75968` 的独立算子级 AHT（官方 case zoo 无该 shape，故以模型级墙钟 + 逐调用清册为证据）。**Lead 独立验收**：本 pin 落地后全表 39 例 **39/39 ALL PASSED**（39 例 `max_error` 与 `e4e691d` 基线逐位相同）。**夹具缺陷已于 2026-10-14 修复**：此前记录的 `causal_conv1d case_0/case_1` `TECOTEST_STATUS_FILE_OPEN_FAULT` 根因是 **demo 内置 python3.11 的 torch↔numpy 桥在本机损坏**（`Failed to initialize NumPy: module 'numpy._globals' has no attribute '_signature_descriptor'`），demo 因此永远生成不了缺失的 `cpu_output_*`；而它走到生成分支时的路径推导（`test/src/suite/executor.cpp:1575` 的 `getcwd() + "../zoo/teco/<op>"`）在「从 `<ops>/test` 跑 demo」下又解析到不存在的 `<ops>/zoo/...`。修法（不改任何受保护文件）：先用**厂商 python 3.12** 跑该 op 自带的生成器预生成参考 —— `TREE=<tree> OP=causal_conv1d bash /root/tmpwork/c16/gen_cpu_ref_all.sh` —— 并把生成的 `cpu_output_*` 放进参考银行，供 `seed_refs.sh` 在所有树上复用。修复后该两例 `max_error 0.00000e+00`、AHT 12.42 / 24.249 ms。**此前 37 PASSED 的表述随之作废。**
 
 ---
 

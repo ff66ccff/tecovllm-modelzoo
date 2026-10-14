@@ -27,7 +27,7 @@ per-forward ``getenv`` and no shape test in Python (AGENTS.md rule 6).
 Scope
 -----
 The operator itself keeps the vendor GEMM for prefill (M > 1) and for any shape
-that does not satisfy ``N % 256 == 0 and K % 16 == 0`` -- that fallback is inside
+that does not satisfy ``N % 64 == 0 and K % 16 == 0`` -- that fallback is inside
 the C++ host function, and it is counted by the launch census of the census host.
 """
 
@@ -43,10 +43,13 @@ import tecoops
 
 __all__ = ["linear_stream", "install_linear_stream", "mapped_libteco_ops"]
 
-# The kernel splits N into contiguous row blocks flushed by one DMA (16 B aligned
-# block starts => N % 256 == 0) and walks K as a 16-wide fp32 lane chain
-# (K % 16 == 0).  Mirrored here only for documentation/tests, never on the hot path.
-_WSG_N_ALIGN = 256
+# The kernel splits N into 32 contiguous row blocks and flushes each core's rows
+# with one DMA of my_rows halfs; the engine's validator requires 4 B alignment of
+# addresses and size, so the flush is 4 B aligned exactly when N % 64 == 0 (the
+# "16 B aligned" wording this comment used to carry is not supported by it).
+# K is walked as a 16-wide fp32 lane chain (K % 16 == 0).  Mirrored here only for
+# documentation/tests; never on the hot path.
+_WSG_N_ALIGN = 64
 _WSG_K_ALIGN = 16
 
 

@@ -15,6 +15,15 @@ overlay the official operator had **0 calls** in a real forward (see
 the vendor layout moved, the process exits non-zero instead of silently
 running without the official operator.
 
+Fail-closed mechanism (important): this module runs inside CPython's
+``site.execsitecustomize()``, whose handler is ``except Exception``.  A plain
+``raise SomeError`` is therefore **swallowed** -- the interpreter prints
+"Error in sitecustomize" and continues to ``main``, i.e. a silent degradation.
+Only ``BaseException`` subclasses that are not ``Exception`` escape it.  Every
+failure path here therefore ends in ``raise SystemExit(1)`` (equivalently
+``sys.exit(1)``/``os._exit(1)``), and the top-level installer additionally
+converts any unexpected plain exception into ``SystemExit(1)``.
+
 Scope note (InternVL3_5-8B): the MiniCPM5-1B branch's *Llama-specific* binding
 is not ported verbatim; this one targets Qwen3 and is validated by an
 init-time identity check plus a call-count receipt.
@@ -34,9 +43,9 @@ def install_rms_norm_overlay() -> None:
         sys.stderr.write(
             f"FATAL: [custom_ops] Failed to import the RMSNorm overlay installer: {exc}\n"
         )
-        sys.exit(1)
+        raise SystemExit(1) from exc
 
-    # The installer itself is fail-closed (sys.exit on every unmet precondition).
+    # The installer itself is fail-closed (SystemExit on every unmet precondition).
     install_qwen3_rms_norm_overlay()
 
 
@@ -53,28 +62,31 @@ def install_block_attention_overlay() -> None:
         sys.stderr.write(
             f"FATAL: [custom_ops] Failed to import target module 'vllm_sdaa.attention.block_attn': {exc}\n"
         )
-        sys.exit(1)
+        raise SystemExit(1) from exc
 
     if not hasattr(block_attn_module, "BlockAttentionImpl"):
         sys.stderr.write(
             "FATAL: [custom_ops] Target class 'BlockAttentionImpl' not found in 'vllm_sdaa.attention.block_attn'\n"
         )
-        sys.exit(1)
+        raise SystemExit(1)
 
     impl_cls = block_attn_module.BlockAttentionImpl
     if not hasattr(impl_cls, "forward"):
         sys.stderr.write(
             "FATAL: [custom_ops] Target attribute 'forward' not found in 'BlockAttentionImpl'\n"
         )
-        sys.exit(1)
+        raise SystemExit(1)
 
     try:
         from custom_ops.block_attention.op import sdaa_block_attention_forward
-    except Exception as exc:
+    except (Exception, SystemExit) as exc:
+        # SystemExit is included on purpose: the module-level guards in
+        # custom_ops/block_attention/op.py (e.g. an invalid INTERNVL_PREFILL_ATTN)
+        # raise SystemExit, and we want the readable FATAL line for them too.
         sys.stderr.write(
             f"FATAL: [custom_ops] Failed to import 'sdaa_block_attention_forward': {exc}\n"
         )
-        sys.exit(1)
+        raise SystemExit(1) from exc
 
     try:
         impl_cls.forward = sdaa_block_attention_forward
@@ -82,13 +94,13 @@ def install_block_attention_overlay() -> None:
         sys.stderr.write(
             f"FATAL: [custom_ops] Failed to bind forward method onto BlockAttentionImpl: {exc}\n"
         )
-        sys.exit(1)
+        raise SystemExit(1) from exc
 
     if getattr(impl_cls, "forward", None) is not sdaa_block_attention_forward:
         sys.stderr.write(
             "FATAL: [custom_ops] Post-install identity check failed: BlockAttentionImpl.forward is not sdaa_block_attention_forward\n"
         )
-        sys.exit(1)
+        raise SystemExit(1)
 
     sys.stderr.write("[custom_ops] BlockAttention overlay bound successfully.\n")
 
@@ -103,6 +115,40 @@ def install_rotary_overlay() -> None:
         raise SystemExit(1) from exc
 
 
-install_rms_norm_overlay()
-install_block_attention_overlay()
-install_rotary_overlay()
+def install_linear_stream_overlay() -> None:
+    """Bind the language-tower M=1 decode linear to the official tecoops operator.
+
+    Fail-closed like the other four overlays: any failure ends in SystemExit(1) so
+    that ``site.execsitecustomize()`` cannot swallow it into a silent degradation.
+    """
+    try:
+        from custom_ops.linear_stream.op import install_linear_stream
+
+        receipt = install_linear_stream()
+        sys.stderr.write(f"[custom_ops] linear_stream overlay bound: {receipt}\n")
+    except (Exception, SystemExit) as exc:
+        sys.stderr.write(
+            f"FATAL: [custom_ops] Failed to install the linear_stream binding: {exc}\n"
+        )
+        raise SystemExit(1) from exc
+
+
+def install_all_overlays() -> None:
+    """Install every overlay; success path is unchanged, failure is process-level."""
+    install_rms_norm_overlay()
+    install_block_attention_overlay()
+    install_rotary_overlay()
+    install_linear_stream_overlay()
+
+
+try:
+    install_all_overlays()
+except SystemExit:
+    raise
+except BaseException as exc:  # noqa: BLE001 -- deliberate: site.py swallows plain Exception
+    sys.stderr.write(
+        "FATAL: [custom_ops] Overlay installation failed with a non-SystemExit exception "
+        f"({type(exc).__name__}: {exc}); converting it to SystemExit(1) so that "
+        "site.execsitecustomize() cannot swallow it (silent-degradation guard).\n"
+    )
+    raise SystemExit(1) from exc

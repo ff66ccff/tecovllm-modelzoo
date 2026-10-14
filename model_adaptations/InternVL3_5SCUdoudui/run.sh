@@ -57,6 +57,45 @@ fi
 MODEL_ROOT="${MODEL_ROOT:-/gpfs/model}"
 MODEL_PATH="${INTERNVL_MODEL:-${MODEL_ROOT}/OpenGVLab/InternVL3_5-8B}"
 
+# ---------------------------------------------------------------------------------------------
+# 初始化期一次：打印"这次跑的是哪个算子库"（供评审机直接看到，不需任何私有环境变量）。
+#   * 零设备开销：只做 importlib.util.find_spec（不 import tecoops、不拉起 torch/设备栈）
+#     + 文件哈希 + 字符串探针，不进入热路径、无 per-forward 分支（AGENTS 规则 6）。
+#   * 不做跨 build 的 lib sha 硬断言：同一份 ops 源码在不同 build root 上产出的
+#     libteco_ops.so 字节不同（队内实测同源 `459992a2` → 9b0746c7 / 93b75d34 / a92ad51c）。
+#     因此 provenance 记 sha256，但"是不是交付库"用 build-root 无关的能力探针判定。
+# ---------------------------------------------------------------------------------------------
+TECOPS_PROBE_SIG=teco_slave_flash_attention_half_d256
+TECOPS_ORIGIN="$("$PYTHON" - <<'PY' 2>/dev/null || true
+import importlib.util
+try:
+    spec = importlib.util.find_spec("tecoops")
+except Exception:
+    spec = None
+print(spec.origin if spec and spec.origin else "")
+PY
+)"
+if [ -n "${TECOPS_ORIGIN}" ]; then
+    TECOPS_DIR="$(dirname "${TECOPS_ORIGIN}")"
+    TECOPS_LIB="${TECOPS_DIR}/libteco_ops.so"
+    echo "[run.sh] tecoops      = ${TECOPS_ORIGIN}" >&2
+    if [ -f "${TECOPS_LIB}" ]; then
+        if command -v strings >/dev/null 2>&1; then
+            PROBE_N="$(strings -a "${TECOPS_LIB}" | grep -c "${TECOPS_PROBE_SIG}" || true)"
+        else
+            PROBE_N="NA"
+        fi
+        echo "[run.sh] libteco_ops  = ${TECOPS_LIB}" >&2
+        echo "[run.sh] lib sha256   = $(sha256sum "${TECOPS_LIB}" | cut -d' ' -f1)" >&2
+        echo "[run.sh] probe ${TECOPS_PROBE_SIG}: count=${PROBE_N} (>=1 表示交付能力在；旧 wheel 388dd710 为 0)" >&2
+    else
+        echo "[run.sh] WARNING: ${TECOPS_LIB} 不存在；overlay 会在 site 初始化期 fail-closed" >&2
+    fi
+else
+    echo "[run.sh] WARNING: sys.path 上找不到 tecoops（是否缺少交付算子库安装/PYTHONPATH pin？）" >&2
+    echo "[run.sh]          overlay 会在 site 初始化期 fail-closed 退出，不会静默降级。" >&2
+fi
+
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"
 export SDAA_VISIBLE_DEVICES="${SDAA_VISIBLE_DEVICES:-0,1}"
@@ -92,12 +131,27 @@ vllm() {
     exec "$PYTHON" -m vllm.entrypoints.openai.api_server "${args[@]}"
 }
 
-vllm serve /gpfs/model/OpenGVLab/InternVL3_5-8B \
+# 权重只读引用：MODEL_ROOT / INTERNVL_MODEL 必须真正生效（本行曾被硬编码路径覆盖过一次）。
+echo "[run.sh] model=${MODEL_PATH}" >&2
+echo "[run.sh] MODEL_ROOT=${MODEL_ROOT} INTERNVL_MODEL=${INTERNVL_MODEL:-<unset>}" >&2
+
+# 官方 CI 解析器契约（tools/ci_pipline/run_ci.py::parse_run_sh）：它先剥掉 `#` 注释行，再取
+# **文件里第一个** `vllm serve <路径>` 的裸字面量当 model_path（speed.sh 还会拿它当
+# --tokenizer-path）。所以这里必须保留一个**非注释行、且位置在真正执行行之前**的裸字面量；
+# 该块不可达，只给解析器看，真正执行的是下面用 $MODEL_PATH 的调用（MODEL_ROOT 因此生效）。
+if false; then
+    vllm serve /gpfs/model/OpenGVLab/InternVL3_5-8B \
+        --served-model-name InternVL3_5-8B \
+        --host 0.0.0.0 \
+        --port 8002
+fi
+
+vllm serve "$MODEL_PATH" \
     --served-model-name InternVL3_5-8B \
     --dtype float16 \
     --tensor-parallel-size "${INTERNVL_TP_SIZE:-2}" \
     --gpu-memory-utilization "${INTERNVL_UTIL:-0.85}" \
-    --max-model-len "${INTERNVL_MAX_MODEL_LEN:-4352}" \
+    --max-model-len "${INTERNVL_MAX_MODEL_LEN:-16640}" \
     --limit-mm-per-prompt '{"image": 1}' \
     --trust-remote-code \
     --no-enable-prefix-caching \

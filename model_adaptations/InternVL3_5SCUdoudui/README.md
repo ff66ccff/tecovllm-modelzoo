@@ -1,355 +1,229 @@
-# InternVL3_5-8B (SCU 都队)
+# InternVL3_5-8B
 
-This adaptation serves `OpenGVLab/InternVL3_5-8B` on SDAA through TecoVLLM.
-Weights remain read-only under `MODEL_ROOT`; no vendor site-package or model
-copy is required.
+## 模型概述
 
-## Launch
+InternVL3.5-8B（`OpenGVLab/InternVL3_5-8B`）是上海 AI Lab InternVL3.5 系列的 8B 多模态模型：InternViT 视觉编码器 + Qwen3-8B 语言塔，支持图像-文本交错输入与中英文对话。组委会给出的适配难度系数为 **0.7**。
+
+本目录是**四川大学"都队"**在 TecoVLLM（SDAA 后端）上对该模型的适配交付：在厂商 Python + Torch-SDAA 下以 FP16、TP=2 启动 OpenAI 兼容推理服务，支持文本与单图输入。
+
+适配内容：
+
+1. **跑通**：TecoVLLM/vLLM 在 SDAA 上加载官方权重完成确定性贪婪生成，无 CPU fallback；
+2. **进程初始化期 overlay**（`runtime/overlay/sitecustomize.py`）：把 Qwen3 语言塔的 `RMSNorm` 绑定到官方 `tecoops.rms_norm`，并替换 SDAA 上未实现的 `BlockAttentionImpl.forward`；绑定在 `site` 初始化阶段完成，forward 热路径无分支、无 `getenv`，缺 `tecoops` 即非零退出（fail-closed）；
+3. **本队 tecoops C++ 算子接入**（三层形态：teco-ops 仓的 C++ kernel + Python API + 本模型调用点）：`rms_norm`、`reshape_and_cache`、`flash_attention`；
+4. **默认档（D11）**：prefill 注意力默认走**可计入**的官方 C++ varlen ABI（`tecoops.flash_attn_varlen_func`）；torch SDPA 路径仅作回退档，**不计入**交付主张。切换 commit `3d62813`（根与交付副本同 blob `943084a0…`）；
+5. **权重只读**：只读引用组委会预置权重，不下载、不转储副本；
+6. **M=1 decode 线性层绑定**（本队 `tecoops.linear_stream` = `weight_stream_gemv`，上游 PR44）：进程初始化期把 `vllm.model_executor.layers.utils.default_unquantized_gemm` 替换为一个 opaque `torch.library.custom_op`；**M==1 走整行权重 slab 双缓冲 DMA，M>1 与不满足 `N%256==0 且 K%16==0` 的形状由 C++ host 回落厂商 GEMM**；默认开启、**无需环境变量**，热路径零分支零 `getenv`（AGENTS 规则 6），缺符号即 fail-closed。
+
+本包是**纯 Python 适配层**，不含二进制；C++ kernel 全部来自本队 teco-ops 仓。
+
+## 模型权重下载
+
+本适配**不下载、不复制**模型权重，直接只读引用组委会预置目录（硬约束 1）：
+
+```bash
+export MODEL_ROOT=/gpfs/model                 # 预置权重父目录（可用 MODEL_ROOT 覆盖，run.sh 会真正生效）
+ls "${MODEL_ROOT}/OpenGVLab/InternVL3_5-8B"   # 只读查看
+```
+
+- 实际路径：`${MODEL_ROOT}/OpenGVLab/InternVL3_5-8B`（默认 `/gpfs/model/OpenGVLab/InternVL3_5-8B`）。
+- 权重不在默认位置时，用 `MODEL_ROOT=<父目录>` 或 `INTERNVL_MODEL=<完整模型目录>` 覆盖；**请勿**把权重拷入本目录。
+- `run.sh` 已置 `HF_HUB_OFFLINE=1`、`TRANSFORMERS_OFFLINE=1`，运行期不联网拉取。
+
+## 模型注册
+
+本包无需编译：所谓"注册"= 让服务进程同时能导入 **`tecoops`**（本队算子库）与 **`custom_ops`**（本适配的注意力/RMSNorm/RoPE 绑定）。
+
+依赖：
+
+- 厂商 Python：`/home/py312/bin/python`（`readlink -f` → `/usr/local/python/bin/python3.12`）、`/opt/tecoai/setvars.sh`；
+- 本队算子库 `tecoops`：由 teco-ops 仓（含团队 PR37 `rms_norm`、PR#35 `reshape_and_cache` 等）构建。**隔离安装到全局 site-packages 之外**，并把该目录前插 `PYTHONPATH`（不写全局 site-packages）。
+
+```bash
+source /opt/tecoai/setvars.sh
+export PYTHON=/home/py312/bin/python
+ZOO=<模型仓根>                                   # 本包所在仓库的根目录
+ADAPT="$ZOO/model_adaptations/InternVL3_5SCUdoudui"
+OPS_SRC=<teco-ops 检出目录>                       # 本队算子库源码（pin 到下面的 ops 源码 commit）
+OPS_PREFIX=<交付算子库安装目录>                    # 例：$HOME/ivl-tecoops；不要写只在某台机器成立的绝对路径
+
+# 1) 从本队 teco-ops 仓构建 wheel（teco-hal 等依赖见该仓 README）
+git -C "$OPS_SRC" checkout 4adfd05e               # 本队 ops main（pin 口径 = 源码 commit）
+"$PYTHON" "$OPS_SRC/setup.py" bdist_wheel --dist-dir "$OPS_SRC/dist"
+
+# 2) 隔离安装到独立目录（不覆盖全局 site-packages），并记录本轮 wheel 的 sha256
+"$PYTHON" -m pip install --no-deps --target "$OPS_PREFIX" "$OPS_SRC"/dist/*.whl
+sha256sum "$OPS_PREFIX"/tecoops/libteco_ops.so    # provenance：记下来随报告一起交
+
+# 3) 前插隔离目录后启动；run.sh 会把本包 runtime/overlay 与 runtime/ 再前置
+export PYTHONPATH="$OPS_PREFIX"
+MODEL_ROOT=/gpfs/model bash "$ADAPT/run.sh"
+```
+
+**第 3 步不是可选项。** 本包**不含** `tecoops`（只有 Python 适配层）。官方 CI（`tools/ci_pipline/run_ci.py`）**不做任何安装**（它只 `parse_run_sh()` → `bash run.sh` → `prec.sh`/`speed.sh`），安装是交付方责任。若不显式前插交付算子库，`import tecoops` 会静默解析到环境里**任意已安装的 wheel**，且**不报错**。已实测的后果（2026-10-12 本线走查，未前插交付库时）：落到旧 wheel `388dd710…`，图像 total 从 **6.25 s 退化到 14.18 s**（prefill 注意力 216.89 ms/call vs 交付库 14.229 ms/call，36 层折合 **+7.30 s**；与 Step-2 独立记录的旧 wheel ΔTTFT **+7.808 s** 一致）。
+
+### 怎么判定"这次跑的是不是交付库"（三层，按顺序看）
+
+1. **pin 口径 = 源码 commit + 本轮构建产物**：交付库 pin 在本队 teco-ops main **`4adfd05e`**，并记录**本轮** `libteco_ops.so` 的 sha256。
+   ⚠ **不得用 lib 字节做跨 build 判等**：lib 字节随 build root 变化（队内实测：同一份源码 `459992a2` 在不同 build root 产出过 `9b0746c7` / `93b75d34` / `a92ad51c` 三种字节）。sha256 只作 provenance 记录。
+2. **静默降级的判据用 build-root 无关的能力探针**（不需要任何私有环境变量）：
+
+   ```bash
+   LIB="$OPS_PREFIX/tecoops/libteco_ops.so"
+   strings -a "$LIB" | grep -c teco_slave_flash_attention_half_d256   # 交付库 = 7；旧 wheel 388dd710 = 0
+   nm -D "$LIB"       | grep -c teco_slave_flash_attention_half_d256  # 交付库 = 1；旧 wheel = 0
+   ```
+
+   计数 **≥1** 即交付能力在；**0** 说明解析到了旧 wheel（静默降级）。实测前后：交付库 `7` / `1`，旧 wheel `0` / `0`。
+3. **`run.sh` 启动时自动打印 provenance**（初始化期一次，零设备开销：只用 `importlib.util.find_spec` 定位路径 + 文件哈希 + 字符串探针，**不 import `tecoops`**、不进热路径、不做 sha 硬门禁）：
+
+   ```text
+   [run.sh] tecoops      = <OPS_PREFIX>/tecoops/__init__.py
+   [run.sh] libteco_ops  = <OPS_PREFIX>/tecoops/libteco_ops.so
+   [run.sh] lib sha256   = <本轮构建的 sha256>
+   [run.sh] probe teco_slave_flash_attention_half_d256: count=7 (>=1 表示交付能力在；旧 wheel 388dd710 为 0)
+   ```
+
+解析自证（确认 `tecoops` 与 `custom_ops` 的来源；`custom_ops` 必须落在本包 `runtime/`）：
+
+```bash
+PYTHONPATH="$OPS_PREFIX:$ADAPT/runtime" "$PYTHON" - \
+  "$ADAPT/runtime" <<'PY'
+import importlib.util, sys
+want_prefix = sys.argv[1].rstrip("/")
+spec = importlib.util.find_spec("tecoops")            # find_spec 不 import 模块，零设备开销
+print("tecoops    =", spec.origin if spec else "<not found>")
+import custom_ops
+print("custom_ops =", custom_ops.__file__)
+assert custom_ops.__file__.startswith(want_prefix + "/custom_ops"), \
+    "custom_ops 未解析到本包 runtime（CWD 影子导入？）"
+print("OK: import 来源正确")
+PY
+```
+
+若 `custom_ops` 解析到仓库根的副本，说明启动目录/PYTHONPATH 不对（本线出现过这类"影子导入"：CPython 会把当前工作目录放在 `sys.path` 之前，排查即上面这条断言）。
+
+初始化期开关（在进程初始化时**只读一次**，forward 热路径零分支、零 `getenv`；非法值在 import 期直接失败）：
+
+| 变量 | 默认 | 含义 |
+| :--- | :--- | :--- |
+| `INTERNVL_PREFILL_ATTN` | `official` | `official` = 可计入的官方 C++ flash varlen ABI；`sdpa` = 回退到 torch SDPA（**不计入**） |
+
+解释器可用 `PYTHON=<解释器>` 覆盖（默认仍是厂商解释器）；**本线尚未在官方 py3.11 环境跑通该模型**，故不宣称官方环境适配完成。
+
+## 启动推理服务
 
 ```bash
 MODEL_ROOT=/gpfs/model bash model_adaptations/InternVL3_5SCUdoudui/run.sh
 ```
 
-The public command is `vllm serve /gpfs/model/OpenGVLab/InternVL3_5-8B` with
-host `0.0.0.0` and port `8002`, so the official `parse_run_sh` reads the actual
-defaults. A shell-local `vllm` function resolves the model, first host flag and
-first port flag from the existing initialization environment, then executes
-the same vendor Python `vllm.entrypoints.openai.api_server` entry. Extra CLI
-arguments remain last, preserving their override order. No global binary or
-vendor package is changed.
+`run.sh` 先 `source /opt/tecoai/setvars.sh`，再用**厂商 Python** 启动 vLLM 的 OpenAI 兼容服务。serve 参数由 CI 固定，等同于：
 
-The default contract uses FP16, tensor parallel size 2, an explicit port,
-`--trust-remote-code`, `--no-enable-prefix-caching`, and
-`--no-enable-chunked-prefill`. The launcher sources `/opt/tecoai/setvars.sh`
-and explicitly uses `/home/py312/bin/python` (resolved target
-`/usr/local/python/bin/python3.12`). `VLLM_DISABLE_COMPILE_CACHE=1` prevents
-reuse of graphs from the previous operator binding. Override the local path,
-port, host, and sequence limit with `INTERNVL_MODEL`, `INTERNVL_PORT`,
-`INTERNVL_HOST`, and `INTERNVL_MAX_MODEL_LEN`.
-The official CI entry point `tools/ci_pipline/run_ci.py` drives this tree's
-`model_adaptations/InternVL3_5SCUdoudui/run.sh`, which uses FP16 / TP2 /
-`--limit-mm-per-prompt '{"image": 1}'` / `--no-enable-chunked-prefill` and the
-overridable `--max-model-len` default of 4352. The team's internal launcher
-`scripts/serve_internvl.sh` (private accelerator repo, not part of this submission)
-states the same contract and the same 4352 default, so both entries state one capacity.
-The historical baseline was tested with TP2, FP16, and a sequence limit of 4096.
-The candidate changes only the default sequence limit to 4352 for the official
-T2 4096-token prompt plus 100-token output. On 2026-10-05, both TP workers
-reported max_model_len=4352, max_num_batched_tokens=4352, FP16, and chunked
-prefill disabled. The branch's Q16/KV4/D128 capacity prefill, long-position RoPE
-gate, fixed text/image greedy32 IDs, and official T2 capacity run passed. T2
-plus one same-shape supplemental run recorded 453.985099 seconds of summed
-SQLite request spans with 20/20 requests successful. This is capacity and
-correctness evidence only; it makes no speedup, official-accuracy, or full-CI
-claim. The 12.106 GiB/rank worker peak covers the post-reset T2/steady request
-window; startup/profile peak was not measured. See
-validation/ci_budget4352_20261005.json for receipts and raw-log hashes. The
-public launcher change is tracked by [PR #6](https://github.com/Tecorigin/tecovllm-modelzoo/pull/6); this receipt records its branch-local capacity and correctness evidence.
+| 参数 | 值 |
+| :--- | :--- |
+| `--model` | `${INTERNVL_MODEL:-${MODEL_ROOT}/OpenGVLab/InternVL3_5-8B}` |
+| `--served-model-name` | `InternVL3_5-8B` |
+| `--dtype` | `float16` |
+| `--tensor-parallel-size` | `2`（`INTERNVL_TP_SIZE`） |
+| `--gpu-memory-utilization` | `0.85`（`INTERNVL_UTIL`） |
+| `--max-model-len` | `16640`（`INTERNVL_MAX_MODEL_LEN`） |
+| `--limit-mm-per-prompt` | `{"image": 1}` |
+| `--trust-remote-code` / `--no-enable-prefix-caching` / `--no-enable-chunked-prefill` | 固定开启 |
+| `--host` / `--port` | `0.0.0.0` / `8002`（`INTERNVL_HOST` / `INTERNVL_PORT`） |
 
+> `--max-model-len` 默认 **16640** 是**CI 硬要求**，不是性能取舍：组委会 `tools/ci_pipline/speed.sh` 固定跑
+> `warmup 1024` + `T1 2048 / T2 4096 / T3 8192 / T4 16384`（`--max-tokens 100 --min-tokens 100 --ignore_eos`，
+> `--parallel 1 --number 10`），而 `result_analyse.py::parse_performance()` 对**每个**非 warmup 用例强制
+> `Failed == 0` 且 `Total == Success`（并要求 `Benchmarking summary` / `Percentile results` 存在），
+> 且 `run_ci.py` 第 5 步在 `try/except` 之外调用它 ⇒ **任一用例被拒即整个 CI FAILED**。
+> T4 需要 `16384 + 100 = 16484` 的上下文上限，故下限 **16484**；默认取 **16640** 留余量。
+> 实测（2026-10-13，`--gpu-memory-utilization 0.85` 不变）：`GPU KV cache size 47,104 tokens`
+> （对 16,640 有 2.83× 余量）、`teco-smi` 峰值 27,780 MB / 65,536 MB；四例 + warmup 全部 `Failed == 0`。
 
-## Capacity gate reproduction
+- `--no-enable-chunked-prefill` 是**必需**的：SDAA 上分块 prefill（`1 < q_len < kv_len`）的因果掩码路径会掉 math 回退。
+- 设备可见性由 `SDAA_VISIBLE_DEVICES`（默认 `0,1`）决定；`VLLM_DISABLE_COMPILE_CACHE=1` 避免复用上一次算子绑定产生的图。
+- 覆盖项一律用环境变量（`MODEL_ROOT`、`INTERNVL_MODEL`、`INTERNVL_HOST`、`INTERNVL_PORT`、`INTERNVL_TP_SIZE`、`INTERNVL_UTIL`、`INTERNVL_MAX_MODEL_LEN`、`PYTHON`），不改脚本内参数。
+- **官方 CI 解析器契约**：`tools/ci_pipline/run_ci.py::parse_run_sh()` 会剥掉 `#` 注释行后取**文件里第一个** `vllm serve <路径>` 的**裸字面量**当 `model_path`（`speed.sh` 还拿它当 `--tokenizer-path`）。因此 `run.sh` 在真正执行行之前保留了一个**非注释行、不可达**（`if false; then … fi`）的 `vllm serve /gpfs/model/OpenGVLab/InternVL3_5-8B …`，其 `--served-model-name`/`--host`/`--port` 与执行行一致；真正执行的是 `vllm serve "$MODEL_PATH"`，故 `MODEL_ROOT`/`INTERNVL_MODEL` 仍然生效。
+- 路径解析 + CI 契约自检（零卡、不需设备、不复制权重）：`bash model_adaptations/InternVL3_5SCUdoudui/tests/verify_runsh_model_root.sh`。它把解释器换成打印 argv 的桩观测 shim exec 出的最终 `--model`（默认 / `MODEL_ROOT=<别名>` / `INTERNVL_MODEL` 三种），并**直接导入官方 `parse_run_sh`** 断言 `model_path == "/gpfs/model/OpenGVLab/InternVL3_5-8B"` 且 `os.path.exists()` 为真。原先那行 `vllm serve /gpfs/model/...` 的字面量是 shim 改写前的**死文本**（latent/误导性硬编码，行为本就正确），清理见 commit `a5e82ae`（serve 参数逐字节不变）。
 
-From the repository root with an available SDAA device, run the public tests
-directly from this adaptation. These commands use the public runtime files and
-the vendor Python; they do not depend on the internal op_learning helpers.
-
-~~~bash
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
-source /opt/tecoai/setvars.sh
-ADAPTATION="$PWD/model_adaptations/InternVL3_5SCUdoudui"
-export SDAA_VISIBLE_DEVICES=0
-/home/py312/bin/python "$ADAPTATION/tests/test_capacity_attention.py"
-/home/py312/bin/python "$ADAPTATION/tests/verify_long_vendor_rope.py" --allow-device --device 0 --result /tmp/internvl-rope-budget4352.json
-~~~
-
-The first test exercises public Q16/KV4/D128 FP16 prefill at sequence length
-4352 against a bounded FP32 CPU oracle. The second verifies RoPE at positions
-4096, 4195, and 4351 using the unchanged branch tolerance and public
-verify_vendor_rope.py implementation.
-
-## Operator path
-
-The process-init overlay binds the Qwen3 language tower's RMSNorm to the
-official `tecoops.rms_norm` ABI and replaces the unimplemented SDAA
-`BlockAttentionImpl.forward`.  The attention adapter writes paged KV cache via
-`reshape_and_cache`, gathers complete per-request K/V blocks, and dispatches
-prefill through the fused SDAA SDPA path.  The official flash ABI wrapper is
-kept in the bundle for the model's operator contract and independent checks.
-
-Qwen3 language attention also binds to the installed vendor
-`torch.ops._C.rotary_embedding` at construction. Each attention receives its
-own shallow RoPE module copy and independent module dictionaries, while all
-copies retain the original cache Tensor. The original globally cached module
-and its data remain unchanged. The opaque mutation declaration and Fake
-implementation preserve graph boundaries; the forward path contains no
-backend choice or environment lookup.
-
-This integration uses an existing vendor API. It adds no UAL implementation or
-binary. Initialization checks require packed Q16/K4, head and rotary dimension
-128, full Neox FP16, base 1e6, and a contiguous 40960-by-128 cache on the same
-SDAA device as the projection weight. Unsupported contracts and library hashes
-raise explicit errors, including under `python -O`; there is no fallback.
-The tested extension SHA256 is
-`9ecc2cb57a5c870704580e39112c1e95321bc076507139d8b8855273a90cfec0`,
-and the vendor core SHA256 is
-`adf3014a8fd3ced720bbf5cfe666752b8583dc76b17b5c96517fc70716773cb1`.
-The authoritative full hashes are also checked in `runtime/custom_ops/rotary/op.py`;
-updating a vendor binary requires repeating the focused and model gates.
-
-## Focused verification
-
-Run from the modelzoo root after sourcing the vendor environment:
+服务就绪后的最简冒烟：
 
 ```bash
-ADAPTATION="$PWD/model_adaptations/InternVL3_5SCUdoudui"
-PYTHONPATH="$ADAPTATION/runtime" SDAA_VISIBLE_DEVICES=0,1 \
-  /home/py312/bin/python -O "$ADAPTATION/tests/test_model_binding.py" \
-  --guard-only --result /tmp/internvl-rope-guards.json
-PYTHONPATH="$ADAPTATION/runtime" SDAA_VISIBLE_DEVICES=0,1 \
-  /home/py312/bin/python "$ADAPTATION/tests/test_model_binding.py" \
-  --device 0 --result /tmp/internvl-rope-focused.json
+curl -s http://127.0.0.1:8002/v1/chat/completions -H 'Content-Type: application/json' -d '{
+  "model": "InternVL3_5-8B",
+  "messages": [{"role": "user", "content": "用一句短话描述这张图。"}],
+  "max_tokens": 32, "temperature": 0.0
+}' | head -c 400
 ```
 
-The focused suite checks invalid initialization contracts, instance and cache
-isolation, Fake handling, and 12 raw/compiled wrapper cases at M1 nonzero
-positions 17/4095 and M8 mixed positions on default and nondefault streams.
-Primitive comparison uses fixed `rtol=atol=0.002`; vendor arithmetic is not
-bit-exact with the native/CPU reference, and known FP16 subnormal loss remains.
+## 精度验证
 
-In the previous 4096-context RoPE gate, the exported `run.sh` was tested with the same FP16 TP2 configuration and
-fixed text prompt as the native baseline, two warmups, then three consecutive
-greedy32 requests. The native reference was recorded before the private
-binding experiment and reused for this formal-entry reproduction.
-Baseline seconds were 6.898981428 / 6.909929068 / 6.905793745 (median
-6.905793745); exported-entry seconds were 6.573132289 / 6.573451439 /
-6.573975117 (median 6.573451439), a 4.8125% reduction for this fixed text case. Profiling
-was disabled during timing. Across four decode steps per rank, 3600 native
-RoPE kernels became 144 fused kernels; all other kernel-name counts were
-unchanged. Text/image greedy32, concurrency4/8 and 305.7865 seconds of 82 mixed
-requests matched baseline token IDs. This result does not establish official
-task accuracy or image performance.
-Configuration, timings, source/library identities and trace counts are in
-`validation/rope_model_20261004.json`.
+**状态：临时回归通过。** 组委会标准测例与精度达标线**尚未下发**，本节不作官方精度主张、不填任何分数。
 
-The source branch `model/internvl3_5-8b` contains real-shape hardware evidence
-for the RMSNorm, reshape/cache, and prefill paths, plus fixed 32-token text and
-natural-image smoke logs.  The prefill adapter explicitly disables chunked
-prefill because SDAA's non-square causal mask path is not semantically safe.
-Full official CI and accuracy evaluation remain the repository's external
-evaluation step.
+判据与实测（固定 prompt、`temperature=0` 贪婪 32 token）：
 
+| 模态 | 判据 | 结果 |
+| :--- | :--- | :--- |
+| 文本 | 与冻结基线**逐字符一致** | 一致；内容 sha256(16) = `9e3b639a19dfa124` |
+| 图像 | 与冻结基线**逐字符一致** | 一致；内容 sha256(16) = `bb14926ca4041ccd` |
 
-## RMSNorm SIMD epilogue validation and isolated rebuild
+- **300 s 稳态**（attention 属高风险算子，按规则 4 追加）：`elapsed 301.34 s`、47 请求、**0 error**、无 OOM，峰值 `12.666 GiB`、斜率 `0.000000000 GiB/s`；窗口内首/中/尾各 ≥3 次抽样**全部逐位一致**；in-process 调用计数差分 `1692 = 36 层 × 47 请求`（两个 TP worker 均成立）。
+- **默认档 A/B 门禁**（改档后重跑）：A/B 两臂各 3 轮、共 9 个 session × 3 次生成，图像/文本**跨臂且与冻结基线逐位一致**；0 error、无残留进程；B 臂官方 flash 调用收据 6 行、A 臂 0 行。
+- 算子 focused 测试（本包 `tests/**` 可复跑）：RMSNorm overlay 13/13、reshape/cache 7/7、prefill attention 6/6、overlay fail-closed 4/4。这些是 focused 回归，**不等于**官方精度达标。
+- **冻结基线（点名）**：定义与数值出处 = `experiments/internvl3_5-8b.md:1603`（2026-10-12 T1 行）
+  与 `docs/competition/lead-delivery-ledger-c20-20261012.md` §4.2.2/§10.2（**本队账本仓，均不在本交付包内**）；
+  冻结内容三值：text `9e3b639a19dfa124` / image `bb14926ca4041ccd` / 图像文件 `a77f6ec4…`（图像路径
+  `/home/py312/lib/python3.12/site-packages/sklearn/datasets/images/flower.jpg`）。
+- **逐位比较的原件**：`/root/tmpwork/c20-internvl/step2-t1/{A1,A2,B}-r{1,2,3}/step2.json`（9 session × 3 生成、
+  跨臂逐位）与 `/root/tmpwork/c20-internvl/steady-300s/steady.json`（300 s 稳态、47 请求、
+  `probe_counts` 差分 `1692`）+ `steady-300s/frozen-baseline.json`（基线三值）；均为**包外原件**。
+- 证据路径：`validation/**`、`tests/**`（本包内）；`/root/tmpwork/c20-internvl/{steady-300s/,step2-d11/,RESULT-d11.md,RESULT-steady.md}`（本队私有加速器仓，**不在本包内**）。
+- **未执行**：组委会标准测例、官方 CI（均未下发）。
 
-The independent 2026-10-07 InternVL gate tests an epilogue-only patch of
-[official RMSNorm PR37](https://github.com/Tecorigin/teco-ops/pull/37), starting
-from `8f896f2a9103cc9c684eb4488c9f885a38f15eb6`. The patch changes only the two
-FP16 output loops: widen, multiply by rstd then weight in FP32, narrow, and
-retain the scalar tail. Reduction order, residual rounding, DMA, stream and
-ABI remain unchanged. The default launcher/runtime above are unchanged.
+## 性能验证
 
-The 32 focused cases match baseline output/residual bits, including
-hidden4096 model/boundary cases and q/k128 global-head stress, stream and tail
-probes. Historical q/k32/8-head rows are not TP2 per-rank measurements.
-Three identical micro trials improve the tested long shapes; raw triples, medians and
-original CPU oracle limits/differences are in
-`validation/rms_epilogue_simd_20261007.json`. Baseline odd-half DMA and CPU
-rounding limitations are recorded rather than attributed to this patch.
+口径：同一 build、同一固定输入，3 次独立进程的原值 + 中位数。
 
-Independent TP2 public launches match all fixed text/image greedy32 token
-IDs; candidate steady318.024 seconds/48requests passed. Request-window peak
-is11.713GiB allocated/13.039GiB reserved perworker. Worker mappings/hashes and
-145 selected RMSNorm layers confirm package binding. Model timing is only a
-single baseline-to-candidate observation: all raw values are retained, with
-no causal whole-model speed claim or official accuracy claim.
+### 模型级（固定文本/图像输入，贪婪 32 token）
 
-The public source is pinned to PR37 revision
-`e29b53c256f366e6eee538d656bfbb56e867cefc`, whose kernel bytes match the tested
-candidate source SHA below. No private task DSO is required. The bundled
-`validation/epilogue-only.patch` also reproduces the same kernel from the
-exact `8f896f2` baseline; the promoted revision includes documentation, so
-its full archive hash differs from the original baseline-plus-patch archive.
-For an isolated rebuild, use a fresh official checkout at the promoted revision:
+| 档位 | 图像 total（s） | 图像 TTFT（s） | 文本 total（s） | decode/token（s） |
+| :--- | :--- | :--- | :--- | :--- |
+| **`official`（默认，可计入）** | **6.2591 / 6.2548 / 6.2548，中位 6.2548** | 2.6641 | 6.3710 | 0.19945 |
+| `sdpa`（回退，**不计入**） | 5.7371 / 5.7431 / 5.7304，中位 5.7401 | 2.1493 | 6.4187 | 0.19946 |
 
-```bash
-# ADAPTATION is this public package's absolute directory.
-# OPS_SRC is a fresh clean checkout of https://github.com/Tecorigin/teco-ops
-# on a writable RAM build area; HAL_ROOT is the existing teco-hal0.0.2 dependency.
-git -C "$OPS_SRC" checkout e29b53c256f366e6eee538d656bfbb56e867cefc
-# Alternative exact source reproduction: checkout8f896f2a9103cc9c684eb4488c9f885a38f15eb6
-# then git apply --check and git apply validation/epilogue-only.patch.
-# Do not apply the patch again to the promoted revision.
-source /opt/tecoai/setvars.sh
-PYTHON=/home/py312/bin/python
-test "$(readlink -f "$PYTHON")" = /usr/local/python/bin/python3.12
-export WITH_TORCH=ON WITH_INFERENCE_PLUGIN=OFF MAX_JOBS=2 CMAKE_BUILD_PARALLEL_LEVEL=2
-export TORCH_DEVICE_BACKEND_AUTOLOAD=0
-# TMPDIR must be a short executable path; /dev/shm can be noexec.
-export TMPDIR=/tmp/rn26
-mkdir -p "$TMPDIR" "$OPS_SRC/thirdparty" "$OPS_SRC/dist"
-ln -s "$(readlink -f "$HAL_ROOT")" "$OPS_SRC/thirdparty/teco-hal"
-unset PYTHONPATH
-(cd "$OPS_SRC" && "$PYTHON" setup.py bdist_wheel --dist-dir "$OPS_SRC/dist")
-# PACKAGE_OUT must be a fresh executable directory (not noexec RAM).
-"$PYTHON" - "$OPS_SRC/dist" "$PACKAGE_OUT" <<'PY'
-import hashlib, json, pathlib, sys, zipfile
-wdir, output = map(pathlib.Path, sys.argv[1:])
-wheel, = wdir.glob('*.whl')
-output.mkdir(parents=True, exist_ok=False)
-with zipfile.ZipFile(wheel) as archive:
-    for name in archive.namelist():
-        parts = pathlib.Path(name).parts
-        if len(parts) == 2 and parts[0] == 'tecoops' and (name.endswith('.so') or name.endswith('__init__.py')):
-            dest = output / name
-            dest.parent.mkdir(exist_ok=True)
-            dest.write_bytes(archive.read(name))
-(output / 'build-sha256.json').write_text(json.dumps({
-    p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-    for p in (output / 'tecoops').iterdir()}, indent=2))
-PY
-# Initialization chooses this isolated package; public run.sh adds its overlays.
-export PYTHONPATH="$PACKAGE_OUT"
-unset TORCH_DEVICE_BACKEND_AUTOLOAD
-bash "$ADAPTATION/run.sh"
-# No global site-packages installation or model-weight download/copy.
-```
+- `official` 相对 `sdpa` 的图像 total 差为 **+8.97 %**，其性质是**口径切换，不是提速**：默认档从"**不计入**的 torch SDPA 路径"移到"**可计入**的官方 C++ kernel 路径"。代价**全部在 prefill TTFT**（+0.5147 s，即 in-situ prefill 注意力 **14.301 ms/call**），**decode 差 −0.04 %**（3.5901 / 3.5903 s），文本 −0.74 %。
+- 跨窗口稳定性：`official` 的 6.2548 s 与上一轮同口径实测 6.2517 s 差 **+0.05 %**。
+- 算子级 ≠ 模型级：官方 demo 的**自建**用例 op 级 AHT 20.371 ms 与 in-situ 14.301 ms/call 相差 **1.43×**，**未归因**，不得用 op 级数字外推模型级。
 
-Check candidate kernel source SHA256
-`41a517c23ae849f0d36cbdb2746ea2b75e21e5f2efe4dbaf44b6ed99a62193be`.
-For deployment, record each locally rebuilt extension/core hash and verify
-actual worker module paths and unique mapped core against that package.
-The recorded test-library hashes identify the tested build, while the pinned
-source and patch identify what to rebuild. Re-run the independent focused
-and fixed-input model gates for a new build; the source commit alone does
-not prove another build or model's performance.
+### 算子级（本队 teco-ops C++ kernel）
 
+| 算子 | 证据 | 结论 |
+| :--- | :--- | :--- |
+| `rms_norm`（团队 PR37：current-stream 绑定 + SIMD epilogue + plain 输出 DMA 重叠） | `validation/rms_epilogue_simd_20261007.json`、`validation/rms_plain_writeback_20261007.json`、`validation/epilogue-only.patch`、`validation/plain-writeback-only.patch` | focused 32/32 输出位相等；TP2 长 q/k plain 调用较两个 A 臂低 **12.2–13.2 %**，hidden [1811/4352,4096] 约 **1.7 %** |
+| `reshape_and_cache`（团队 PR#35） | `validation/ci_contract_20261005.json` | ABI 边界 materialize 非连续 fused-QKV；focused 7/7（native 6/6） |
+| `flash_attention`（团队 ALGO0 causal KV-tile 上界） | 私有仓 `op_learning/attention/**`；**自建用例 case_11**（模型真实几何 1811×16/4×128） | AHT **20.371 ms**、`max_error 1.90589e-04`（阈值 `1.00e-02`）。**自建非官方用例，仅作定位，不作官方口径** |
+| `linear_stream`（= `weight_stream_gemv`，M=1 decode 权重流式 GEMV；团队 PR44，本轮首次接入本模型） | 本队账本仓 `docs/competition/c25-lead-ledger-20261014.md` §3.2；远程原始证据 `/root/tmpwork/c25/internvl/GATE-REPORT.md` | 9/9 臂 greedy 文本 **32/32 token IDs 与冻结基线逐位相同**；`B/A1` 中位 **−50.09 %**（文本 t32）、decode 斜率 **−51.80 %**、图像请求 **−26.6 %**；`A2/A1` 漂移 +0.027 %；发射清册 `12672 = 88×144`/rank（144 = 36 层 × qkv/o/gate_up/down ⇒ 每个 decode 线性都真进自研 kernel）；307 s 稳态 `errors=0`、峰值显存与对照一致。口径 = 进程内 `vllm.LLM` + `enforce_eager=True`（产生冻结基线的同一配置），**不得与历史 HTTP 数字混用** |
 
-## Plain RMSNorm output writeback overlap (2026-10-07)
-
-This isolated patch moves only the plain output-DMA wait to the existing
-same-output-buffer reuse point and drains both output handles before freeing
-SPM. Input/output ping-pong buffers are separate. The add kernel, reduction
-order, FP16 rounding, row layout, stream and ABI remain unchanged; public
-run.sh/runtime defaults are unchanged.
-
-[Independent proof](validation/rms_plain_writeback_20261007.json) preserves
-all 48 focused cases, CPU oracle differences with original .005/.01 thresholds,
-output/residual bit equality against current E29, reuse stress, Fake/fullgraph,
-actual TP2 shapes and every A-before/B/A-after raw triple/median. Same public
-TP2 FP16 ctx4352 fixed text/image greedy32 passed with two warmups/three trials;
-candidate steady passed 317.157 seconds / 16 rounds / 48 requests. Actual worker maps,
-145 selected norms per worker and peaks 11.713 allocated / 13.039 reserved GiB/rank
-are recorded. Capture-limited call receipts do not count every model forward.
-
-A separate read-only metadata supplement (no generation/timing) verifies
-36 attention modules per worker, TP2, 16 query / 4 KV heads, D128, q/k norm weights [128]
-FP16 on SDAA and epsilon 1e-6. Historical 32/8-head q/k results are global-head
-stress; their original values and precision conclusions remain intact.
-
-The timer is synchronized perf_counter operator-call latency including
-Python/dispatch, not pure device-kernel time. Actual TP2 long q/k plain calls
-are 12.2–13.2% lower versus both A arms; hidden [1811/4352,4096] calls about 1.7%.
-Short-shape/control observations (including minor negatives and changes in
-unchanged add) are retained without a speed claim. Model A-to-B timings are
-observations only: no E2E gain or official task-accuracy claim.
-
-For isolated rebuilding, start from official PR37
-e29b53c256f366e6eee538d656bfbb56e867cefc or documentation head
-2949f7061a05af0f4cb2b88fb3344380e3dfc4e0: both have canonical kernel SHA256
-41a517c23ae849f0d36cbdb2746ea2b75e21e5f2efe4dbaf44b6ed99a62193be.
-Apply [the public U0 patch](validation/plain-writeback-only.patch), then use
-the preceding vendor-Python/SDK isolated bdist_wheel/extraction/startup
-PYTHONPATH recipe. No global package or model weight changes are needed.
-
-    git -C "$OPS_SRC" checkout --detach e29b53c256f366e6eee538d656bfbb56e867cefc
-    git -C "$OPS_SRC" apply --unidiff-zero --check "$ADAPTATION/validation/plain-writeback-only.patch"
-    git -C "$OPS_SRC" apply --unidiff-zero "$ADAPTATION/validation/plain-writeback-only.patch"
-    sha256sum "$OPS_SRC/teco/ual/kernel/rms_norm/rms_norm_fp16.scpp"
-
-Expected candidate SHA256:
-93e8e80d08d401fffaa3060bf8e6e24bd989ab59fd8cb09c079228710f66d5b7.
-The U0-applied bytes exactly match tested source; tested U3 is retained in raw
-evidence. Tested baseline core/extension hashes start d26791a5/c7d4a8c0;
-candidate hashes start ed1358d6/e34873d8 (full hashes in proof). Rebuilt binaries
-must record their own hashes and re-run gates; source identity does not prove
-another build's performance. No binary artifact is included.
+- 另：`validation/ci_budget4352_20261005.json` 记录 4352 上下文容量与正确性复证（T2 4096-token prompt + 100-token 输出，20/20 请求成功）；仅作容量/正确性证据，不含提速主张。
+- 本适配 serve 参数由 CI 固定，**未做**任何调参；因此上文数字不含调参收益。
 
 ---
 
-> **路径说明（面向模型仓读者）**：下文两节里出现的 `op_learning/**`、`models/deformable-detr/**`
-> 与 `scripts/**` 属于本队**私有加速器仓**，不在本包（模型仓提交）内；这里保留与加速器仓交付记录
-> **逐字一致**的原文，证据路径仅供追证。`model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/**`
-> 则**是本包内容**。
+**已知限制**：
 
-### `custom_ops` 双副本与解析来源（2026-10-10 冻结前发现；同日 worker 内实测复核）
+1. 组委会测例/达标线未下发 ⇒ 精度只能表述为"**临时回归通过**"；
+2. 官方 py3.11 环境尚未跑通本模型，全部模型级数字来自厂商 py3.12 + Torch-SDAA；
+3. 算子级与模型级的 **1.43× 差已归因**（2026-10-13，`docs/competition/c22-internvl.md` §1/§3.5，本队账本仓）：机制 = 逐层因果 KV 深度差异（`case_11` 取最深一层），链长比 **≈1.43（工作量加权有效口径）/ 1.62（字面口径）**、**残差 ~2% 量级未进一步拆解**；口径与原件见该文。**本条替代原文「未归因」表述**；
+4. `−55.4 %` 一类图像收益来自**不计入**的 torch SDPA 路径，**一律不作交付主张**；
+5. 官方 kernelbench-sdaa 全量评测未执行（测例未下发）。
+6. **出处头覆盖不全（已知差距）**：交付包 26 个代码文件中仅 **5** 个带 BSD 出处头，其余 **21** 个（`run.sh`、`runtime/custom_ops/**`、`tests/**` 等）未带；本轮**未补齐** —— 补齐须**同时**改根副本与交付副本以避免新的 L11 不一致，并需重跑语法检查与 focused 回归，故登记为已知差距（对标：Gemma 25/31、Hy 17/18、MiniCPM 23/27）。
+7. **许可字面差异（待组委会确认）**：见下节「许可口径」。
+8. **M=1 decode 线性层绑定的已知限制**（2026-10-14 cycle-25 新增）：① `fb_align` 桶非零（`92`/rank）——来源是 M=1 的 **lm_head**：vLLM 把 LM head 切成 `151936/2 = 75968` 行、`75968 % 256 = 192`，结构性不满足 kernel 谓词，故 lm_head **仍走厂商 GEMM**（占权重流量 8.2 %）；② 交付库 `libteco_ops.so`（`98e18ca`）**不含** `linear_stream_stats` 计数器，发射清册是用「同源码 + 仅加计数器」的第二份构建（`api/torch_ext.cpp` 只多计数器与一个 `m.def`，M==1 谓词逐字未动）取得的；③ 快路径要求激活与权重同为 fp16，**改 bf16 会静默回落厂商**（算术等价、无加速、无可观测计数器）；④ 未重跑组委会标准精度测例 / 端到端 `run_ci.py`（改动只触 decode 线性调用点，正确性论据 = 冻结 greedy-32 逐位 + 307 s 稳态 `errors=0`）。
 
-本仓同时存在两份 `custom_ops`：根级 `custom_ops/**` 与交付副本
-`model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/**`（后者是提交给模型仓的那份）。
-**本线两者当前逐字节相同**（含 `overlay/sitecustomize.py` `ae0bb38b…`、`__init__.py` `46b713a9…`），
-且**绑定发生在 `site` 初始化阶段**：先被搜到的那个 `overlay/sitecustomize.py`
-（`<frozen site>` 的 `execsitecustomize` 帧）会立刻 `import custom_ops`，
-**早于 `python -m` 把 cwd 插到 `sys.path[0]`**。所以「从仓库根启动」本身不改变绑定，
-真正决定来源的是**启动器写进 `PYTHONPATH` 的那两份路径**。
+---
 
-下表两行均经 **TP worker 内 `/collective_rpc`** 实测（`VLLM_SERVER_DEV_MODE=1` +
-诊断用 `worker_extension_cls`；只读、不改交付文件、不引入热路径 `getenv`），
-每形态两个 worker 结论一致：
+## 许可口径
 
-| 启动形态（cwd 均为仓库根） | worker 内 `custom_ops.__file__` | 收据 |
-| :--- | :--- | :--- |
-| `scripts/smoke_internvl.sh` / `scripts/serve_internvl.sh`（现状；`PYTHONPATH=${REPO_ROOT}/custom_ops/overlay:${REPO_ROOT}`） | **仓库根** `custom_ops/__init__.py` | `worker-origin-rpc-B2-serve.json`（pid 785331 / 785332） |
-| 交付入口 `model_adaptations/InternVL3_5SCUdoudui/run.sh`（`PYTHONPATH=<delivery>/runtime/overlay:<delivery>/runtime`） | **交付 runtime** `custom_ops/__init__.py` | `worker-origin-rpc-B1-runsh.json`（pid 781058 / 781059） |
-| 上表第二行再加 `PYTHONSAFEPATH=1` / `python -P` | 结论不变（`-P` 只影响 cwd/`''`，不影响 `PYTHONPATH` 顺序） | —— |
-
-> **更正记录（2026-10-10，同一冻结窗口内）**：本条第一版矩阵由 `python -c` / `python -` 探针得出。
-> 该口径**不代表服务行为**（`-c`/`-` 会在 `site` 处理之前就把 cwd 放进 `sys.path[0]`；
-> 服务侧 `sitecustomize` 在 `site` 初始化阶段已导入 `custom_ops`，之后 runpy 再插 cwd 改不了绑定）。
-> 现按 worker 内 RPC 结果就地更正：**结论方向不变**（现状⇒根级、`run.sh`⇒交付副本），
-> 但**机制**是「启动器 `PYTHONPATH` 决定先命中哪个 overlay，且该导入发生在 `site` 阶段」。
-> 另有进程内实证：用 py3.11 启动时 overlay 在 `site` 阶段即因缺 `tecoops` 而 fail-closed，
-> 栈帧直接给出当时命中的是 `custom_ops/...` 还是 `runtime/custom_ops/...`
-> （`op_learning/runtime/entrypoint-parameterization-internvl-20261010/site-init-resolution-traceback.txt`）。
-
-**影响与建议**：本线因两份内容相同而**无行为差异**，但这是潜在维护风险——一旦两份分叉，
-从仓库根启动会静默使用根级副本。需要把模型级证据严格绑定到提交副本时，请使用交付入口或上表
-第二行的显式 `PYTHONPATH`；解析矩阵、逐字节一致性证据、worker 内收据与绑定后的模型级重跑见
-`op_learning/runtime/custom-ops-resolution-internvl-20261010/` 与
-`op_learning/runtime/entrypoint-parameterization-internvl-20261010/`。
-**不要**删除根级副本（共享启动器依赖它），也**不要**让模型仓分支携带根级副本。
-
-### 切换到官方 py3.11 环境（解释器可覆盖 + 能力校验，2026-10-10）
-
-三个入口的解释器都可用 `PYTHON=<解释器>` 覆盖，**默认仍是厂商 `/home/py312/bin/python`**
-（AGENTS.md 硬约束 1 的默认口径不变）；覆盖仅用于切换到官方环境：
-
-```bash
-# 官方环境（ModelZoo py3.11 / PyTorch 2.7.1）；<py3.11> 需自行准备的解释器路径
-PYTHON=<py3.11>/bin/python \
-    bash scripts/smoke_internvl.sh "${MODEL_ROOT}/OpenGVLab/InternVL3_5-8B" 32 2
-PYTHON=<py3.11>/bin/python \
-    bash model_adaptations/InternVL3_5SCUdoudui/run.sh --enforce-eager
-```
-
-服务入口另修一处**静默换解释器**的漏洞：`scripts/serve_internvl.sh` 原先把 `vllm serve` 交给
-shell 按 `PATH` 解析（`PATH` 已前置 `${VENDOR_PY_ROOT}/bin`），因此 `PYTHON=<官方解释器>`
-会通过能力校验、服务端却被 `vllm` 脚本的 shebang 换回厂商解释器。现改为
-`"${PYTHON}" "${VLLM_CLI}" serve …`（`VLLM_CLI` 由 `command -v vllm` 一次性解析，
-缺失即 rc=1），保证**被校验的解释器就是真正跑服务的解释器**。
-
-守卫已从「`readlink -f` 必须等于 `/usr/local/python/bin/python3.12`」改为**能力校验**：
-该解释器能 `import torch`、能 `import torch_sdaa`，且 `torch.sdaa.is_available()` 为真、
-设备数 ≥ 1。因此官方 py3.11 环境**通过**该校验，而不具备 `torch_sdaa` 的解释器
-（例如系统 `/usr/bin/python3`）被明确拒绝。**任何失败都非零退出，禁止静默降级到系统 python。**
-
-实测（2026-10-10，三解释器，CPU 侧即可判定）：
-
-| 解释器 | 能力校验 | 后续行为 |
-| :--- | :--- | :--- |
-| `/home/py312/bin/python`（厂商，默认） | PASS（torch 2.12.0a0+…、`is_available()=True`、设备 4 / 钉死后 2） | 正常冒烟与服务（本次实测 rc=0、32-token IDs 与冻结基线一致） |
-| `/home/py311/bin/python`（官方口径，torch 2.7.1 + torch_sdaa） | PASS（`is_available()=True`、4 设备） | 本机**尚无** py3.11 的 `vllm`/`tecoops`，入口在**缺资产**处 fail-closed 退出（`Failed to import 'tecoops' for the RMSNorm overlay`，rc=1），**不是**静默降级 |
-| `/usr/bin/python3`（系统，torch 2.10.0，无 torch_sdaa） | **FAIL → rc=1** | 不启动 |
-
-补齐官方环境的步骤：`tecoops` 必须用该解释器**配对构建**后放到本目录之外的独立路径并前插
-`PYTHONPATH`，并以 `tecoops.__file__` 自证来源（防 shadowing）；训练侧同法见 Deformable 线
-`models/deformable-detr/docs/bootstrap-py311.md` §2。**本线尚未在 py3.11 上跑通模型**，
-故不宣称官方环境适配完成；上表以外所有模型级数字仍来自厂商 py3.12 + Torch-SDAA。
+本队对 InternVL3_5-8B 适配的全部改动以 **Apache-2.0** 提交；仓库根 `LICENSE`（以及队内
+`teco-ops` / `tecovllm` / `teco-modelzoo` 三仓根的 `LICENSE`）为**上游 fork 继承的 BSD-3-Clause**，
+本队**未改动任何许可证文件**。该字面差异（队内清单写「Apache 2.0 或 MIT」）**待向组委会确认**。

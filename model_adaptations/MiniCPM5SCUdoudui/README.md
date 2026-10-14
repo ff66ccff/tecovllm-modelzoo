@@ -54,10 +54,9 @@ ls -ld "$MODEL_ROOT/OpenBMB/MiniCPM5-1B"
 
 ```bash
 # 1) 取得本队算子仓库（另行提交的「自定义算子仓库」）源码
-#    源码 commit: dda33c5b（队内 ops main，含 rotary_embedding kernel；
-#    相对 4adfd05e 为 fast-forward、纯增量测试件，libteco_ops.so 与 _torch_ext 逐字节相同）
+#    源码 commit: beebae220f0e918460d2210e4064030e157d602d（队内 ops main，含 rotary_embedding kernel）
 git clone <teco-ops> /tmp/teco-ops
-cd /tmp/teco-ops && git checkout 4adfd05e
+cd /tmp/teco-ops && git checkout beebae220f0e918460d2210e4064030e157d602d
 
 # 2) 用厂商 Python 构建 torch-linked 交付产物
 #    注意：不要用 bash build.sh —— 它是 WITH_TORCH=OFF 变体，且没有 set -e
@@ -70,7 +69,9 @@ export WITH_TORCH=ON WITH_INFERENCE_PLUGIN=OFF
 export PYTHONPATH=/tmp/teco-ops/api:${PYTHONPATH:-}
 ```
 
-**版本口径**：pin 写成「**源码 commit + 同配方重建**」（本交付自证的源码 tip 为 `dda33c5b`），**不是**某个 `libteco_ops.so` 的字节
+> 本 pin 已前移至 **`beebae2`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径）。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `beebae2` 为准。
+
+**版本口径**：pin 写成「**源码 commit + 同配方重建**」（本交付自证的源码 tip 为 `beebae2`），**不是**某个 `libteco_ops.so` 的字节
 ——同一个 commit 在不同 build root / 配方下会产出不同字节的 `.so`。自证请用**能力探针**
 （不是裸 sha256）：
 
@@ -196,6 +197,10 @@ scoping，不是 `rms_norm`。实测 case_4(D64) 中位 2.677600 ms、B64 两方
 
 上表第一行的大额收益来自 **host 侧 launch 消除**（该档为厂商 SwiGLU 档，不计入交付主张），**不是 GPU 计算收益**，
 且**不可外推**到图捕获栈；交付档（`official`）的模型级主张以上方融合 RoPE 的 A/B 为准。
+
+## 已知限制
+
+> **已知限制（2026-10-14，交付库 `e4e691d` 测得）**：`e4e691d` 把 `flash_attention` 的 `<128>` 实例化移入**尾部新 TU**，使整库 device 代码布局重排，**`rms_norm` 的 8 个官方 case 因 code-layout 效应变慢**（逐例 `+0.35…+2.6 µs`，合计 `+11.88 µs`；同构建 A/B，`max_error` 逐位不变、`rms_norm_fp16.scpp` 源码 sha256 未变）。该效应**与算子源码无关**，且**换任何结构都只会把税转移给另一个算子**（例如把新 TU 移进 `flash_attention/` 目录会让 `rms_norm` 归零但使 `weight_stream_gemv` 慢 `−35%/−18%`）。本队选择维持 `e4e691d` 的 device 布局（其后 `beebae2` 只改 host 谓词，全部 device 目标码逐字节不变），理由是净账：`flash_attention` 官方 11 例表 `−1.58367 ms`，而 `weight_stream_gemv` 正是 Hy/InternVL 两条线模型级收益所绑定的算子。逐 case 原值与完整 A/B 见本队账本仓 `docs/competition/c25-lead-ledger-20261014.md` §8.4 与 §9.4。
 
 ## 许可与出处
 

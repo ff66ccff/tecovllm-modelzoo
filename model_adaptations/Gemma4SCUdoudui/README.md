@@ -88,6 +88,19 @@ TORCH_DEVICE_BACKEND_AUTOLOAD=0 /home/py312/bin/python \
 > cycle-14 的旧 wheel `388dd710a8357ee9…` 恰好导出这两个 python 名 ⇒ 不前置交付安装目录时
 > overlay **会静默降级**到旧库并进入 main（三个绑定点照常打印），**不报错**。因此上面的
 > 自检必须作为启动前门禁，不能依赖"缺符号就会 fail-closed"。
+>
+> **cycle-28 硬化（2026-10-15，交付文件 `runtime/custom_ops/d512_official.py`，提交仓 `model/gemma-4-12b-it` `9ac6beb`）**：
+> D512 decode 绑定现在**额外**要求被映射的 `libteco_ops.so` 在其 ELF `.dynsym` 里导出
+> `teco_slave_flash_attention_half_d512`（即 `findFlashAttentionBranch()` 对 `head_dim == 512`
+> 选中的那条分支）；缺失或无法判定（非 ELF64-LE / 无 `.dynsym` / 截断）时**进程在 import 期即
+> `RuntimeError` 失败退出**（`overlay/sitecustomize.py` 转为 `SystemExit(1)`，rc=1，不进 main）。
+> 因此上面"不能依赖缺符号就会 fail-closed"这句**只对 `rms_norm` / `weight_stream_gemv` 两个绑定
+> 仍然成立**，D512 flash 绑定已不再静默降级。实测：环境里 cycle-14 的旧 wheel `388dd710a8357ee9…`
+> 用旧探针会被接受（`PROBE_ACCEPTED (FAIL-OPEN!)`），用本硬化后的探针则 fail-closed。
+> 模型级门禁窗口 `c28-gemma-probe2`（2026-10-15 08:48:00Z–08:50:05Z，rc=0，库 `38ad93d8…`）：
+> 交付字节 32/32 token 与冻结基线逐位相同、8/8 global D512 层绑定到 `decode_forward`、
+> 峰值显存与 cycle-27 各臂逐位相同。设备无关自检：
+> `C28_DELIVERED_LIB=<真实 libteco_ops.so> python tests/test_d512_default_cpu.py`（无该变量时显式打印 SKIPPED）。
 
 > 若跳过 `source /opt/tecoai/setvars.sh`，`import tecoops` 会报
 > `ImportError: libsdaart.so: cannot open shared object file`——`libteco_ops.so` 依赖厂商运行库，

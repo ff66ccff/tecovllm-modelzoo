@@ -1,9 +1,17 @@
-"""Device-free proof for the cycle-27 B-arm overlay (delivered D512 decode = default tier).
+"""Device-free proof for the cycle-27/28 overlay (delivered D512 decode = default tier).
 
 Runs on CPU with a fake ``tecoops`` module and a synthetic ``/proc/self/maps``, so no SDAA
-device and no built library are needed.  Usage:
-    python test_d512_default_cpu.py            # positive suite
+device is needed.  Usage:
+    C28_DELIVERED_LIB=<real libteco_ops.so> python test_d512_default_cpu.py   # positive suite
     python test_d512_default_cpu.py --neg X    # one fail-closed case (fresh interpreter)
+
+The positive suite needs a **real** ``libteco_ops.so`` built from the delivered teco-ops main:
+the cycle-28 hardening (c22 L17) reads the library's ELF ``.dynsym`` and requires
+``teco_slave_flash_attention_half_d512``, so a synthetic stub cannot exercise it.  Without
+``C28_DELIVERED_LIB`` the positive suite reports SKIPPED instead of failing; the negative
+cases (which prove fail-closed behaviour) do not need it, except ``dynsym_missing``, which
+takes its fixture from ``C28_REAL_OLD_LIB`` (an older library that still exports the generic
+``teco_slave_flash_attention_half`` but no D512 specialization).
 """
 import builtins
 import importlib.util
@@ -15,15 +23,23 @@ import tempfile
 import types
 
 HERE = Path(__file__).resolve()
-MODULE = HERE.parents[1] / "runtime" / "custom_ops" / "d512_official.py"
-FAKE_LIB = Path(tempfile.gettempdir()) / "c27_fake_libteco_ops" / "libteco_ops.so"
+MODULE = Path(os.environ.get(
+    "C28_D512_MODULE",
+    str(HERE.parents[1] / "runtime" / "custom_ops" / "d512_official.py")))
+_DELIVERED_LIB = os.environ.get("C28_DELIVERED_LIB")
+DYNSYM_AVAILABLE = bool(_DELIVERED_LIB) and Path(_DELIVERED_LIB).is_file()
+FAKE_LIB = Path(_DELIVERED_LIB) if DYNSYM_AVAILABLE else (
+    Path(tempfile.gettempdir()) / "c28_fake_libteco_ops" / "libteco_ops.so")
 
 
 def _ensure_fake_lib():
+    if FAKE_LIB.is_file():
+        return
     FAKE_LIB.parent.mkdir(parents=True, exist_ok=True)
-    FAKE_LIB.write_bytes(b"\x7fELF-c27-fake-libteco_ops")
+    FAKE_LIB.write_bytes(b"\x7fELF-c28-fake-libteco_ops")
 
 
+REAL_OLD_LIB = None
 _real_open = builtins.open
 
 
@@ -59,7 +75,7 @@ def _load(calls, export=True, expect_lib=None):
         os.environ.pop("GEMMA4_D512_EXPECT_LIB", None)
     else:
         os.environ["GEMMA4_D512_EXPECT_LIB"] = expect_lib
-    spec = importlib.util.spec_from_file_location("c27_shadow_d512", MODULE)
+    spec = importlib.util.spec_from_file_location("c28_shadow_d512", MODULE)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -124,7 +140,23 @@ def positive():
     assert args[12] is False, "return_softmax_lse must be False"
     assert args[13] is out, "out must be written in place"
     assert bool((out == 0.5).all()), "out mutation did not happen"
-    print("POSITIVE_OK calls=%d args=%d" % (len(calls), len(args)))
+
+    # 4) the ELF dynsym probe (c22 L17 hardening) is installed and required
+    assert mod._D512_SPECIALIZATIONS == (
+        "teco_slave_flash_attention_half_d512",), mod._D512_SPECIALIZATIONS
+    assert mod._D512_SPECIALIZATION_FOUND == {
+        "teco_slave_flash_attention_half_d512": True}, mod._D512_SPECIALIZATION_FOUND
+    assert mod._require_specialization(("teco_slave_flash_attention_half_d512",))
+    # the delivered build DOES define d256, so assert positively on it as well ...
+    assert mod._require_specialization(("teco_slave_flash_attention_half_d256",))
+    # ... and assert that a genuinely absent specialization fails closed
+    try:
+        mod._require_specialization(("teco_slave_flash_attention_half_d1024_absent",))
+    except RuntimeError as exc:
+        assert "d1024_absent" in str(exc), str(exc)
+    else:
+        raise AssertionError("a missing specialization must fail closed")
+    print("POSITIVE_OK calls=%d args=%d lib=%s" % (len(calls), len(args), _DELIVERED_LIB))
     return 0
 
 
@@ -142,6 +174,26 @@ def negative(case):
             os.environ.pop("GEMMA_D512_OFFICIAL_SHA256", None)
     elif case == "wrong_lib":
         _load(calls, expect_lib="/tmp/somewhere/else/libteco_ops.so")
+    elif case == "dynsym_missing":
+        # Real regression case (c22 L17): a REAL, older libteco_ops.so that still exports the
+        # generic teco_slave_flash_attention_half (so the Python attribute probe passes) but has
+        # no D512 specialization.  The synthetic map below points the module at that real file.
+        global REAL_OLD_LIB
+        real_old = os.environ.get("C28_REAL_OLD_LIB")
+        if not real_old or not Path(real_old).is_file():
+            raise SystemExit("C28_REAL_OLD_LIB must name a real older libteco_ops.so")
+        import subprocess
+        syms = subprocess.run(["nm", "-D", "--defined-only", real_old],
+                              capture_output=True, text=True).stdout
+        assert "teco_slave_flash_attention_half_d512" not in syms, "fixture is not an older lib"
+        assert "teco_slave_flash_attention_half" in syms, "fixture lost the generic symbol"
+        REAL_OLD_LIB = real_old
+        _install_fake_maps(real_old)
+        _install_fake_tecoops(calls, export=True)
+        os.environ.pop("GEMMA4_D512_EXPECT_LIB", None)
+        spec = importlib.util.spec_from_file_location("c28_shadow_d512", MODULE)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
     else:
         raise SystemExit("unknown negative case %r" % case)
     raise AssertionError("negative case %r did NOT fail closed" % case)
@@ -159,4 +211,9 @@ if __name__ == "__main__":
             print("NEGATIVE_OK %s: %s" % (sys.argv[2], exc))
             sys.exit(0)
         sys.exit(8)
+    if not DYNSYM_AVAILABLE:
+        print("SKIPPED: set C28_DELIVERED_LIB to a real libteco_ops.so built from the delivered "
+              "teco-ops main; the cycle-28 fail-closed probe reads its ELF .dynsym and a "
+              "synthetic stub cannot exercise it")
+        sys.exit(0)
     sys.exit(positive())

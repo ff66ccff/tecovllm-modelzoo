@@ -47,6 +47,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import struct
 import sys
 
 import torch
@@ -89,6 +90,142 @@ def _fail_closed_library_identity():
     return libs
 
 
+# ---------------------------------------------------------------------------
+# Fail-closed capability probe on the ACTUAL specialization symbol (c22 L17).
+#
+# `hasattr(tecoops, "flash_attn_varlen_func")` is NOT a capability probe: it is a Python
+# attribute of `_torch_ext`, so an **older** build that still exports the generic
+# `teco_slave_flash_attention_half` (ALGO0) also satisfies it -- while lacking
+# `teco_slave_flash_attention_half_d512`, which is the branch
+# `findFlashAttentionBranch()` selects for `size_per_head == 512`
+# (teco/ual/ops/flash_attention/find_flash_attention.cpp: head_dim 512 -> algo 2).  With such a
+# library the D512 layers silently take the generic D128 kernel, which is the fail-open this
+# probe closes.
+#
+# The specialization is a device stub compiled into `libteco_ops.so`, so its presence is
+# decidable from the library's dynamic symbol table -- which is an **ELF, not a Python**
+# question, and is therefore independent of which `tecoops` package happens to be imported.
+# This runs once at import (process init) time: it adds no branch to the forward hot path, no
+# `getenv` on the hot path, and no new runtime dependency (stdlib `struct` only).  Every parse
+# failure is a RuntimeError: "cannot decide" is treated exactly like "absent".
+#
+# D256 is deliberately NOT required here.  This module binds the D512 global layers only; the
+# D256 sliding layers are pinned to the in-repo math path one level up, in
+# `custom_ops/block_attention/op.py: base_math = impl_self.head_size >= FLASH_MAX_HEAD_DIM`,
+# which never calls the delivered kernel for head_size 256.  Requiring the D256 symbol would
+# assert a capability this binding does not use.
+_D512_SYMBOL = "teco_slave_flash_attention_half_d512"
+
+
+def _dynsym_specializations(path, symbols):
+    """True for each symbol found in the ELF **dynamic** symbol table of ``path``."""
+    for symbol in symbols:
+        if not symbol or "\x00" in symbol or len(symbol) > 255:
+            raise RuntimeError("D512 delivered decode: bad symbol name %r" % (symbol,))
+    found = [False] * len(symbols)
+    try:
+        with open(path, "rb") as fh:
+            ident = fh.read(16)
+            if len(ident) != 16 or ident[:4] != b"\x7fELF":
+                raise RuntimeError("not an ELF file: %r" % (path,))
+            if ident[4] != 2:                     # EI_CLASS: ELFCLASS64
+                raise RuntimeError("not a 64-bit ELF library: %r" % (path,))
+            if ident[5] != 1:                     # EI_DATA: ELFDATA2LSB
+                raise RuntimeError("not a little-endian ELF library: %r" % (path,))
+            fh.seek(0)
+            header = fh.read(64)
+            if len(header) != 64:
+                raise RuntimeError("truncated ELF header: %r" % (path,))
+            e_shoff, = struct.unpack_from("<Q", header, 0x28)
+            e_shentsize, = struct.unpack_from("<H", header, 0x3a)   # Ehdr64: 0x28 shoff
+            e_shnum, = struct.unpack_from("<H", header, 0x3c)       #         0x3a shentsize
+            e_shstrndx, = struct.unpack_from("<H", header, 0x3e)    #         0x3c shnum / 0x3e shstrndx
+            if not e_shoff or not e_shnum:
+                raise RuntimeError(
+                    "ELF section table absent; the library identity cannot be verified: %r"
+                    % (path,))
+            fh.seek(e_shoff)
+            table = fh.read(e_shentsize * e_shnum)
+            if len(table) != e_shentsize * e_shnum:
+                raise RuntimeError("truncated ELF section table: %r" % (path,))
+            sections = []
+            for i in range(e_shnum):
+                fields = struct.unpack_from("<IIQQQQIIQQ", table, i * e_shentsize)
+                sections.append((fields[0], fields[5], fields[4]))    # sh_name, sh_size, sh_offset
+            if e_shstrndx == 0 or e_shstrndx >= e_shnum:
+                raise RuntimeError("ELF has no section-name table: %r" % (path,))
+            shstr_size, shstr_off = sections[e_shstrndx][1:]
+            fh.seek(shstr_off)
+            shstr = fh.read(shstr_size)
+            if len(shstr) != shstr_size:
+                raise RuntimeError("truncated section-name table: %r" % (path,))
+            dynsym = dynstr = dynstr_size = None
+            for sh_name, size, offset in sections:
+                end = shstr.find(b"\x00", sh_name)
+                if end < 0:
+                    raise RuntimeError("malformed .shstrtab entry: %r" % (path,))
+                name = shstr[sh_name:end].decode("ascii", "replace")
+                if name == ".dynsym":
+                    dynsym, dynsym_size = offset, size
+                elif name == ".dynstr":
+                    dynstr, dynstr_size = offset, size
+            if dynsym is None or dynstr is None:
+                raise RuntimeError(
+                    "ELF has no .dynsym/.dynstr; the library identity cannot be verified: %r"
+                    % (path,))
+            fh.seek(dynstr)
+            strings = fh.read(dynstr_size)
+            if len(strings) != dynstr_size:
+                raise RuntimeError("truncated .dynstr: %r" % (path,))
+            fh.seek(dynsym)
+            entries = fh.read(dynsym_size)
+            if len(entries) != dynsym_size:
+                raise RuntimeError("truncated .dynsym: %r" % (path,))
+            entry_size, count = 24, dynsym_size // 24
+            if entry_size * count != dynsym_size:
+                raise RuntimeError("malformed .dynsym size: %r" % (path,))
+            for i in range(count):
+                base = i * entry_size
+                st_name, = struct.unpack_from("<I", entries, base)
+                if st_name == 0:
+                    continue
+                end = strings.find(b"\x00", st_name)
+                if end < 0:
+                    raise RuntimeError("malformed .dynstr offset: %r" % (path,))
+                name = strings[st_name:end].decode("ascii", "replace")
+                for j, symbol in enumerate(symbols):
+                    if not found[j] and symbol in name:
+                        found[j] = True
+    except RuntimeError:
+        raise
+    except (OSError, ValueError, struct.error) as exc:
+        raise RuntimeError(
+            "D512 delivered decode FAIL-CLOSED: %s is not a readable ELF library (%s)"
+            % (path, exc))
+    return found
+
+
+def _require_specialization(symbols):
+    """Verify every required D512 specialization exists in the mapped library."""
+    wanted = tuple(symbols)
+    missing = []
+    for path in _MAPPED_LIBS:
+        found = _dynsym_specializations(path, wanted)
+        missing.extend(s for s, ok in zip(wanted, found) if not ok)
+    if missing:
+        raise RuntimeError(
+            "D512 delivered decode FAIL-CLOSED: the mapped library exports "
+            "flash_attn_varlen_func but not the D512 specialization symbol(s) %r "
+            "(mapped %r). Such a build routes head_dim 512 to the generic "
+            "teco_slave_flash_attention_half kernel instead of the delivered D512 branch; "
+            "stage a libteco_ops.so built from the delivered teco-ops main."
+            % (sorted(set(missing)), _MAPPED_LIBS))
+    return {s: True for s in wanted}
+
+
+_D512_SPECIALIZATIONS = (_D512_SYMBOL,)
+
+
 if os.environ.get("GEMMA_D512_OFFICIAL_EXTENSION") or os.environ.get("GEMMA_D512_OFFICIAL_SHA256"):
     raise RuntimeError(
         "D512 delivered decode: GEMMA_D512_OFFICIAL_EXTENSION/_SHA256 select the isolated "
@@ -100,11 +237,14 @@ if not hasattr(tecoops, "flash_attn_varlen_func"):
         "libteco_ops.so and _torch_ext that export it")
 
 _MAPPED_LIBS = _fail_closed_library_identity()
+_D512_SPECIALIZATION_FOUND = _require_specialization(_D512_SPECIALIZATIONS)
 print("[gemma-d512-delivered] LOAD " + json.dumps({
     "tecoops_file": getattr(tecoops, "__file__", None),
     "mapped_libteco_ops": _MAPPED_LIBS,
     "mapped_sha256": [_sha256(p) for p in _MAPPED_LIBS],
     "kernel": "tecoops.flash_attn_varlen_func",
+    "required_specializations": list(_D512_SPECIALIZATIONS),
+    "specialization_found": _D512_SPECIALIZATION_FOUND,
 }), file=sys.stderr, flush=True)
 
 

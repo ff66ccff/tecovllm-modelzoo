@@ -48,7 +48,7 @@ OPS_SRC=<teco-ops 检出目录>                       # 本队算子库源码（
 OPS_PREFIX=<交付算子库安装目录>                    # 例：$HOME/ivl-tecoops；不要写只在某台机器成立的绝对路径
 
 # 1) 从本队 teco-ops 仓构建 wheel（teco-hal 等依赖见该仓 README）
-git -C "$OPS_SRC" checkout beebae220f0e918460d2210e4064030e157d602d   # 本队 ops main（pin 口径 = 源码 commit）
+git -C "$OPS_SRC" checkout 8ef0a5f891603ddc8011cc3c45b127fe988024bf   # 本队 ops main（pin 口径 = 源码 commit）
 "$PYTHON" "$OPS_SRC/setup.py" bdist_wheel --dist-dir "$OPS_SRC/dist"
 
 # 2) 隔离安装到独立目录（不覆盖全局 site-packages），并记录本轮 wheel 的 sha256
@@ -66,7 +66,7 @@ MODEL_ROOT=/gpfs/model bash "$ADAPT/run.sh"
 
 ### 怎么判定"这次跑的是不是交付库"（三层，按顺序看）
 
-1. **pin 口径 = 源码 commit + 本轮构建产物**：交付库 pin 在本队 teco-ops main **`beebae220f0e918460d2210e4064030e157d602d`**，并记录**本轮** `libteco_ops.so` 的 sha256。
+1. **pin 口径 = 源码 commit + 本轮构建产物**：交付库 pin 在本队 teco-ops main **`8ef0a5f891603ddc8011cc3c45b127fe988024bf`**，并记录**本轮** `libteco_ops.so` 的 sha256。
    ⚠ **不得用 lib 字节做跨 build 判等**：lib 字节随 build root 变化（队内实测：同一份源码 `459992a2` 在不同 build root 产出过 `9b0746c7` / `93b75d34` / `a92ad51c` 三种字节）。sha256 只作 provenance 记录。
 2. **静默降级的判据用 build-root 无关的能力探针**（不需要任何私有环境变量）：
 
@@ -232,3 +232,7 @@ curl -s http://127.0.0.1:8002/v1/chat/completions -H 'Content-Type: application/
 本队对 InternVL3_5-8B 适配的全部改动以 **Apache-2.0** 提交；仓库根 `LICENSE`（以及队内
 `teco-ops` / `tecovllm` / `teco-modelzoo` 三仓根的 `LICENSE`）为**上游 fork 继承的 BSD-3-Clause**，
 本队**未改动任何许可证文件**。该字面差异（队内清单写「Apache 2.0 或 MIT」）**待向组委会确认**。
+
+---
+
+**cycle-31 pin 说明（2026-10-16）**：本交付的 ops pin 由 `beebae220f0e918460d2210e4064030e157d602d` 前移至 **`8ef0a5f891603ddc8011cc3c45b127fe988024bf`**（本队 teco-ops main，含 cycle-31 落地的 `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写、`8ef0a5f` weight_stream_gemv ILP4、`f092863` flash_attention fail-closed 对、`973cbd2` weight_stream_gemv SPM fail-loud、`6d0bde7` 测试面 mock 健壮性）。组合树门禁：单次调用（`--perf_repeat=0 --warm_repeat=0`）`max_error=0`、`python_api_test` focused ALL PASSED、官方全 39 例 `PASSED=39 FAILED=0`（逐例 `max_error` 仅 `weight_stream_gemv` 两例按归约序变化）。旧 pin `beebae220f0e918460d2210e4064030e157d602d` 仍可复现旧库。

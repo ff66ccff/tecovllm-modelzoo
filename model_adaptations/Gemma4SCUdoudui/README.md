@@ -83,7 +83,7 @@ TORCH_DEVICE_BACKEND_AUTOLOAD=0 /home/py312/bin/python \
 > `libteco_ops_sha256 = 1e756307a94a2eb871856b3830b417f97f26914906f3a75fe51e61cdab2782a5`；
 > pin 前移后必须按上面步骤重建并重测本轮的 sha256）。
 >
-> 本 pin 已前移至 **`beebae2`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径）。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `beebae2` 为准。
+> 本 pin 已前移至 **`8ef0a5f891603ddc8011cc3c45b127fe988024bf`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4）。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `8ef0a5f891603ddc8011cc3c45b127fe988024bf` 为准。
 > **实测边界**：当前默认档只需要 `tecoops.rms_norm` 与 `weight_stream_gemv`，而环境里
 > cycle-14 的旧 wheel `388dd710a8357ee9…` 恰好导出这两个 python 名 ⇒ 不前置交付安装目录时
 > overlay **会静默降级**到旧库并进入 main（三个绑定点照常打印），**不报错**。因此上面的

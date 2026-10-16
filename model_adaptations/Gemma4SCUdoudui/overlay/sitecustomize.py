@@ -90,6 +90,19 @@ def install_block_attention_overlay() -> None:
         print(f"[gemma4-overlay] metadata_fix skipped: {type(exc).__name__}: {exc}",
               file=sys.stderr)
 
+    # 第五个厂商缺口：BlockAttentionMetadata 不转发 query_start_loc/seq_lens 的 CPU 孪生，
+    # 逼得算子逐层做 int(device_tensor)（v1 实测 145 次 D2H、占 span 91.8%）。
+    # 见 runtime/custom_ops/block_attention/metadata_cpu_fix.py（只包一层 build，不改 site-packages）。
+    try:
+        from custom_ops.block_attention import metadata_cpu_fix
+
+        if metadata_cpu_fix.install():
+            print("[gemma4-overlay] zero-D2H cpu-twin metadata fix installed.",
+                  file=sys.stderr)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[gemma4-overlay] metadata_cpu_fix skipped: {type(exc).__name__}: {exc}",
+              file=sys.stderr)
+
     print("[gemma4-overlay] BlockAttention overlay bound successfully.", file=sys.stderr)
 
 

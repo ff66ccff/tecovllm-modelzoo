@@ -110,8 +110,10 @@ def sdaa_block_attention_forward(
             key_cache,
             value_cache,
             attn_metadata.block_table,
-            attn_metadata.query_start_loc,
-            attn_metadata.seq_lens,
+            # 主机孪生张量（metadata_cpu_fix 在 build 期挂载并 clone 冻结）：
+            # 被调用的 sdpa_* 只用它们取主机整数，逐层 D2H 同步因此消失。
+            attn_metadata.query_start_loc_cpu,
+            attn_metadata.seq_lens_cpu,
             self.scale,
             attn_metadata.causal,
         ))
@@ -162,8 +164,9 @@ def _decode_math(self, out_view, query, key_cache, value_cache,
         key_cache,
         value_cache,
         attn_metadata.block_table,
-        attn_metadata.query_start_loc,
-        attn_metadata.seq_lens,
+        # 主机孪生张量（见上）：decode math 同样只用它们取主机整数。
+        attn_metadata.query_start_loc_cpu,
+        attn_metadata.seq_lens_cpu,
         self.scale,
         window_size=getattr(self, "_gemma4_window_size", None),
     ))

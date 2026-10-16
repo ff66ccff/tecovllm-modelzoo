@@ -109,7 +109,7 @@ TORCH_DEVICE_BACKEND_AUTOLOAD=0 /home/py312/bin/python \
 ### 3) 模型注册（进程内，启动时自动完成）
 
 `run.sh` 已把 `overlay/` 与 `runtime/` 前置到 `PYTHONPATH` 并置 `GEMMA4_OVERLAY=1`，启动时依次完成：
-config 注册、tokenizer 兼容、多模态权重跳过、attention/RMSNorm/线性层调用点绑定。
+config 注册、tokenizer 兼容、多模态权重跳过、attention/RMSNorm/线性层调用点绑定，以及 `metadata_cpu_fix`（第五个厂商缺口：把 `query_start_loc`/`seq_lens` 的 CPU 孪生经 `.clone()` 冻结后挂到 `BlockAttentionMetadata`，使 prefill/decode 算子不再逐层读设备标量 —— 交付形态实测 D2H 事件 481→97、wall gate 11.947%→9.127%）。
 缺**符号**时启动即报错（fail-closed）。**但"库解析到哪一份"必须靠上面的能力探针**：
 实测不前置交付安装目录时，`import tecoops` 落到全局 `site-packages` 的旧 wheel，
 当前默认档所需的两个符号它都有 ⇒ overlay 三个绑定点照常打印并进入 main（静默降级）。
@@ -138,6 +138,9 @@ PYTHONPATH=model_adaptations/Gemma4SCUdoudui/overlay:model_adaptations/Gemma4SCU
 #   （T1.4/T1.5 = custom_ops 必须解析到交付 runtime/custom_ops 的防漂移断言）
 # 但**套件整体 rc=1**：T2.0（overlay 绑定）与 T8.0（window 归一化）需要
 #   GEMMA4_OVERLAY=1 + SDAA 栈，无卡时由 harness 记为 `[FAIL] ... :: skipped` 并汇总
+# 2026-10-16 补记：在本机提供 GEMMA_PATH + 交付 tecoops（含 D512 符号）+ GEMMA4_OVERLAY=1 时，
+#   同一套件实测 **23/23 PASS、ALL CHECKS PASSED**（含 T5.0/T6.0/T7.0/T9.x 数值面 maxdiff 0.00e+00），
+#   且该结果在零 D2H 补丁前后各跑一次、均为全绿。
 #   `FAILED (2)`。这是既有的判据形态，不是回归。
 ```
 

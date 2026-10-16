@@ -81,6 +81,23 @@ SDAA 用 **HND** 布局 `key_cache: [num_blocks, num_kv_heads, block_size, head_
 不开时 `torch_sdaa` **静默**落到 `aten::_scaled_dot_product_attention_math`。
 vLLM 在 `vllm_sdaa/worker/sdaa_model_runner.py:143` 会打开；本模块在 **import 时一次性绑定**，
 使算子不依赖调用方环境（见 tests test_7）。
+
+## v2（c33）：零 D2H 主机标量
+
+本模块把 `query_start_loc` / `seq_lens` **只当作主机整数序列**使用：取序列数，逐元素取
+`q_start` / `q_end` / `kv_len`（含 math 入口的前置端点校验）。因此调用方直接传入
+**已驻留主机的 CPU 孪生张量**（`BlockAttentionMetadata.query_start_loc_cpu` /
+`.seq_lens_cpu`，由 overlay 的 `metadata_cpu_fix` 在 build 期一次性挂载并 clone 冻结），
+本模块在每个入口用一次整块 `.tolist()` 换成 Python 列表 ⇒ 热路径不再出现
+`int(device_tensor)`（本代 12 处 / 14 个调用点全部消除，含 math 入口的端点校验）。
+热路径无分支。
+
+**残留（必须如实标注）**：math 入口的**页号校验**仍需设备 `block_table`
+（`bool(torch.any(required < ...))` ×2 / 请求），`bool(torch.any(device_tensor))` 同样是
+`aten::_local_scalar_dense`，故本模块并非"零设备标量读"。本代无 host 孪生可替代该校验，
+保留以维持 `invalid historical page ID` 语义。量化占比见 RESULT.md。
+若调用方仍传设备张量（仅单测 / shadow 未生效路径），`.tolist()` 退化为一次整块 D2H，
+数值语义完全不变（只是慢）。
 """
 
 import torch
@@ -135,16 +152,18 @@ def sdpa_prefill_attention(
         out: [num_tokens, num_heads_q, head_size]
     """
     out = torch.empty_like(query)
-    num_seqs = query_start_loc.numel() - 1
+    qsl = query_start_loc.tolist()
+    sl = seq_lens.tolist()
+    num_seqs = len(qsl) - 1
     block_size = key_cache.size(2)
     # GQA 开关按 shape 一次性判定，不随序列变化
     enable_gqa = query.shape[1] != key_cache.shape[1]
 
     for i in range(num_seqs):
-        q_start = int(query_start_loc[i])
-        q_end = int(query_start_loc[i + 1])
+        q_start = qsl[i]
+        q_end = qsl[i + 1]
         q_len = q_end - q_start
-        kv_len = int(seq_lens[i])
+        kv_len = sl[i]
         if kv_len <= 0 or q_len <= 0:
             continue
         # chunked prefill：需要右下角因果，SDAA 上三条路皆不可用（见模块头）
@@ -212,15 +231,17 @@ def sdpa_decode_attention_math(
     head_dim=512.
     """
     out = torch.empty_like(query)
-    num_seqs = query_start_loc.numel() - 1
+    qsl = query_start_loc.tolist()
+    sl = seq_lens.tolist()
+    num_seqs = len(qsl) - 1
     block_size = key_cache.size(2)
     enable_gqa = query.shape[1] != key_cache.shape[1]
     use_fused = query.shape[-1] <= 256 and window_size is not None
     for i in range(num_seqs):
-        q_start = int(query_start_loc[i])
-        q_end = int(query_start_loc[i + 1])
+        q_start = qsl[i]
+        q_end = qsl[i + 1]
         q_len = q_end - q_start
-        kv_len = int(seq_lens[i])
+        kv_len = sl[i]
         if kv_len <= 0 or q_len <= 0:
             continue
         if window_size is None:
@@ -273,7 +294,11 @@ def sdpa_prefill_attention_math(
         raise RuntimeError("requires matching head dimension and block32")
     if key_cache.shape[1] <= 0 or query.shape[1] % key_cache.shape[1]:
         raise RuntimeError("invalid GQA head ratio")
-    if any(t.device != query.device for t in (key_cache, value_cache, block_table, query_start_loc, seq_lens)):
+    # 设备一致性：只校验**仍驻留设备**的张量（paged cache 与 block_table 必须与 Q 同设备）。
+    # query_start_loc / seq_lens 按本模块契约已是主机孪生（见模块头），本就不在设备上，
+    # 把它们纳入该断言会在本代直接抛 mixed devices。它们的校验改由下方
+    # ndim / dtype / numel 形状与类型断言承担（CPU 上同样成立）。
+    if any(t.device != query.device for t in (key_cache, value_cache, block_table)):
         raise RuntimeError("mixed devices")
     if key_cache.dtype != query.dtype or value_cache.dtype != query.dtype:
         raise RuntimeError("cache dtype mismatch")
@@ -283,11 +308,14 @@ def sdpa_prefill_attention_math(
         raise RuntimeError("metadata must be int32")
     if query_start_loc.numel() != seq_lens.numel() + 1 or block_table.shape[0] != seq_lens.numel():
         raise RuntimeError("metadata request count mismatch")
-    if int(query_start_loc[0]) != 0 or int(query_start_loc[-1]) != query.shape[0]:
+    # 主机侧取值：一次整块 tolist()，其后校验与循环体只用 Python int。
+    qsl = query_start_loc.tolist()
+    sl = seq_lens.tolist()
+    if qsl[0] != 0 or qsl[-1] != query.shape[0]:
         raise RuntimeError("invalid cumulative query endpoints")
-    for i in range(seq_lens.numel()):
-        q_start, q_end = int(query_start_loc[i]), int(query_start_loc[i + 1])
-        q_len, kv_len = q_end - q_start, int(seq_lens[i])
+    for i in range(len(sl)):
+        q_start, q_end = qsl[i], qsl[i + 1]
+        q_len, kv_len = q_end - q_start, sl[i]
         if q_start < 0 or q_end < q_start or q_end > query.shape[0] or kv_len < q_len or kv_len < 0:
             raise RuntimeError("invalid continuous chunk lengths")
         if q_len == 0:
@@ -302,14 +330,14 @@ def sdpa_prefill_attention_math(
         if bool(torch.any(required < (1 if window_size is not None else 2))) or bool(torch.any(required >= key_cache.shape[0])):
             raise RuntimeError("invalid historical page ID")
     out = torch.empty_like(query)
-    num_seqs = query_start_loc.numel() - 1
+    num_seqs = len(qsl) - 1
     block_size = key_cache.size(2)
     enable_gqa = query.shape[1] != key_cache.shape[1]
     for i in range(num_seqs):
-        q_start = int(query_start_loc[i])
-        q_end = int(query_start_loc[i + 1])
+        q_start = qsl[i]
+        q_end = qsl[i + 1]
         q_len = q_end - q_start
-        kv_len = int(seq_lens[i])
+        kv_len = sl[i]
         if kv_len <= 0 or q_len <= 0:
             continue
         start = max(0, kv_len - q_len - int(window_size) + 1) if window_size is not None else 0

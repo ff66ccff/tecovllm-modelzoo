@@ -13,7 +13,7 @@ InternVL3.5-8B（`OpenGVLab/InternVL3_5-8B`）是上海 AI Lab InternVL3.5 系�
 3. **本队 tecoops C++ 算子接入**（三层形态：teco-ops 仓的 C++ kernel + Python API + 本模型调用点）：`rms_norm`、`reshape_and_cache`、`flash_attention`；
 4. **默认档（D11）**：prefill 注意力默认走**可计入**的官方 C++ varlen ABI（`tecoops.flash_attn_varlen_func`）；torch SDPA 路径仅作回退档，**不计入**交付主张。切换 commit `3d62813`（根与交付副本同 blob `943084a0…`）；
 5. **权重只读**：只读引用组委会预置权重，不下载、不转储副本；
-6. **M=1 decode 线性层绑定**（本队 `tecoops.linear_stream` = `weight_stream_gemv`，上游 PR44）：进程初始化期把 `vllm.model_executor.layers.utils.default_unquantized_gemm` 替换为一个 opaque `torch.library.custom_op`；**M==1 走整行权重 slab 双缓冲 DMA，M>1 与不满足 `N%256==0 且 K%16==0` 的形状由 C++ host 回落厂商 GEMM**；默认开启、**无需环境变量**，热路径零分支零 `getenv`（AGENTS 规则 6），缺符号即 fail-closed。
+6. **M=1 decode 线性层绑定**（本队 `tecoops.linear_stream` = `weight_stream_gemv`，上游 PR44）：进程初始化期把 `vllm.model_executor.layers.utils.default_unquantized_gemm` 替换为一个 opaque `torch.library.custom_op`；**M==1 走整行权重 slab 双缓冲 DMA，M>1 与不满足 `n%64==0 且 K%16==0` 的形状由 C++ host 回落厂商 GEMM**；默认开启、**无需环境变量**，热路径零分支零 `getenv`（AGENTS 规则 6），缺符号即 fail-closed。注：`N%256==0` → `n%64==0` 的放宽由 PR #44 落地（host 侧准入谓词），依据是引擎 DMA 校验器只要求 4 B 对齐。
 
 本包是**纯 Python 适配层**，不含二进制；C++ kernel 全部来自本队 teco-ops 仓。
 
@@ -60,7 +60,7 @@ export PYTHONPATH="$OPS_PREFIX"
 MODEL_ROOT=/gpfs/model bash "$ADAPT/run.sh"
 ```
 
-> 本 pin 已前移至 **`beebae2`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径）。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `beebae2` 为准。
+> 本 pin 已前移至 **`8ef0a5f891603ddc8011cc3c45b127fe988024bf`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4）。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `8ef0a5f891603ddc8011cc3c45b127fe988024bf` 为准。
 
 **第 3 步不是可选项。** 本包**不含** `tecoops`（只有 Python 适配层）。官方 CI（`tools/ci_pipline/run_ci.py`）**不做任何安装**（它只 `parse_run_sh()` → `bash run.sh` → `prec.sh`/`speed.sh`），安装是交付方责任。若不显式前插交付算子库，`import tecoops` 会静默解析到环境里**任意已安装的 wheel**，且**不报错**。已实测的后果（2026-10-12 本线走查，未前插交付库时）：落到旧 wheel `388dd710…`，图像 total 从 **6.25 s 退化到 14.18 s**（prefill 注意力 216.89 ms/call vs 交付库 14.229 ms/call，36 层折合 **+7.30 s**；与 Step-2 独立记录的旧 wheel ΔTTFT **+7.808 s** 一致）。
 

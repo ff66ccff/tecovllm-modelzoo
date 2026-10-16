@@ -40,11 +40,11 @@ ls -ld "$MODEL_ROOT/Tencent-Hunyuan/Hy-MT2-1.8B"
 
    本模型的 overlay 依赖本队算子库的四个能力：`rms_norm`（含 `+add`）、`rms_norm_compat`、`rotary_embedding`、`reshape_and_cache`。镜像**预装**的 wheel（`/home/py312/lib/python3.12/site-packages/tecoops`，其 `libteco_ops.so` sha256 = `388dd710a8357ee9294ccada17fa3f4003a9bc5aa107bec744184fa008cbbcc0`）**不含 `rotary_embedding` 与 `rms_norm_compat`**：直接 `bash run.sh` 会被 overlay 的 fail-closed 拦住并以 `SystemExit(1)` 退出（**这是刻意行为，不是崩溃**——宁可拒绝启动，也不静默回退到未适配路径）。
 
-   服务库必须来自**本队 ops 仓**（源 commit `beebae220f0e918460d2210e4064030e157d602d`；自 `4adfd05e` 起已依次落地 `79941c5f` / `d84f34f` / `54a1d65` / `98e18ca` / `e4e691d`，见下方 provenance 句）：
+   服务库必须来自**本队 ops 仓**（源 commit `8ef0a5f891603ddc8011cc3c45b127fe988024bf`；自 `4adfd05e` 起已依次落地 `79941c5f` / `d84f34f` / `54a1d65` / `98e18ca` / `e4e691d`，见下方 provenance 句）：
 
    ```bash
    source /opt/tecoai/setvars.sh            # 提供 libsdaart.so / libsddev.so 等运行库路径
-   TEAM_OPS=<本队 teco-ops 检出>             # 内容 = commit beebae220f0e918460d2210e4064030e157d602d
+   TEAM_OPS=<本队 teco-ops 检出>             # 内容 = commit 8ef0a5f891603ddc8011cc3c45b127fe988024bf
    bash "$TEAM_OPS/build.sh" --build teco   # 构建 core：build/teco/lib/libteco_ops.so
    cd "$TEAM_OPS" && /home/py312/bin/python setup.py bdist_wheel
    /home/py312/bin/python -m pip install --no-deps --no-compile \
@@ -176,3 +176,7 @@ TTFT / TPOT：**未测**（组委会性能测例与达标线未下发）。已�
 ## 沿革
 
 本目录此前为英文长文档，2026-10-12 按推理仓官方示例模板重写为中文七段结构；历史逐次实验、旧 SHA、废弃流程与更早的对照证据（含 Transformers/BF16 形态的独立结论）一律保留在 `experiments/hy-mt2-1.8b.md`、`op_learning/**` 与 `validation/*.json`，不再在 README 中复述。
+
+---
+
+**cycle-31 pin 说明（2026-10-16）**：本交付的 ops pin 由 `beebae220f0e918460d2210e4064030e157d602d` 前移至 **`8ef0a5f891603ddc8011cc3c45b127fe988024bf`**（本队 teco-ops main，含 cycle-31 落地的 `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写、`8ef0a5f` weight_stream_gemv ILP4、`f092863` flash_attention fail-closed 对、`973cbd2` weight_stream_gemv SPM fail-loud、`6d0bde7` 测试面 mock 健壮性）。组合树门禁：单次调用（`--perf_repeat=0 --warm_repeat=0`）`max_error=0`、`python_api_test` focused ALL PASSED、官方全 39 例 `PASSED=39 FAILED=0`（逐例 `max_error` 仅 `weight_stream_gemv` 两例按归约序变化）。旧 pin `beebae220f0e918460d2210e4064030e157d602d` 仍可复现旧库。

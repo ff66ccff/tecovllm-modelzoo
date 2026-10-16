@@ -77,7 +77,7 @@ TORCH_DEVICE_BACKEND_AUTOLOAD=0 /home/py312/bin/python \
 > **必需步骤**：先按上面 build + 把本队 ops 安装目录前置到 `PYTHONPATH`（或 `pip install
 > --target`），再跑 `run.sh`。交付包**不含** `tecoops`；缺包/缺符号时 overlay 刻意
 > **fail-closed**（`SystemExit(1)`，不是崩溃）。ops 源码 pin：`teco-ops` 队内 `main`
-> `beebae220f0e918460d2210e4064030e157d602d`。
+> `8ef0a5f891603ddc8011cc3c45b127fe988024bf`。
 > 库身份与实测口径见 `model_adaptations/Gemma4SCUdoudui/validation/rmsnorm_whole_chain_20261012.json`
 > （该文件记录的是**上一版 pin** `dda33c5b` / `4adfd05e` 那一轮构建的
 > `libteco_ops_sha256 = 1e756307a94a2eb871856b3830b417f97f26914906f3a75fe51e61cdab2782a5`；
@@ -311,3 +311,7 @@ curl -s http://127.0.0.1:8003/v1/completions -H 'Content-Type: application/json'
    不是 fail-closed。反面对照：把交付安装目录前置后同一脚本 `SELFCHECK PASS` / rc=0。
    ⇒ 启动前必须跑 `model_adaptations/Gemma4SCUdoudui/scripts/gemma4/selfcheck_tecoops.py`（本文件「模型注册」第 2 条已写为必需步骤）。
 10. **已知限制（2026-10-14，交付库 `e4e691d` 测得）**：`e4e691d` 把 `flash_attention` 的 `<128>` 实例化移入**尾部新 TU**，使整库 device 代码布局重排，**`rms_norm` 的 8 个官方 case 因 code-layout 效应变慢**（逐例 `+0.35…+2.6 µs`，合计 `+11.88 µs`；同构建 A/B，`max_error` 逐位不变、`rms_norm_fp16.scpp` 源码 sha256 未变）。该效应**与算子源码无关**，且**换任何结构都只会把税转移给另一个算子**（例如把新 TU 移进 `flash_attention/` 目录会让 `rms_norm` 归零但使 `weight_stream_gemv` 慢 `−35%/−18%`）。本队选择维持 `e4e691d` 的 device 布局（其后 `beebae2` 只改 host 谓词，全部 device 目标码逐字节不变），理由是净账：`flash_attention` 官方 11 例表 `−1.58367 ms`，而 `weight_stream_gemv` 正是 Hy/InternVL 两条线模型级收益所绑定的算子。逐 case 原值与完整 A/B 见本队账本仓 `docs/competition/c25-lead-ledger-20261014.md` §8.4 与 §9.4。
+
+---
+
+**cycle-31 pin 说明（2026-10-16）**：本交付的 ops pin 由 `beebae220f0e918460d2210e4064030e157d602d` 前移至 **`8ef0a5f891603ddc8011cc3c45b127fe988024bf`**（本队 teco-ops main，含 cycle-31 落地的 `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写、`8ef0a5f` weight_stream_gemv ILP4、`f092863` flash_attention fail-closed 对、`973cbd2` weight_stream_gemv SPM fail-loud、`6d0bde7` 测试面 mock 健壮性）。组合树门禁：单次调用（`--perf_repeat=0 --warm_repeat=0`）`max_error=0`、`python_api_test` focused ALL PASSED、官方全 39 例 `PASSED=39 FAILED=0`（逐例 `max_error` 仅 `weight_stream_gemv` 两例按归约序变化）。旧 pin `beebae220f0e918460d2210e4064030e157d602d` 仍可复现旧库。

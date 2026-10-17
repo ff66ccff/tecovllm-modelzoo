@@ -40,11 +40,11 @@ ls -ld "$MODEL_ROOT/Tencent-Hunyuan/Hy-MT2-1.8B"
 
    本模型的 overlay 依赖本队算子库的四个能力：`rms_norm`（含 `+add`）、`rms_norm_compat`、`rotary_embedding`、`reshape_and_cache`。镜像**预装**的 wheel（`/home/py312/lib/python3.12/site-packages/tecoops`，其 `libteco_ops.so` sha256 = `388dd710a8357ee9294ccada17fa3f4003a9bc5aa107bec744184fa008cbbcc0`）**不含 `rotary_embedding` 与 `rms_norm_compat`**：直接 `bash run.sh` 会被 overlay 的 fail-closed 拦住并以 `SystemExit(1)` 退出（**这是刻意行为，不是崩溃**——宁可拒绝启动，也不静默回退到未适配路径）。
 
-   服务库必须来自**本队 ops 仓**（源 commit `20c245a39bbf35fa4dee0c0dbcd3313248490bbf`；自 `4adfd05e` 起已依次落地 `79941c5f` / `d84f34f` / `54a1d65` / `98e18ca` / `e4e691d`，见下方 provenance 句）：
+   服务库必须来自**本队 ops 仓**（源 commit `12271c185e3042392d8c9206ceb7535b20a53f50`；自 `4adfd05e` 起已依次落地 `79941c5f` / `d84f34f` / `54a1d65` / `98e18ca` / `e4e691d`，见下方 provenance 句）：
 
    ```bash
    source /opt/tecoai/setvars.sh            # 提供 libsdaart.so / libsddev.so 等运行库路径
-   TEAM_OPS=<本队 teco-ops 检出>             # 内容 = commit 20c245a39bbf35fa4dee0c0dbcd3313248490bbf
+   TEAM_OPS=<本队 teco-ops 检出>             # 内容 = commit 12271c185e3042392d8c9206ceb7535b20a53f50
    bash "$TEAM_OPS/build.sh" --build teco   # 构建 core：build/teco/lib/libteco_ops.so
    cd "$TEAM_OPS" && /home/py312/bin/python setup.py bdist_wheel
    /home/py312/bin/python -m pip install --no-deps --no-compile \
@@ -52,7 +52,7 @@ ls -ld "$MODEL_ROOT/Tencent-Hunyuan/Hy-MT2-1.8B"
    export PYTHONPATH=/root/tmpwork/c22-hy/install-team:${PYTHONPATH:-}
    ```
 
-   > 本 pin 已前移至 **`20c245a39bbf35fa4dee0c0dbcd3313248490bbf`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4 → `0371909` flash_attention ALGO0（head_dim 128/64）V 面板打包异步（算子级 `case_2` 1.829900 → 1.804300 ms，+1.3990%；模型级无可测加速））。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `20c245a39bbf35fa4dee0c0dbcd3313248490bbf` 为准。
+   > 本 pin 已前移至 **`12271c185e3042392d8c9206ceb7535b20a53f50`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4 → `0371909` flash_attention ALGO0（head_dim 128/64）V 面板打包异步（算子级 `case_2` 1.829900 → 1.804300 ms，+1.3990%；模型级无可测加速））。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `12271c185e3042392d8c9206ceb7535b20a53f50` 为准。
 
    本线 2026-10-13 卡窗（`hy-c22`，`run.sh` 一行未改）实际服务的库身份（构建于 `/root/tmpwork/c20-longtail/ops-rope`，与该 ops 内容逐位相同；**跨构建根 sha 会不同，故判据是能力探针，不是裸 sha 相等**）：
 
@@ -188,3 +188,4 @@ TTFT / TPOT：**未测**（组委会性能测例与达标线未下发）。已�
 **cycle-38 pin 说明（2026-10-18）**：本交付的 ops pin 由 `785a7848169307ea531b52107881b36277737332` 前移至 **`f748d0abc93ab813f6e35feed261795ba850bd3b`**（两个原子提交：`3f98d68` flash_attention ALGO0/D128 的 Q-block 改用入口期 LPT 表分配（两窗复现：`case_2` −30.30%、`case_3` −30.29%、`case_4` −30.82%，flash 集合加权 **−13.6%**；如实披露 `case_0/8/9/10` +1.6%、`case_1` +1.74%、`case_5` +7.35% 的权衡）；`f748d0a` reshape_and_cache 暂存环 8 组（`case_0` −1.8%、`case_1` −5.7%、`case_2` −4.8%，两臂 `max_error` 全 0）。落地库 **39/39 PASSED**。已知待修：`rotary_embedding` 自 `785a784` 起处于慢地址（+133%，0.0017→0.0040 ms），由段序守卫处理。
 **cycle-38 round-2 pin 说明（2026-10-18）**：本交付的 ops pin 由 `f748d0abc93ab813f6e35feed261795ba850bd3b` 前移至 **`9fda597f7d8bc5f98893081372a552f411f26e42`**（`9fda597`：flash_attention D256/ALGO1 调度单元 `UQ = BM/2 = 32` 的切分修正；官方固定形态同窗同 build root 只换 `.so`：**`case_6` 0.183760 → 0.116800 ms（−36.44%）**、`case_7` 0.151690 → 0.149830（−1.23%），其余 9 例 −0.1~−0.3% 无回退；`max_error` 逐位不变，**11/11 PASSED、39/39 PASSED**）。
 **cycle-38 round-10 pin 说明（2026-10-18）**：本交付的 ops pin 由 `9fda597f7d8bc5f98893081372a552f411f26e42` 前移至 **`20c245a39bbf35fa4dee0c0dbcd3313248490bbf`**（`20c245a` `perf(build): pin the hot device sections into their measured fast addresses`：在 TAX-1 基础上用 5 步纯 list 重排把三个热算子的 `.aitext` 精确钉进实测快类——`weight_stream_gemv` **0x25a08**、`rotary_embedding` **0x28858**、`zzz_flash_attention_d128` **0x2a878**；官方固定形态**同窗同 root 从源码构建**的双臂 A/B、3 次中位数：rotary `case_0/1/2` **0.003998→0.001686 / 0.006323→0.003904 / 0.003994→0.001729（−57.8% / −38.3% / −56.7%）**、wsg `case_0/1` **0.005722→0.003977 / 0.007753→0.007686（−30.5% / −0.9%）**、flash D128 `case_0` **0.828940→0.809140（−2.39%）**、rms_norm `case_6` −0.54%；8 例 SUM `0.87075→0.841684（−3.34%）`；**39/39 PASSED**、`max_error` 不变。原始件 `/root/tmpwork/c38/ops/out-r10/`、`RESULT-R10.md`）。
+**cycle-39 pin 说明（2026-10-18）**：本交付的 ops pin 由 `20c245a39bbf35fa4dee0c0dbcd3313248490bbf` 前移至 **`12271c185e3042392d8c9206ceb7535b20a53f50`**（`79470cb` flash D256/D512 的 NT PV 面板异步双 pane：`case_6` **−4.13%/−4.19%**、`case_7` **−4.31%/−4.01%**、`case_5` −5.01%/−4.99%，其余 8 例 −0.2~−0.4% 无回退；`12271c1` weight_stream_gemv 驻留 slab 分裂：`case_0` −1.14%/−2.40%、`case_1` **−11.54%/−12.22%**；两提交均 39/39 PASSED）。已知代价：两内核体积变化使其后锚点平移，wsg `case_0` 从 pin 峰值 0.00396 退到 0.00570（仍比 cycle-37 起点快 17%）；round-12 重推臂因拉回 pre-wsg 微秒算子的旧慢地址而 SUM +0.174%，已 REJECT。

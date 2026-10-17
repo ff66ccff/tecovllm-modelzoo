@@ -54,9 +54,9 @@ ls -ld "$MODEL_ROOT/OpenBMB/MiniCPM5-1B"
 
 ```bash
 # 1) 取得本队算子仓库（另行提交的「自定义算子仓库」）源码
-#    源码 commit: 7ea7e84c8aef327d522d3eb318bc4808b15d070c（队内 ops main，含 rotary_embedding kernel）
+#    源码 commit: 785a7848169307ea531b52107881b36277737332（队内 ops main，含 rotary_embedding kernel）
 git clone https://github.com/tecorigin-caet/teco-ops-SCUdoudui.git /tmp/teco-ops
-cd /tmp/teco-ops && git checkout 7ea7e84c8aef327d522d3eb318bc4808b15d070c
+cd /tmp/teco-ops && git checkout 785a7848169307ea531b52107881b36277737332
 
 # 2) 用厂商 Python 构建 torch-linked 交付产物
 #    注意：不要用 bash build.sh —— 它是 WITH_TORCH=OFF 变体，且没有 set -e
@@ -69,9 +69,9 @@ export WITH_TORCH=ON WITH_INFERENCE_PLUGIN=OFF
 export PYTHONPATH=/tmp/teco-ops/api:${PYTHONPATH:-}
 ```
 
-> 本 pin 已前移至 **`7ea7e84c8aef327d522d3eb318bc4808b15d070c`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4 → `0371909` flash_attention ALGO0（head_dim 128/64）V 面板打包异步（算子级 `case_2` 1.829900 → 1.804300 ms，+1.3990%；模型级无可测加速））。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `7ea7e84c8aef327d522d3eb318bc4808b15d070c` 为准。
+> 本 pin 已前移至 **`785a7848169307ea531b52107881b36277737332`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4 → `0371909` flash_attention ALGO0（head_dim 128/64）V 面板打包异步（算子级 `case_2` 1.829900 → 1.804300 ms，+1.3990%；模型级无可测加速））。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `785a7848169307ea531b52107881b36277737332` 为准。
 
-**版本口径**：pin 写成「**源码 commit + 同配方重建**」（本交付自证的源码 tip 为 `7ea7e84c8aef327d522d3eb318bc4808b15d070c`），**不是**某个 `libteco_ops.so` 的字节
+**版本口径**：pin 写成「**源码 commit + 同配方重建**」（本交付自证的源码 tip 为 `785a7848169307ea531b52107881b36277737332`），**不是**某个 `libteco_ops.so` 的字节
 ——同一个 commit 在不同 build root / 配方下会产出不同字节的 `.so`。自证请用**能力探针**
 （不是裸 sha256）：
 
@@ -233,3 +233,4 @@ scoping，不是 `rms_norm`。实测 case_4(D64) 中位 2.677600 ms、B64 两方
 **cycle-36 pin 说明（2026-10-17）**：本交付的 ops pin 由 `0371909a87d5dd11bb928b487afbf6e1e25eb44c` 前移至 **`2a1716d7102d15e0ec9ce4aa40438dccbc84cb3a`**（三个原子提交：`9f11b33` `weight_stream_gemv` 激活行 fp32 化（官方 case_0/case_1 **−4.55%/−8.28%**）、`0132061` `reshape_and_cache` 跨 token 载入流水线（**−22.4%/−27.5%/−23.2%**）、`2a1716d` `weight_stream_gemv` 尾部冗余 wait 删除（**−2.4%/−3.0%**）；全部为官方固定形态**同窗口同 build root 只换 `.so`** 的 A/B、3 次原值取中位数、`max_error` **逐位不变**、落地库 **39/39 PASSED**；原始件 `/root/tmpwork/c36/lead/LEDGER-DRAFT.md §4.2`）。
 **cycle-36 round-5 pin 说明（2026-10-17）**：本交付的 ops pin 由 `2a1716d7102d15e0ec9ce4aa40438dccbc84cb3a` 前移至 **`0d6bd5a10eddde4c020bb2367a233c72e005ad65`**（`perf(flash_attention): emit P straight from the softmax pass instead of transposing it` —— ALGO0/D128 每个面板的 `P^T→P` 转置融进 softmax 第二趟：寄存器直写 `p_score`、同一舍入；官方固定形态**同窗同 build root 只换 `.so`**、3 次中位数、**两次独立窗口逐例复现**：case_0/8/9/10 **−16.1%**、case_1 −9.7%、case_2/3 −7.5%、case_4 −8.5%、**十一例加权 −10.7%**；`max_error` **逐位不变**；**11/11 PASSED**；已知权衡：case_5 **+10.7%**（0.041353→0.045774 ms）。本线可达性：本线 `official` 档 prefill 走 `tecoops.flash_attn_varlen_func`（Hq16/Hkv2/D128，24 层）⇒ 经过 ALGO0（本次被改 TU）；模型级状态与动态调用计数见 `experiments/minicpm5-1b.md` 的 cycle-36 行。证据路径 `/root/tmpwork/c36/lead/LEDGER-DRAFT.md §6`。
 **cycle-36 round-14 pin 说明（2026-10-17）**：本交付的 ops pin 由 `0d6bd5a10eddde4c020bb2367a233c72e005ad65` 前移至 **`7ea7e84c8aef327d522d3eb318bc4808b15d070c`**（`7ea7e84` `perf(flash_attention): skip the softmax exp on causally-masked score vectors`；官方固定形态**同窗同 build root 只换 `.so`**、3 次中位数、**两次独立窗口逐例复现**：vs base `0371909` case_0/8/9/10 **−18.32%**、case_1 −9.50%、case_2/3 −6.05%/−6.08%、case_4 −6.85%；**vs 前一交付态 `0d6bd5a`** case_0/8/9/10 **−4.41%**、flash 算子再降 **−1.5%**；`max_error` **逐位不变**、**11/11 PASSED**；证据 `/root/tmpwork/c36/lead/LEDGER-DRAFT.md §13/§14`）。
+**cycle-37 pin 说明（2026-10-18）**：本交付的 ops pin 由 `7ea7e84c8aef327d522d3eb318bc4808b15d070c` 前移至 **`785a7848169307ea531b52107881b36277737332`**（三个原子提交：`37f89d1` flash_attention D256/ALGO1 的 Q-block `parts` 分裂（官方 `case_6` 同窗 A-B **−14.79% / −14.81%**，两窗，`max_error` 逐位不变）；`542a2a1` reshape_and_cache 的 PUT 槽深两迭代（case_0 −1.33%/−0.89%、case_1 **−7.02%/−6.85%**、case_2 **−7.82%/−7.90%**，两窗，两臂 `max_error` 全 0）；`785a784` 构建期把 weight_stream_gemv 设备段排在 rotary_embedding 之前（官方 case_0 **−37.0%**、case_1 **−25.4%**，i-cache miss 14/3776 ns → 4/38 ns）。落地库 **39/39 PASSED**；原始件 `/root/tmpwork/c37/lead/`）。

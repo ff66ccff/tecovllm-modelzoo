@@ -54,9 +54,9 @@ ls -ld "$MODEL_ROOT/OpenBMB/MiniCPM5-1B"
 
 ```bash
 # 1) 取得本队算子仓库（另行提交的「自定义算子仓库」）源码
-#    源码 commit: 785a7848169307ea531b52107881b36277737332（队内 ops main，含 rotary_embedding kernel）
+#    源码 commit: f748d0abc93ab813f6e35feed261795ba850bd3b（队内 ops main，含 rotary_embedding kernel）
 git clone https://github.com/tecorigin-caet/teco-ops-SCUdoudui.git /tmp/teco-ops
-cd /tmp/teco-ops && git checkout 785a7848169307ea531b52107881b36277737332
+cd /tmp/teco-ops && git checkout f748d0abc93ab813f6e35feed261795ba850bd3b
 
 # 2) 用厂商 Python 构建 torch-linked 交付产物
 #    注意：不要用 bash build.sh —— 它是 WITH_TORCH=OFF 变体，且没有 set -e
@@ -69,9 +69,9 @@ export WITH_TORCH=ON WITH_INFERENCE_PLUGIN=OFF
 export PYTHONPATH=/tmp/teco-ops/api:${PYTHONPATH:-}
 ```
 
-> 本 pin 已前移至 **`785a7848169307ea531b52107881b36277737332`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4 → `0371909` flash_attention ALGO0（head_dim 128/64）V 面板打包异步（算子级 `case_2` 1.829900 → 1.804300 ms，+1.3990%；模型级无可测加速））。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `785a7848169307ea531b52107881b36277737332` 为准。
+> 本 pin 已前移至 **`f748d0abc93ab813f6e35feed261795ba850bd3b`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4 → `0371909` flash_attention ALGO0（head_dim 128/64）V 面板打包异步（算子级 `case_2` 1.829900 → 1.804300 ms，+1.3990%；模型级无可测加速））。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `f748d0abc93ab813f6e35feed261795ba850bd3b` 为准。
 
-**版本口径**：pin 写成「**源码 commit + 同配方重建**」（本交付自证的源码 tip 为 `785a7848169307ea531b52107881b36277737332`），**不是**某个 `libteco_ops.so` 的字节
+**版本口径**：pin 写成「**源码 commit + 同配方重建**」（本交付自证的源码 tip 为 `f748d0abc93ab813f6e35feed261795ba850bd3b`），**不是**某个 `libteco_ops.so` 的字节
 ——同一个 commit 在不同 build root / 配方下会产出不同字节的 `.so`。自证请用**能力探针**
 （不是裸 sha256）：
 
@@ -234,3 +234,4 @@ scoping，不是 `rms_norm`。实测 case_4(D64) 中位 2.677600 ms、B64 两方
 **cycle-36 round-5 pin 说明（2026-10-17）**：本交付的 ops pin 由 `2a1716d7102d15e0ec9ce4aa40438dccbc84cb3a` 前移至 **`0d6bd5a10eddde4c020bb2367a233c72e005ad65`**（`perf(flash_attention): emit P straight from the softmax pass instead of transposing it` —— ALGO0/D128 每个面板的 `P^T→P` 转置融进 softmax 第二趟：寄存器直写 `p_score`、同一舍入；官方固定形态**同窗同 build root 只换 `.so`**、3 次中位数、**两次独立窗口逐例复现**：case_0/8/9/10 **−16.1%**、case_1 −9.7%、case_2/3 −7.5%、case_4 −8.5%、**十一例加权 −10.7%**；`max_error` **逐位不变**；**11/11 PASSED**；已知权衡：case_5 **+10.7%**（0.041353→0.045774 ms）。本线可达性：本线 `official` 档 prefill 走 `tecoops.flash_attn_varlen_func`（Hq16/Hkv2/D128，24 层）⇒ 经过 ALGO0（本次被改 TU）；模型级状态与动态调用计数见 `experiments/minicpm5-1b.md` 的 cycle-36 行。证据路径 `/root/tmpwork/c36/lead/LEDGER-DRAFT.md §6`。
 **cycle-36 round-14 pin 说明（2026-10-17）**：本交付的 ops pin 由 `0d6bd5a10eddde4c020bb2367a233c72e005ad65` 前移至 **`7ea7e84c8aef327d522d3eb318bc4808b15d070c`**（`7ea7e84` `perf(flash_attention): skip the softmax exp on causally-masked score vectors`；官方固定形态**同窗同 build root 只换 `.so`**、3 次中位数、**两次独立窗口逐例复现**：vs base `0371909` case_0/8/9/10 **−18.32%**、case_1 −9.50%、case_2/3 −6.05%/−6.08%、case_4 −6.85%；**vs 前一交付态 `0d6bd5a`** case_0/8/9/10 **−4.41%**、flash 算子再降 **−1.5%**；`max_error` **逐位不变**、**11/11 PASSED**；证据 `/root/tmpwork/c36/lead/LEDGER-DRAFT.md §13/§14`）。
 **cycle-37 pin 说明（2026-10-18）**：本交付的 ops pin 由 `7ea7e84c8aef327d522d3eb318bc4808b15d070c` 前移至 **`785a7848169307ea531b52107881b36277737332`**（三个原子提交：`37f89d1` flash_attention D256/ALGO1 的 Q-block `parts` 分裂（官方 `case_6` 同窗 A-B **−14.79% / −14.81%**，两窗，`max_error` 逐位不变）；`542a2a1` reshape_and_cache 的 PUT 槽深两迭代（case_0 −1.33%/−0.89%、case_1 **−7.02%/−6.85%**、case_2 **−7.82%/−7.90%**，两窗，两臂 `max_error` 全 0）；`785a784` 构建期把 weight_stream_gemv 设备段排在 rotary_embedding 之前（官方 case_0 **−37.0%**、case_1 **−25.4%**，i-cache miss 14/3776 ns → 4/38 ns）。落地库 **39/39 PASSED**；原始件 `/root/tmpwork/c37/lead/`）。
+**cycle-38 pin 说明（2026-10-18）**：本交付的 ops pin 由 `785a7848169307ea531b52107881b36277737332` 前移至 **`f748d0abc93ab813f6e35feed261795ba850bd3b`**（两个原子提交：`3f98d68` flash_attention ALGO0/D128 的 Q-block 改用入口期 LPT 表分配（两窗复现：`case_2` −30.30%、`case_3` −30.29%、`case_4` −30.82%，flash 集合加权 **−13.6%**；如实披露 `case_0/8/9/10` +1.6%、`case_1` +1.74%、`case_5` +7.35% 的权衡）；`f748d0a` reshape_and_cache 暂存环 8 组（`case_0` −1.8%、`case_1` −5.7%、`case_2` −4.8%，两臂 `max_error` 全 0）。落地库 **39/39 PASSED**。已知待修：`rotary_embedding` 自 `785a784` 起处于慢地址（+133%，0.0017→0.0040 ms），由段序守卫处理。

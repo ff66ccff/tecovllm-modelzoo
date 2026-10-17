@@ -54,9 +54,9 @@ ls -ld "$MODEL_ROOT/OpenBMB/MiniCPM5-1B"
 
 ```bash
 # 1) 取得本队算子仓库（另行提交的「自定义算子仓库」）源码
-#    源码 commit: 11cb85cbdc02470dde0a50d9777bb1e386501b9c（队内 ops main，含 rotary_embedding kernel）
+#    源码 commit: 60a40d756f85fa6c1ac9d4cb3563a5f3ffd9c7db（队内 ops main，含 rotary_embedding kernel）
 git clone https://github.com/tecorigin-caet/teco-ops-SCUdoudui.git /tmp/teco-ops
-cd /tmp/teco-ops && git checkout 11cb85cbdc02470dde0a50d9777bb1e386501b9c
+cd /tmp/teco-ops && git checkout 60a40d756f85fa6c1ac9d4cb3563a5f3ffd9c7db
 
 # 2) 用厂商 Python 构建 torch-linked 交付产物
 #    注意：不要用 bash build.sh —— 它是 WITH_TORCH=OFF 变体，且没有 set -e
@@ -69,9 +69,9 @@ export WITH_TORCH=ON WITH_INFERENCE_PLUGIN=OFF
 export PYTHONPATH=/tmp/teco-ops/api:${PYTHONPATH:-}
 ```
 
-> 本 pin 已前移至 **`11cb85cbdc02470dde0a50d9777bb1e386501b9c`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4 → `0371909` flash_attention ALGO0（head_dim 128/64）V 面板打包异步（算子级 `case_2` 1.829900 → 1.804300 ms，+1.3990%；模型级无可测加速））。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `11cb85cbdc02470dde0a50d9777bb1e386501b9c` 为准。
+> 本 pin 已前移至 **`60a40d756f85fa6c1ac9d4cb3563a5f3ffd9c7db`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4 → `0371909` flash_attention ALGO0（head_dim 128/64）V 面板打包异步（算子级 `case_2` 1.829900 → 1.804300 ms，+1.3990%；模型级无可测加速））。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `60a40d756f85fa6c1ac9d4cb3563a5f3ffd9c7db` 为准。
 
-**版本口径**：pin 写成「**源码 commit + 同配方重建**」（本交付自证的源码 tip 为 `11cb85cbdc02470dde0a50d9777bb1e386501b9c`），**不是**某个 `libteco_ops.so` 的字节
+**版本口径**：pin 写成「**源码 commit + 同配方重建**」（本交付自证的源码 tip 为 `60a40d756f85fa6c1ac9d4cb3563a5f3ffd9c7db`），**不是**某个 `libteco_ops.so` 的字节
 ——同一个 commit 在不同 build root / 配方下会产出不同字节的 `.so`。自证请用**能力探针**
 （不是裸 sha256）：
 
@@ -239,3 +239,4 @@ scoping，不是 `rms_norm`。实测 case_4(D64) 中位 2.677600 ms、B64 两方
 **cycle-38 round-10 pin 说明（2026-10-18）**：本交付的 ops pin 由 `9fda597f7d8bc5f98893081372a552f411f26e42` 前移至 **`20c245a39bbf35fa4dee0c0dbcd3313248490bbf`**（`20c245a` `perf(build): pin the hot device sections into their measured fast addresses`：在 TAX-1 基础上用 5 步纯 list 重排把三个热算子的 `.aitext` 精确钉进实测快类——`weight_stream_gemv` **0x25a08**、`rotary_embedding` **0x28858**、`zzz_flash_attention_d128` **0x2a878**；官方固定形态**同窗同 root 从源码构建**的双臂 A/B、3 次中位数：rotary `case_0/1/2` **0.003998→0.001686 / 0.006323→0.003904 / 0.003994→0.001729（−57.8% / −38.3% / −56.7%）**、wsg `case_0/1` **0.005722→0.003977 / 0.007753→0.007686（−30.5% / −0.9%）**、flash D128 `case_0` **0.828940→0.809140（−2.39%）**、rms_norm `case_6` −0.54%；8 例 SUM `0.87075→0.841684（−3.34%）`；**39/39 PASSED**、`max_error` 不变。原始件 `/root/tmpwork/c38/ops/out-r10/`、`RESULT-R10.md`）。
 **cycle-39 pin 说明（2026-10-18）**：本交付的 ops pin 由 `20c245a39bbf35fa4dee0c0dbcd3313248490bbf` 前移至 **`12271c185e3042392d8c9206ceb7535b20a53f50`**（`79470cb` flash D256/D512 的 NT PV 面板异步双 pane：`case_6` **−4.13%/−4.19%**、`case_7` **−4.31%/−4.01%**、`case_5` −5.01%/−4.99%，其余 8 例 −0.2~−0.4% 无回退；`12271c1` weight_stream_gemv 驻留 slab 分裂：`case_0` −1.14%/−2.40%、`case_1` **−11.54%/−12.22%**；两提交均 39/39 PASSED）。已知代价：两内核体积变化使其后锚点平移，wsg `case_0` 从 pin 峰值 0.00396 退到 0.00570（仍比 cycle-37 起点快 17%）；round-12 重推臂因拉回 pre-wsg 微秒算子的旧慢地址而 SUM +0.174%，已 REJECT。
 **cycle-39 round-13 pin 说明（2026-10-18）**：本交付的 ops pin 由 `12271c185e3042392d8c9206ceb7535b20a53f50` 前移至 **`11cb85cbdc02470dde0a50d9777bb1e386501b9c`**（两个原子提交：`fab1fa2` flash_attention 的**首 tile rescale 跳过**（每个 Q block 第一个 KV tile 上 `scale = exp(-inf) = 0`，把 0 写成 0 ⇒ 逐位不变；同窗两窗：`case_0/8/9/10` **−1.60%/−1.61%**、`case_2/3` **−1.18%/−1.17%**、`case_5` **−2.31%/−2.28%**、`case_4` −0.89%、`case_1` −0.90%；flash 集合 **−1.20%**；`max_error` 11 例逐位不变、39/39 PASSED）；`11cb85c` D512 **tail** PV 循环的异步双 pane（`79470cb` 只覆盖主循环，tail 占每头 48 个面板中的 32 个；同窗两窗：`case_7` **−3.99%/−3.91%**，`case_6` 无 tail ⇒ +0.12%；`max_error` 逐位不变、39/39 PASSED））。原始件 `/root/tmpwork/c39/`、台账 `docs/competition/c37-lead-ledger-20261018.md`。
+**cycle-39 round-15 pin 说明（2026-10-18）**：本交付的 ops pin 由 `11cb85cbdc02470dde0a50d9777bb1e386501b9c` 前移至 **`60a40d756f85fa6c1ac9d4cb3563a5f3ffd9c7db`**——**回退** `11cb85c`（`perf(flash_attention): overlap the D512 tail V-panel staging with its PV GEMMs`）。回退依据（AGENTS 规则 7，稳定负优化）：该提交的**自身 11 例窗口 SUM = +0.153% / +0.151%（两窗，净负）**——目标例 `case_7` 确实 −3.990%/−3.920%，但其余 10 例一致回退 +0.19~0.53%（LTO 重链把 D128 段推离原位），故按逐例/求和双口径均不成立。保留 `fab1fa2`（flash_attention 首 tile rescale 跳过：D128 9 例 −0.89~−2.31%，11 例 SUM **−1.21%**，`max_error` 逐位不变）。

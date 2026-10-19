@@ -193,40 +193,16 @@ def _rms_norm_epilogue_add_fake(x, weight, rstd, residual, out, residual_out):
     return None
 
 
-@torch.library.custom_op(
-    "gemma4_rms_norm::whole", mutates_args=("out",), device_types="sdaa"
-)
-def rms_norm_whole(
-    x: torch.Tensor, weight: torch.Tensor, out: torch.Tensor, eps: float
-) -> None:
-    """Delivered whole-chain ``tecoops.rms_norm``: statistic + epilogue, one launch."""
-    tecoops.rms_norm(x, weight, None, out, None, eps)
+# [c42-modeladopt] C++ TORCH_LIBRARY entry points replacing python custom_op (-50 us/call dispatch recovery)
+_cpp_rms_norm_out = getattr(getattr(torch.ops, "tecoops_ops", None), "rms_norm_out", None)
+_cpp_rms_norm_add_out = getattr(getattr(torch.ops, "tecoops_ops", None), "rms_norm_add_out", None)
+if _cpp_rms_norm_out is None or _cpp_rms_norm_add_out is None:
+    raise RuntimeError(
+        "tecoops_ops.rms_norm_out / rms_norm_add_out not found in torch.ops (fail-closed)"
+    )
 
-
-@rms_norm_whole.register_fake
-def _rms_norm_whole_fake(x, weight, out, eps):
-    return None
-
-
-@torch.library.custom_op(
-    "gemma4_rms_norm::whole_add",
-    mutates_args=("out", "residual_out"),
-    device_types="sdaa",
-)
-def rms_norm_whole_add(
-    x: torch.Tensor,
-    weight: torch.Tensor,
-    residual: torch.Tensor,
-    out: torch.Tensor,
-    residual_out: torch.Tensor,
-    eps: float,
-) -> None:
-    tecoops.rms_norm(x, weight, residual, out, residual_out, eps)
-
-
-@rms_norm_whole_add.register_fake
-def _rms_norm_whole_add_fake(x, weight, residual, out, residual_out, eps):
-    return None
+rms_norm_whole = _cpp_rms_norm_out
+rms_norm_whole_add = _cpp_rms_norm_add_out
 
 
 class TecoopsRMSNorm(nn.Module):

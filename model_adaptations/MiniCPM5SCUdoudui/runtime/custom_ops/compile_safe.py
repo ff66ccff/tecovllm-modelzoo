@@ -88,48 +88,16 @@ def official_ops(tecoops_module=None) -> "OfficialOps | None":
     reshape_kernel = bind_official_api(reshape_kernel, "tecoops.reshape_and_cache")
     flash_kernel = bind_official_api(flash_kernel, "tecoops.flash_attn_varlen_func")
 
-    @torch.library.custom_op(f"{_NAMESPACE}::rms_norm", mutates_args=("out",))
-    def rms_norm(
-        x: torch.Tensor,
-        weight: torch.Tensor,
-        out: torch.Tensor,
-        eps: float,
-    ) -> None:
-        rms_norm_kernel(
-            x.reshape(-1, x.shape[-1]),
-            weight,
-            None,
-            out.reshape(-1, out.shape[-1]),
-            None,
-            float(eps),
+    # [c42-modeladopt] C++ TORCH_LIBRARY entry points replacing python custom_op (-50 us/call dispatch recovery)
+    _cpp_rms_norm_out = getattr(getattr(torch.ops, "tecoops_ops", None), "rms_norm_out", None)
+    _cpp_rms_norm_add_out = getattr(getattr(torch.ops, "tecoops_ops", None), "rms_norm_add_out", None)
+    if _cpp_rms_norm_out is None or _cpp_rms_norm_add_out is None:
+        raise RuntimeError(
+            "tecoops_ops.rms_norm_out / rms_norm_add_out not found in torch.ops (fail-closed)"
         )
 
-    @rms_norm.register_fake
-    def _rms_norm_fake(x, weight, out, eps):
-        return None
-
-    @torch.library.custom_op(f"{_NAMESPACE}::rms_norm_add", mutates_args=("out", "residual_out"))
-    def rms_norm_add(
-        x: torch.Tensor,
-        weight: torch.Tensor,
-        residual: torch.Tensor,
-        out: torch.Tensor,
-        residual_out: torch.Tensor,
-        eps: float,
-    ) -> None:
-        x2 = x.reshape(-1, x.shape[-1])
-        rms_norm_kernel(
-            x2,
-            weight,
-            residual.reshape_as(x2),
-            out.reshape(-1, out.shape[-1]),
-            residual_out.reshape(-1, residual_out.shape[-1]),
-            float(eps),
-        )
-
-    @rms_norm_add.register_fake
-    def _rms_norm_add_fake(x, weight, residual, out, residual_out, eps):
-        return None
+    rms_norm = _cpp_rms_norm_out
+    rms_norm_add = _cpp_rms_norm_add_out
 
     @torch.library.custom_op(
         f"{_NAMESPACE}::reshape_and_cache",

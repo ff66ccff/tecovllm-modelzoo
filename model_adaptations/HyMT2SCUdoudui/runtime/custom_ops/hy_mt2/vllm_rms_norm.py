@@ -23,45 +23,18 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-"""Mutation/Fake boundary for the existing Hy-MT2 vendor RMSNorm API."""
+"""C++ TORCH_LIBRARY binding for Hy-MT2 RMSNorm API (replaces Python custom_op)."""
 
 import torch
-import tecoops
+import tecoops  # noqa: F401  ensure library loaded
 
+# [c42-modeladopt] C++ TORCH_LIBRARY entry points replacing python custom_op (-50 us/call dispatch recovery)
+_cpp_rms_norm_out = getattr(getattr(torch.ops, "tecoops_ops", None), "rms_norm_out", None)
+_cpp_rms_norm_add_out = getattr(getattr(torch.ops, "tecoops_ops", None), "rms_norm_add_out", None)
+if _cpp_rms_norm_out is None or _cpp_rms_norm_add_out is None:
+    raise RuntimeError(
+        "tecoops_ops.rms_norm_out / rms_norm_add_out not found in torch.ops (fail-closed)"
+    )
 
-@torch.library.custom_op(
-    "hy_mt2_public::rms_norm", mutates_args=("out",), device_types="sdaa"
-)
-def rms_norm(
-    x: torch.Tensor,
-    weight: torch.Tensor | None,
-    out: torch.Tensor,
-    eps: float,
-) -> None:
-    tecoops.rms_norm(x, weight, None, out, None, eps)
-
-
-@rms_norm.register_fake
-def _rms_norm_fake(x, weight, out, eps):
-    return None
-
-
-@torch.library.custom_op(
-    "hy_mt2_public::rms_norm_add",
-    mutates_args=("out", "residual_out"),
-    device_types="sdaa",
-)
-def rms_norm_add(
-    x: torch.Tensor,
-    weight: torch.Tensor | None,
-    residual: torch.Tensor,
-    out: torch.Tensor,
-    residual_out: torch.Tensor,
-    eps: float,
-) -> None:
-    tecoops.rms_norm(x, weight, residual, out, residual_out, eps)
-
-
-@rms_norm_add.register_fake
-def _rms_norm_add_fake(x, weight, residual, out, residual_out, eps):
-    return None
+rms_norm = _cpp_rms_norm_out
+rms_norm_add = _cpp_rms_norm_add_out

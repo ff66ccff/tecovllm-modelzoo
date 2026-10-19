@@ -83,20 +83,25 @@ TORCH_DEVICE_BACKEND_AUTOLOAD=0 /home/py312/bin/python \
 > `_torch_ext*.so` = `a55951872e9787630973c9dfd7402072f0e8df3c2e5d9d1d35c737cf17a03d8e`；
 > pin 前移后必须按上面步骤重建并重测本轮的 sha256）。
 >
-> 本 pin 已前移至 **`75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4 → `0371909` flash_attention ALGO0（head_dim 128/64）V 面板打包异步（算子级 `case_2` 1.829900 → 1.804300 ms，+1.3990%；模型级无可测加速））。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e` 为准。
-> **实测边界**：当前默认档只需要 `tecoops.rms_norm` 与 `weight_stream_gemv`，而环境里
-> cycle-14 的旧 wheel `388dd710a8357ee9…` 恰好导出这两个 python 名 ⇒ 不前置交付安装目录时
-> overlay **会静默降级**到旧库并进入 main（三个绑定点照常打印），**不报错**。因此上面的
-> 自检必须作为启动前门禁，不能依赖"缺符号就会 fail-closed"。
+> 本 pin 已前移至 **`75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4 → `0371909` flash_attention ALGO0（head_dim 128/64）V 面板打包异步（算子级 `case_2` 1.829900 → 1.804300 ms，+1.3990%；模型级无可测加速）→ `9f11b33`/`0132061`/`2a1716d`（cycle-36）→ `0d6bd5a`（flash P 直出）→ `7ea7e84`（掩码向量跳过 softmax）→ `37f89d1`/`542a2a1`/`785a784`（cycle-37）→ `3f98d68`/`f748d0a`（cycle-38）→ `9fda597` → `20c245a`（段序 pin）→ `79470cb`/`12271c1`/`fab1fa2`（cycle-39）→ `11cb85c`（已回退）/`60a40d7` → `ce1a2ec`（wsg/gather 段互换）→ `514f800`/`be4eb88`/`731d3d0`/`21dd896`（cycle-40/41）→ `5813b74`/`e6ec6e9`/`35bf8f6`/`75588a9`（cycle-42）。逐笔数字见文末 cycle-36…cycle-42 pin 说明）。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e` 为准。
+> **实测边界（2026-10-19 按 head 代码校正）**：c42 起 `runtime/custom_ops/rms_norm/op.py:196-205`
+> 在**模块导入期**硬取 `torch.ops.tecoops_ops.rms_norm_out` / `rms_norm_add_out`，缺失即
+> `RuntimeError`（overlay 转 `SystemExit(1)`、rc=1、**不进 main**）——`rms_norm` 绑定已是
+> **fail-closed**，不再"静默降级、不报错"。默认档（`run.sh` 置 `GEMMA4_OVERLAY=1`）启动即
+> import 该模块，故旧 wheel（cycle-14 `388dd710a8357ee9…`）**会直接拦住启动**。
+> 仍可能静默的只剩 `weight_stream_gemv`（linear_stream）绑定：它只校验 `tecoops.weight_stream_gemv`
+> 这个 python 名与本进程映射的库唯一；旧 wheel 若导出该名即可绑定成功。因此上面的自检仍建议
+> 作为启动前门禁。
 >
 > **cycle-28 硬化（2026-10-15，交付文件 `runtime/custom_ops/d512_official.py`，提交仓 `model/gemma-4-12b-it` `9ac6beb`）**：
 > D512 decode 绑定现在**额外**要求被映射的 `libteco_ops.so` 在其 ELF `.dynsym` 里导出
 > `teco_slave_flash_attention_half_d512`（即 `findFlashAttentionBranch()` 对 `head_dim == 512`
 > 选中的那条分支）；缺失或无法判定（非 ELF64-LE / 无 `.dynsym` / 截断）时**进程在 import 期即
 > `RuntimeError` 失败退出**（`overlay/sitecustomize.py` 转为 `SystemExit(1)`，rc=1，不进 main）。
-> 因此上面"不能依赖缺符号就会 fail-closed"这句**只对 `rms_norm` / `weight_stream_gemv` 两个绑定
-> 仍然成立**，D512 flash 绑定已不再静默降级。实测：环境里 cycle-14 的旧 wheel `388dd710a8357ee9…`
-> 用旧探针会被接受（`PROBE_ACCEPTED (FAIL-OPEN!)`），用本硬化后的探针则 fail-closed。
+> 因此"不能依赖缺符号就会 fail-closed"这句在 c42 之后**只剩 `weight_stream_gemv` 一个绑定仍成立**
+> （`rms_norm` 已因 `op.py:196-205` 的导入期硬要求而 fail-closed，D512 flash 绑定自 cycle-28 起
+> 亦不再静默降级）。历史上实测：环境里 cycle-14 的旧 wheel `388dd710a8357ee9…` 用旧探针会被
+> 接受（`PROBE_ACCEPTED (FAIL-OPEN!)`），用本硬化后的探针则 fail-closed。
 > 模型级门禁窗口 `c28-gemma-probe2`（2026-10-15 08:48:00Z–08:50:05Z，rc=0，库 `38ad93d8…`）：
 > 交付字节 32/32 token 与冻结基线逐位相同、8/8 global D512 层绑定到 `decode_forward`、
 > 峰值显存与 cycle-27 各臂逐位相同。设备无关自检：
@@ -110,9 +115,11 @@ TORCH_DEVICE_BACKEND_AUTOLOAD=0 /home/py312/bin/python \
 
 `run.sh` 已把 `overlay/` 与 `runtime/` 前置到 `PYTHONPATH` 并置 `GEMMA4_OVERLAY=1`，启动时依次完成：
 config 注册、tokenizer 兼容、多模态权重跳过、attention/RMSNorm/线性层调用点绑定，以及 `metadata_cpu_fix`（第五个厂商缺口：把 `query_start_loc`/`seq_lens` 的 CPU 孪生经 `.clone()` 冻结后挂到 `BlockAttentionMetadata`，使 prefill/decode 算子不再逐层读设备标量 —— 交付形态实测 D2H 事件 481→97、wall gate 11.947%→9.127%）。
-缺**符号**时启动即报错（fail-closed）。**但"库解析到哪一份"必须靠上面的能力探针**：
-实测不前置交付安装目录时，`import tecoops` 落到全局 `site-packages` 的旧 wheel，
-当前默认档所需的两个符号它都有 ⇒ overlay 三个绑定点照常打印并进入 main（静默降级）。
+缺**符号**时启动即报错（fail-closed）。"库解析到哪一份"同样要确认：
+c42 起 `rms_norm` 绑定在导入期硬要求 `torch.ops.tecoops_ops.rms_norm_out` / `rms_norm_add_out`，
+不前置交付安装目录时 `import tecoops` 会落到全局 `site-packages` 的旧 wheel ⇒ 该导入直接
+`RuntimeError` / `SystemExit(1)`，**不会进入 main**（此前的"静默降级"描述已随 c42 失效）；
+仍可能静默的只有 `weight_stream_gemv`（linear_stream）绑定。
 
 ### 4) 自检
 
@@ -312,6 +319,9 @@ curl -s http://127.0.0.1:8003/v1/completions -H 'Content-Type: application/json'
    `teco_slave_flash_attention_half_d256` / `_d512` 符号计数 = 0（交付库 = 7 / 1）。
    在交付 `run.sh` 的 `PYTHONPATH` 下 overlay 实际行为 = **静默降级并进入 main（rc=0）**，
    不是 fail-closed。反面对照：把交付安装目录前置后同一脚本 `SELFCHECK PASS` / rc=0。
+   （**2026-10-19 校正**：本条是 2026-10-13 的历史实测；c42 起 `rms_norm/op.py` 在导入期硬要求
+   `torch.ops.tecoops_ops.rms_norm_out` / `rms_norm_add_out`，旧 wheel 已会 **fail-closed**，
+   "静默降级并进入 main"不再成立；`weight_stream_gemv` 绑定仍可能静默。原记录保留以备追溯。）
    ⇒ 启动前必须跑 `model_adaptations/Gemma4SCUdoudui/scripts/gemma4/selfcheck_tecoops.py`（本文件「模型注册」第 2 条已写为必需步骤）。
 10. **已知限制（2026-10-14，交付库 `e4e691d` 测得）**：`e4e691d` 把 `flash_attention` 的 `<128>` 实例化移入**尾部新 TU**，使整库 device 代码布局重排，**`rms_norm` 的 8 个官方 case 因 code-layout 效应变慢**（逐例 `+0.35…+2.6 µs`，合计 `+11.88 µs`；同构建 A/B，`max_error` 逐位不变、`rms_norm_fp16.scpp` 源码 sha256 未变）。该效应**与算子源码无关**，且**换任何结构都只会把税转移给另一个算子**（例如把新 TU 移进 `flash_attention/` 目录会让 `rms_norm` 归零但使 `weight_stream_gemv` 慢 `−35%/−18%`）。本队选择维持 `e4e691d` 的 device 布局（其后 `beebae2` 只改 host 谓词，全部 device 目标码逐字节不变），理由是净账：`flash_attention` 官方 11 例表 `−1.58367 ms`，而 `weight_stream_gemv` 正是 Hy/InternVL 两条线模型级收益所绑定的算子。逐 case 原值与完整 A/B 见本队账本仓 `docs/competition/c25-lead-ledger-20261014.md` §8.4 与 §9.4。
 

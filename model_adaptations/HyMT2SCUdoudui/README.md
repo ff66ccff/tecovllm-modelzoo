@@ -38,21 +38,22 @@ ls -ld "$MODEL_ROOT/Tencent-Hunyuan/Hy-MT2-1.8B"
 1. 推理仓自身按仓库说明安装（`tecovllm_models/` 提供模型注册），例如 `python setup.py develop` 或 `python setup.py bdist_wheel`；
 2. **必须先构建并「更新安装」本队 `tecoops` 算子库，再启动服务**（交付包**不自带** `tecoops`）。
 
-   本模型的 overlay 依赖本队算子库的四个能力：`rms_norm`（含 `+add`）、`rms_norm_compat`、`rotary_embedding`、`reshape_and_cache`。镜像**预装**的 wheel（`/home/py312/lib/python3.12/site-packages/tecoops`，其 `libteco_ops.so` sha256 = `388dd710a8357ee9294ccada17fa3f4003a9bc5aa107bec744184fa008cbbcc0`）**不含 `rotary_embedding` 与 `rms_norm_compat`**：直接 `bash run.sh` 会被 overlay 的 fail-closed 拦住并以 `SystemExit(1)` 退出（**这是刻意行为，不是崩溃**——宁可拒绝启动，也不静默回退到未适配路径）。
+   本模型的 overlay 依赖本队算子库的四个能力：`rms_norm`（含 `+add`；cycle-42 起经 C++ `TORCH_LIBRARY` 的 `torch.ops.tecoops_ops.rms_norm_out` / `rms_norm_add_out` 入口绑定）、`rotary_embedding`、`reshape_and_cache`、`linear_stream`（= `weight_stream_gemv`，默认开启）；SwiGLU 走厂商 `torch.ops.sdaa.swiglu`。镜像**预装**的 wheel（`/home/py312/lib/python3.12/site-packages/tecoops`，其 `libteco_ops.so` sha256 = `388dd710a8357ee9294ccada17fa3f4003a9bc5aa107bec744184fa008cbbcc0`）**不含 `rotary_embedding`**；而本线 overlay 在 cycle-42 之后还硬要求 `torch.ops.tecoops_ops.rms_norm_out` / `rms_norm_add_out`（`runtime/custom_ops/hy_mt2/vllm_rms_norm.py:31-39`，缺失即 `RuntimeError`）⇒ 直接 `bash run.sh` 会被 overlay 的 fail-closed 拦住并以 `SystemExit(1)` 退出（**这是刻意行为，不是崩溃**——宁可拒绝启动，也不静默回退到未适配路径）。本线代码**不使用** `rms_norm_compat`。
 
    服务库必须来自**本队 ops 仓**（源 commit `75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`；自 `4adfd05e` 起已依次落地 `79941c5f` / `d84f34f` / `54a1d65` / `98e18ca` / `e4e691d`，见下方 provenance 句）：
 
    ```bash
    source /opt/tecoai/setvars.sh            # 提供 libsdaart.so / libsddev.so 等运行库路径
    TEAM_OPS=<本队 teco-ops 检出>             # 内容 = commit 75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e
+   OPS_INSTALL=<隔离安装目录>               # 任意可写目录（交付包不自带），下面自检用它
    bash "$TEAM_OPS/build.sh" --build teco   # 构建 core：build/teco/lib/libteco_ops.so
    cd "$TEAM_OPS" && /home/py312/bin/python setup.py bdist_wheel
    /home/py312/bin/python -m pip install --no-deps --no-compile \
-       --target /root/tmpwork/c22-hy/install-team "$TEAM_OPS"/dist/*.whl
-   export PYTHONPATH=/root/tmpwork/c22-hy/install-team:${PYTHONPATH:-}
+       --target "$OPS_INSTALL" "$TEAM_OPS"/dist/*.whl
+   export PYTHONPATH="$OPS_INSTALL:${PYTHONPATH:-}"
    ```
 
-   > 本 pin 已前移至 **`75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4 → `0371909` flash_attention ALGO0（head_dim 128/64）V 面板打包异步（算子级 `case_2` 1.829900 → 1.804300 ms，+1.3990%；模型级无可测加速））。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e` 为准。
+   > 本 pin 已前移至 **`75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4 → `0371909` flash_attention ALGO0（head_dim 128/64）V 面板打包异步（算子级 `case_2` 1.829900 → 1.804300 ms，+1.3990%；模型级无可测加速）→ `9f11b33`/`0132061`/`2a1716d`（cycle-36：wsg fp32 激活行、reshape_and_cache 跨 token 流水、wsg 尾部 wait 删除）→ `0d6bd5a`（flash P 直出）→ `7ea7e84`（掩码向量跳过 softmax）→ `37f89d1`/`542a2a1`/`785a784`（cycle-37）→ `3f98d68`/`f748d0a`（cycle-38）→ `9fda597` → `20c245a`（段序 pin）→ `79470cb`/`12271c1`/`fab1fa2`（cycle-39）→ `11cb85c`（已回退）/`60a40d7` → `ce1a2ec`（wsg/gather 段互换）→ `514f800`/`be4eb88`/`731d3d0`/`21dd896`（cycle-40/41）→ `5813b74`/`e6ec6e9`/`35bf8f6`/`75588a9`（cycle-42）。逐笔数字见文末 cycle-36…cycle-42 pin 说明）。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e` 为准。
 
    本线实测自建库身份（**跨构建根 sha 会不同，故判据是能力探针，不是裸 sha 相等**）：
 
@@ -64,14 +65,16 @@ ls -ld "$MODEL_ROOT/Tencent-Hunyuan/Hy-MT2-1.8B"
    **自证命令**（启动前执行；打印包路径、库 sha256 与必需能力项）：
 
    ```bash
-   TORCH_DEVICE_BACKEND_AUTOLOAD=0 PYTHONPATH=/root/tmpwork/c22-hy/install-team \
-     /home/py312/bin/python /root/tmpwork/c22-hy/probe_tecoops_capability.py --json-out /tmp/cap.json
-   # 期望 verdict=CAPABLE，capabilities 中 rms_norm / rms_norm_compat / rotary_embedding / reshape_and_cache 全为 true
+   # ⚠ `probe_tecoops_capability.py` **不在本交付包内**（本包只含 runtime/**、tests/**、
+   # validation/** 与本文档）；无该脚本时，等价自证 = 下列能力项逐项存在。
+   TORCH_DEVICE_BACKEND_AUTOLOAD=0 PYTHONPATH="$OPS_INSTALL" \
+     /home/py312/bin/python <probe_tecoops_capability.py> --json-out /tmp/cap.json
+   # 期望 verdict=CAPABLE，capabilities 中 rms_norm / rms_norm_out / rms_norm_add_out / rotary_embedding / reshape_and_cache 全为 true
    ```
 
    注意：只设 `PYTHONPATH` 而不设 SDK 运行库路径时，`import tecoops` 会以 `ImportError: libsdaart.so: cannot open shared object file` 失败（torch 自动加载 torch_sdaa 所致），必须先 `source /opt/tecoai/setvars.sh` 或手工把 `/opt/tecoai/lib64` 与 torch/torch_sdaa 的 `lib` 目录加进 `LD_LIBRARY_PATH`。
 
-   **官方 PR #48 的 wheel 不可单独充当本模型的服务库**：该 PR 从上游 `main`（`de27305e`）发出，只含上游那版 `rms_norm` 与本队 rope 算子（实测其 `libteco_ops.so` sha256 = `d2c8e046147df63b0ae142e176fe1ac151537761f2eb968f3de00b60e1337424`，**无 `rms_norm_compat`**，能力探针判 `NOT_CAPABLE`）；本模型需要的 `rms_norm`（PR37 / H3a 形态）只存在于本队 ops 仓，必须按上面的 build + install 步骤取自本队 `main`（当前 pin `0371909`；`8ef0a5f` / `dda33c5b` / `4adfd05e` / `beebae2` 是其后被前移取代的旧 pin，见上方 provenance 句）。
+   **官方 PR #48 的 wheel 不可单独充当本模型的服务库**：该 PR 从上游 `main`（`de27305e`）发出，只含上游那版 `rms_norm` 与本队 rope 算子（实测其 `libteco_ops.so` sha256 = `d2c8e046147df63b0ae142e176fe1ac151537761f2eb968f3de00b60e1337424`，能力探针判 `NOT_CAPABLE`；本线判据是 `tecoops.rms_norm` / `tecoops.rotary_embedding` / `tecoops.reshape_and_cache` 与 cycle-42 的 `torch.ops.tecoops_ops.rms_norm_out` / `rms_norm_add_out` 入口，**不使用** `rms_norm_compat`）；本模型需要的 `rms_norm`（PR37 / H3a 形态）只存在于本队 ops 仓，必须按上面的 build + install 步骤取自本队 `main`（**当前 pin `75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`**；`0371909` 及其之前的 `8ef0a5f` / `dda33c5b` / `4adfd05e` / `beebae2` 均已被前移取代，见上方 provenance 句与文末 cycle-31…cycle-42 pin 说明）。
 
 3. 算子绑定全部在进程初始化期完成（`runtime/overlay/sitecustomize.py`）：注册 opaque `torch.library` 算子并绑定 RMSNorm、SwiGLU、attention、`RotaryEmbedding` 与 M=1 decode 线性层（`tecoops.linear_stream`）；缺接口或绑定身份校验失败即 **fail-closed 终止启动**（`SystemExit(1)`），不会静默回退到未适配路径；
 4. **CI 解析器约束**：`tools/ci_pipline/run_ci.py:parse_run_sh()` 会剥掉注释行后取**第一个** `vllm serve <token>` 作为模型路径（并作为 `speed.sh` 的 `--tokenizer-path`）。因此 `run.sh` 里保留一个**不可达**的裸字面量块 `if false; then vllm serve /gpfs/model/...; fi`，真正执行的是 `vllm serve "$MODEL_PATH"`（本地 `vllm()` shim 在 exec 前把 argv[1] 改写成 `$MODEL_PATH`）。不要把那行改成带引号的变量，也不要把它挪到注释里。
@@ -126,7 +129,7 @@ SDAA_VISIBLE_DEVICES=0 /home/py312/bin/python "$b/tests/test_vllm_mlp_caller.py"
 - 只验证固定输入的短请求；配置上下文 8192，**未评测 8k 全长生成**；未做组委会口径精度评测，owner CI 与官方评测是独立门禁；
 - **交付运行时忽略模型 config 的 `rope_scaling`**：vLLM loader 把 `config.rope_parameters` 填成 `{"rope_type":"default"}`（`vllm/transformers_utils/config.py:386-388`），而本模型把动态缩放放在 `rope_scaling`，因此实际建的是 plain cache。这是**交付侧既有语义、非本队算子引入**，对融合算子无影响（算子只消费模型产出的 cache），但**可能与精度口径有关**，如实登记；
 - 保留厂商 FP16 次正规数（subnormal）冲刷行为；原始 CPU 算术并非普遍逐位等价（CPU 参考固定 `rtol/atol 0.002`）；
-- 镜像内已安装的 `tecoops` wheel（`libteco_ops.so` sha256 `388dd710a8357ee9294ccada17fa3f4003a9bc5aa107bec744184fa008cbbcc0`）**不含 `rotary_embedding` 与 `rms_norm_compat`**，不能服务本模型：必须按「模型注册」第 2 步 build + 更新安装**本队** ops 库，否则 overlay 会 fail-closed 退出；官方 PR #48 的 wheel 亦**不可**单独充当服务库（只含上游 `rms_norm` + 本队 rope，缺 `rms_norm_compat`）。本队库以隔离安装（`pip install --target` / `PYTHONPATH` 前置）方式使用，并逐臂记录 `libteco_ops.so` sha256 与能力探针结果；
+- 镜像内已安装的 `tecoops` wheel（`libteco_ops.so` sha256 `388dd710a8357ee9294ccada17fa3f4003a9bc5aa107bec744184fa008cbbcc0`）**不含 `rotary_embedding`**，且需由本队 ops 库提供 cycle-42 的 `torch.ops.tecoops_ops.rms_norm_out` / `rms_norm_add_out` 入口，不能服务本模型：必须按「模型注册」第 2 步 build + 更新安装**本队** ops 库，否则 overlay 会 fail-closed 退出；官方 PR #48 的 wheel 亦**不可**单独充当服务库（只含上游 `rms_norm` + 本队 rope）。本队库以隔离安装（`pip install --target` / `PYTHONPATH` 前置）方式使用，并逐臂记录 `libteco_ops.so` sha256 与能力探针结果；
 - **bf16 未适配**：交付运行态是 FP16，且 SDAA slave SIMD 头无 bf16 向量类型/转换；若将来按 config 原生 bf16 运行需另开独立验证。
 
 ## 性能验证
@@ -196,6 +199,6 @@ TTFT / TPOT：**未测**（组委会性能测例与达标线未下发）。已�
 2. `e6ec6e9`：`api/torch_ext.cpp` decode 热路径改走 C++ `TORCH_LIBRARY` `out=` op，host 派发 75.61→26.28 µs（−65%），3 731 712 halfword 逐位全等，零设备布局税；
 3. `35bf8f6`：新增 `rms_norm_add_out`（带 residual 的 `out=` 入口），host 派发 76.38→25.08 µs（−67.2%），7 个真实 shape 36 352 halfword 逐位全等，两窗 39 例 SUM 净零，无布局税；
 4. `75588a9`：`zzz_flash_attention_d128.scpp` K cache 异步双缓冲预取 + Step B/E 寄存器融合 + 全可见 tile 掩码跳过 + softmax 栈溢出消除，长 shape 探针 16/16 PASSED（prefill 2K/4K/8K/16K 由 14.42/55.84/219.77/872.02 → 12.27/47.34/185.93/737.10 ms，**−14.9%~−15.5%**），官方 39 例 SUM 7.5999 → 6.7810 ms（**−10.78%**），41 探针×3 rep×2 臂独立复核 −10.744% 且 246/246 PASSED。
-本线本轮**不加 overlay 切换**（本轮按交付规划仅级联 pin，虽然内部实测 C++ 入口可使 TPOT 48.502→44.621 ms/step 即 +8.00% GO，但本轮交付分支保持既有 overlay 绑定不变，待统一批次交付）。本线自建库 sha256：`libteco_ops.so` = `42422972ee7f9e42b2c62595a680193db49778ec33f53280351fa205c77cb5ca`，`_torch_ext*.so` = `0fbf071ae5d433d5d74bf305a610d41e484a976f14f3812857a7c142c771c377`。
+本线自建库 sha256（跨构建根 sha 会不同，判据是能力探针，见上文「本线实测自建库身份」）：`libteco_ops.so` = `42422972ee7f9e42b2c62595a680193db49778ec33f53280351fa205c77cb5ca`，`_torch_ext*.so` = `0fbf071ae5d433d5d74bf305a610d41e484a976f14f3812857a7c142c771c377`。
 
-**cycle-42 overlay 切换（2026-10-19）**：本线 rms_norm / rms_norm_add 已从 Python 	orch.library.custom_op 切换到 C++ TORCH_LIBRARY 入口 	orch.ops.tecoops_ops.rms_norm_out / ms_norm_add_out（进程初始化期一次绑定，热路径零分支零 getenv）。证据：交付 run.sh 原样参数起服务，32-token 贪婪生成 Prompt1/Prompt2 在 3 轮臂序交替中 **32/32 token 逐位相同**；TPOT 48.502 -> 44.621 ms/step（**+8.00%**，|Δ|=3.881 > 同臂 spread 1.982 ⇒ GO）；零 traceback/OOM/CPU fallback。op 级单价 73.9-76.4 µs -> 24.2-25.1 µs（-67.2%），逐 halfword 逐位全等。
+**cycle-42 overlay 切换（2026-10-19）**：本线 rms_norm / rms_norm_add 已从 Python `torch.library.custom_op` 切换到 C++ `TORCH_LIBRARY` 入口 `torch.ops.tecoops_ops.rms_norm_out` / `rms_norm_add_out`（`runtime/custom_ops/hy_mt2/vllm_rms_norm.py:31-39`；进程初始化期一次绑定，热路径零分支零 getenv）。证据：交付 run.sh 原样参数起服务，32-token 贪婪生成 Prompt1/Prompt2 在 3 轮臂序交替中 **32/32 token 逐位相同**；TPOT 48.502 -> 44.621 ms/step（**+8.00%**，|Δ|=3.881 > 同臂 spread 1.982 ⇒ GO）；零 traceback/OOM/CPU fallback。op 级单价 73.9-76.4 µs -> 24.2-25.1 µs（-67.2%），逐 halfword 逐位全等。

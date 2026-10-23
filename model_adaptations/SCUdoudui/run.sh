@@ -15,6 +15,10 @@ PORT="${GEMMA_PORT:-8003}"
 HOST="${GEMMA_HOST:-0.0.0.0}"
 MAX_MODEL_LEN="${GEMMA_MAX_MODEL_LEN:-16640}"
 MAX_BATCHED="${GEMMA_MAX_BATCHED_TOKENS:-512}"
+# c52 (2026-10-23): CI 硬上限 14400s；现状 KV=0.5GiB -> 只跑 2 并发 -> precision 4h50m 超时。
+# 显式收敛 max_num_seqs=8 使 profiling 激活峰值按 8 序列计：KV=2.06GiB、实测 8 并发、TPOT 不回归。
+# 其余参数（0.92 / 512 / 16640 / TP2）保持 CI 已验证值不变；评测命令（prec.sh/speed.sh）未改动。
+MAX_SEQS="${GEMMA_MAX_NUM_SEQS:-8}"
 UTIL="${GEMMA_UTIL:-0.92}"
 
 # Bind the reviewed implementation before vLLM constructs its attention
@@ -78,6 +82,7 @@ vllm serve "$GEMMA_PATH" \
     --gpu-memory-utilization "${UTIL}" \
     --max-model-len "${MAX_MODEL_LEN}" \
     --max-num-batched-tokens "${MAX_BATCHED}" \
+    --max-num-seqs "${MAX_SEQS}" \
     --trust-remote-code \
     --no-enable-prefix-caching \
     --enable-chunked-prefill \

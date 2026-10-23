@@ -19,7 +19,12 @@ MAX_BATCHED="${GEMMA_MAX_BATCHED_TOKENS:-512}"
 # 显式收敛 max_num_seqs=8 使 profiling 激活峰值按 8 序列计：KV=2.06GiB、实测 8 并发、TPOT 不回归。
 # 其余参数（0.92 / 512 / 16640 / TP2）保持 CI 已验证值不变；评测命令（prec.sh/speed.sh）未改动。
 MAX_SEQS="${GEMMA_MAX_NUM_SEQS:-8}"
-UTIL="${GEMMA_UTIL:-0.92}"
+# c53 (2026-10-23): 16K 速度阶段（T4_16K_b1，16384-token prompt）在 util 0.92 + mns 8 下
+# 于团队自己的 prefill math attention（runtime/custom_ops/prefill_attention/op.py:217 的
+# softmax(scores.to(float32)) 需要 ~232 MiB 瞬时激活）处 SDAA OOM：14.01 GiB 已分配 / 403.98 MiB 空闲。
+# 实测评测口径：util 0.90 ⇒ KV 1.76 GiB、16,640-token 请求并发 3.56x，T4 通过（648 s/10 req）；
+# 精度阶段 8 并发 × 1617 token 只需 ~0.39 GiB KV ⇒ 并发仍为 8，不影响 precision 墙钟。
+UTIL="${GEMMA_UTIL:-0.90}"
 
 # Bind the reviewed implementation before vLLM constructs its attention
 # classes. No vendor package is modified and no model weights are copied.

@@ -54,9 +54,9 @@ ls -ld "$MODEL_ROOT/OpenBMB/MiniCPM5-1B"
 
 ```bash
 # 1) 取得本队算子仓库（另行提交的「自定义算子仓库」）源码
-#    源码 commit: 75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e（队内 ops main，含 rotary_embedding kernel）
+#    当前源码 commit: db1597e1265a5fc3e24207b793c9d1dd94327a24（队内 ops main，含 rotary_embedding kernel）
 git clone https://github.com/tecorigin-caet/teco-ops-SCUdoudui.git /tmp/teco-ops
-cd /tmp/teco-ops && git checkout 75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e
+cd /tmp/teco-ops && git checkout db1597e1265a5fc3e24207b793c9d1dd94327a24
 
 # 2) 用厂商 Python 构建 torch-linked 交付产物
 #    注意：不要用 bash build.sh —— 它是 WITH_TORCH=OFF 变体，且没有 set -e
@@ -69,11 +69,11 @@ export WITH_TORCH=ON WITH_INFERENCE_PLUGIN=OFF
 export PYTHONPATH=/tmp/teco-ops/api:${PYTHONPATH:-}
 ```
 
-> 本 pin 已前移至 **`75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4 → `0371909` flash_attention ALGO0（head_dim 128/64）V 面板打包异步（算子级 `case_2` 1.829900 → 1.804300 ms，+1.3990%；模型级无可测加速）→ `9f11b33`/`0132061`/`2a1716d`（cycle-36）→ `0d6bd5a`（flash P 直出）→ `7ea7e84`（掩码向量跳过 softmax）→ `37f89d1`/`542a2a1`/`785a784`（cycle-37）→ `3f98d68`/`f748d0a`（cycle-38）→ `9fda597` → `20c245a`（段序 pin）→ `79470cb`/`12271c1`/`fab1fa2`（cycle-39）→ `11cb85c`（已回退）/`60a40d7` → `ce1a2ec`（wsg/gather 段互换）→ `514f800`/`be4eb88`/`731d3d0`/`21dd896`（cycle-40/41）→ `5813b74`/`e6ec6e9`/`35bf8f6`/`75588a9`（cycle-42）。逐笔数字见文末 cycle-36…cycle-42 pin 说明）。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e` 为准。
+> cycle-42 历史 pin 为 **`75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4 → `0371909` flash_attention ALGO0（head_dim 128/64）V 面板打包异步（算子级 `case_2` 1.829900 → 1.804300 ms，+1.3990%；模型级无可测加速）→ `9f11b33`/`0132061`/`2a1716d`（cycle-36）→ `0d6bd5a`（flash P 直出）→ `7ea7e84`（掩码向量跳过 softmax）→ `37f89d1`/`542a2a1`/`785a784`（cycle-37）→ `3f98d68`/`f748d0a`（cycle-38）→ `9fda597` → `20c245a`（段序 pin）→ `79470cb`/`12271c1`/`fab1fa2`（cycle-39）→ `11cb85c`（已回退）/`60a40d7` → `ce1a2ec`（wsg/gather 段互换）→ `514f800`/`be4eb88`/`731d3d0`/`21dd896`（cycle-40/41）→ `5813b74`/`e6ec6e9`/`35bf8f6`/`75588a9`（cycle-42）。逐笔数字见文末 cycle-36…cycle-42 pin 说明）。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，该历史窗口对应 `75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`；当前复现采用文末 2026-10-24 pin 与独立收据。
 
-**版本口径**：pin 写成「**源码 commit + 同配方重建**」（本交付自证的源码 tip 为 `75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`），**不是**某个 `libteco_ops.so` 的字节
-——同一个 commit 在不同 build root / 配方下会产出不同字节的 `.so`。自证请用**能力探针**
-（不是裸 sha256）：
+**版本口径**：pin 写成「**源码 commit + 同配方重建**」（当前源码 tip 为 `db1597e1265a5fc3e24207b793c9d1dd94327a24`），**不是**某个 `libteco_ops.so` 的字节
+——同一个 commit 在不同 build root / 配方下可能产出不同字节的 `.so`。下列能力探针只证明接口存在；
+当前启动还强制核验 core/extension 的已验证收据，跨根重建须按文末门禁独立验收。
 
 ```bash
 # 4) 自证：tecoops 位置 + lib sha256 + 能力探针
@@ -247,21 +247,41 @@ scoping，不是 `rms_norm`。实测 case_4(D64) 中位 2.677600 ms、B64 两方
 
 ## 2026-10-24 复现与库身份门禁
 
-`run.sh` 在进程初始化期核验 `validation/ops-artifacts.json` 所记录的 **core 与
-host extension 两份 SHA256**，并核对本模型全部必需 API（含非 RMS 路径）。同名导出
-不足以证明实现版本；旧 wheel、混装库或多份 mapped core 会在启动前非零退出。
+当前源码固定为本队 teco-ops
+`db1597e1265a5fc3e24207b793c9d1dd94327a24`，与本包
+`validation/ops-artifacts.json` 的 `source_commit` 一致。前面的 cycle-42 及更早
+SHA/收益是历史记录，不能充当本轮安装证据。
+
+`run.sh` 在进程初始化期核验该收据中的 **core 与 host extension 两份 SHA256**，
+并核对本模型全部必需 API（含非 RMS 路径）与唯一 mapped core。同名导出不足以证明
+实现版本；旧 wheel、混装库或多份 mapped core 会在启动前非零退出。
 普通 forward 不做哈希、环境查询或额外实现选择。
 
-本轮安装收据及门禁原值以 `validation/fix-20261024/` 为准；前文 cycle-42 及更早的
-SHA/收益属于历史记录，不能充当本轮安装证据。跨根重建后，必须独立复核源码 pin、
-focused/模型门禁并审阅新收据，再以 `SCUD_OPS_MANIFEST=<收据>` 显式绑定；仅计算哈希
-不能把一个未验证的旧 wheel 变成已验证产物。
+这份固定收据仅适用于当时已验证的那一对 core/extension 字节。相同源码在其它构建根
+重建后可能生成不同字节：必须独立核对源码 pin，完成对应算子的 focused 正确性测试、
+本模型固定 prompt 的 32-token 贪婪门禁，以及 attention/内存等改动所需的 5–10 分钟
+稳态验证，保存并审阅新产物哈希与原始日志，再以
+`SCUD_OPS_MANIFEST=<已审阅的新收据.json>` 显式绑定。仅将任意 wheel 的新哈希填进
+收据不会令其成为已验证产物；不得自动信任或绕过哈希不匹配。
+
+本包的实际证据文件：
+
+- `validation/ops-artifacts.json`：该次构建的源码 pin、core/extension 哈希与构建根；
+- `validation/decode-shapes-20261024.json`：本模型独立的真实 decode shape 盘点；
+- `tests/test_ops_provenance.py`：身份门禁的 focused CPU 单测；
+- `tests/check_ops_capabilities.py`：对当前安装运行同一身份与必需 API 门禁。
+
+在已加载厂商环境并前置已验证 ops 安装目录的 shell 中运行：
 
 ```bash
-/home/py312/bin/python model_adaptations/MiniCPM5SCUdoudui/tests/check_ops_capabilities.py
+export SCUD_OPS_MANIFEST="$ADAPT/validation/ops-artifacts.json"  # 仅适用于该收据对应产物
+/home/py312/bin/python "$ADAPT/tests/check_ops_capabilities.py"
 ```
 
-真实 decode shape 的可选诊断：启动前设 `SCUD_DECODE_CENSUS=<空输出目录>`，按原样
-`run.sh` 跑固定 prompt 的 32-token 贪婪生成。它仅记录真实 SDAA M=1 张量的 shape/stride，
-不记录权重值；诊断 wrapper 禁编译，故该次输出只能作 shape 证据，不能作性能成绩。
-正常验证与官方 CI 不设置此变量。
+其中 `ADAPT` 为本模型目录的绝对路径；跨根重建使用独立验收后形成的新收据路径。
+历史 cycle-42 归档仍按原日期保留，不替代本轮门禁或完整 CI。
+
+真实 decode shape 的可选诊断：启动前设 `SCUD_DECODE_CENSUS=<空输出目录>`，启动
+脚本会仅在此诊断档添加 `--enforce-eager`，然后跑固定 prompt 的 32-token 贪婪生成。
+它仅记录真实 SDAA M=1 张量的 shape/stride，不记录权重值；输出仅作 shape 证据，
+不能作性能成绩。正常验证与官方 CI 不设置此变量。

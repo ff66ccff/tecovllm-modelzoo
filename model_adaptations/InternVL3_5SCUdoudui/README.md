@@ -48,7 +48,7 @@ OPS_SRC=<teco-ops 检出目录>                       # 本队算子库源码（
 OPS_PREFIX=<交付算子库安装目录>                    # 例：$HOME/ivl-tecoops；不要写只在某台机器成立的绝对路径
 
 # 1) 从本队 teco-ops 仓构建 wheel（teco-hal 等依赖见该仓 README）
-git -C "$OPS_SRC" checkout 75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e   # 本队 ops main（pin 口径 = 源码 commit）
+git -C "$OPS_SRC" checkout db1597e1265a5fc3e24207b793c9d1dd94327a24   # 本队 ops main（pin 口径 = 源码 commit）
 "$PYTHON" "$OPS_SRC/setup.py" bdist_wheel --dist-dir "$OPS_SRC/dist"
 
 # 2) 隔离安装到独立目录（不覆盖全局 site-packages），并记录本轮 wheel 的 sha256
@@ -60,31 +60,22 @@ export PYTHONPATH="$OPS_PREFIX"
 MODEL_ROOT=/gpfs/model bash "$ADAPT/run.sh"
 ```
 
-> 本 pin 已前移至 **`75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4 → `0371909` flash_attention ALGO0（head_dim 128/64）V 面板打包异步（算子级 `case_2` 1.829900 → 1.804300 ms，+1.3990%；模型级无可测加速）→ `9f11b33`/`0132061`/`2a1716d`（cycle-36）→ `0d6bd5a`（flash P 直出）→ `7ea7e84`（掩码向量跳过 softmax）→ `37f89d1`/`542a2a1`/`785a784`（cycle-37）→ `3f98d68`/`f748d0a`（cycle-38）→ `9fda597` → `20c245a`（段序 pin）→ `79470cb`/`12271c1`/`fab1fa2`（cycle-39）→ `11cb85c`（已回退）/`60a40d7` → `ce1a2ec`（wsg/gather 段互换）→ `514f800`/`be4eb88`/`731d3d0`/`21dd896`（cycle-40/41）→ `5813b74`/`e6ec6e9`/`35bf8f6`/`75588a9`（cycle-42）。逐笔数字见文末 cycle-36…cycle-42 pin 说明）。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，故复现必须以 `75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e` 为准。
+> cycle-42 历史 pin 为 **`75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4 → `0371909` flash_attention ALGO0（head_dim 128/64）V 面板打包异步（算子级 `case_2` 1.829900 → 1.804300 ms，+1.3990%；模型级无可测加速）→ `9f11b33`/`0132061`/`2a1716d`（cycle-36）→ `0d6bd5a`（flash P 直出）→ `7ea7e84`（掩码向量跳过 softmax）→ `37f89d1`/`542a2a1`/`785a784`（cycle-37）→ `3f98d68`/`f748d0a`（cycle-38）→ `9fda597` → `20c245a`（段序 pin）→ `79470cb`/`12271c1`/`fab1fa2`（cycle-39）→ `11cb85c`（已回退）/`60a40d7` → `ce1a2ec`（wsg/gather 段互换）→ `514f800`/`be4eb88`/`731d3d0`/`21dd896`（cycle-40/41）→ `5813b74`/`e6ec6e9`/`35bf8f6`/`75588a9`（cycle-42）。逐笔数字见文末 cycle-36…cycle-42 pin 说明）。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，该历史窗口对应 `75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`；当前复现采用文末 2026-10-24 pin 与独立收据。
 
-**第 3 步不是可选项。** 本包**不含** `tecoops`（只有 Python 适配层）。官方 CI（`tools/ci_pipline/run_ci.py`）**不做任何安装**（它只 `parse_run_sh()` → `bash run.sh` → `prec.sh`/`speed.sh`），安装是交付方责任。若不显式前插交付算子库，`import tecoops` 仍会静默解析到环境里**任意已安装的 wheel**（这一句只描述"解析到哪份库"）；c42 起 `runtime/custom_ops/rms_norm/op.py::register_opaque_rms_norm` 在 overlay 初始化期硬要求 `torch.ops.tecoops_ops.rms_norm_out` / `rms_norm_add_out`，缺失即 `RuntimeError`（`overlay/sitecustomize.py` 转 `SystemExit(1)`）⇒ **rms_norm 绑定已 fail-closed，不再是"不报错"**；仍可能静默绑定旧库的是 flash/prefill 路径（下述退化即该类）。已实测的后果（2026-10-12 本线走查，未前插交付库时）：落到旧 wheel `388dd710…`，图像 total 从 **6.25 s 退化到 14.18 s**（prefill 注意力 216.89 ms/call vs 交付库 14.229 ms/call，36 层折合 **+7.30 s**；与 Step-2 独立记录的旧 wheel ΔTTFT **+7.808 s** 一致）。
+**第 3 步不是可选项。** 本包**不含** `tecoops`（只有 Python 适配层）。官方 CI（`tools/ci_pipline/run_ci.py`）**不做任何安装**（它只 `parse_run_sh()` → `bash run.sh` → `prec.sh`/`speed.sh`），安装是交付方责任。未显式前插交付库时，Python 可能解析到环境里任意已安装的 wheel；2026-10-24 起启动门禁会同时核验 core/extension 收据与全部必需 API，因此旧库、混装或未验证产物会被拒绝，flash/prefill 路径也受此门禁保护。
 
-### 怎么判定"这次跑的是不是交付库"（三层，按顺序看）
+历史后果（2026-10-12 本线走查，当时尚无上述完整身份门禁）：未前插交付库而落到旧 wheel `388dd710…`，图像 total 从 **6.25 s 退化到 14.18 s**（prefill 注意力 216.89 ms/call vs 交付库 14.229 ms/call，36 层折合 **+7.30 s**；与 Step-2 独立记录的旧 wheel ΔTTFT **+7.808 s** 一致）。
 
-1. **pin 口径 = 源码 commit + 本轮构建产物**：交付库 pin 在本队 teco-ops main **`75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`**，并记录**本轮** `libteco_ops.so` 的 sha256（自建库：`libteco_ops.so` = `06795138e42c3749e19e65b54fc3048c4a1915169e089adedeabe1a9b75c4840`，`_torch_ext*.so` = `2d87e656ca737ec84dbc0d10f7aabca30e64cdd970e20fe4465c3439a8a22c29`）。
-   ⚠ **不得用 lib 字节做跨 build 判等**：lib 字节随 build root 变化（队内实测：同一份源码 `459992a2` 在不同 build root 产出过 `9b0746c7` / `93b75d34` / `a92ad51c` 三种字节）。sha256 只作 provenance 记录。
-2. **静默降级的判据用 build-root 无关的能力探针**（不需要任何私有环境变量）：
+### 怎么判定"这次跑的是不是交付库"
 
-   ```bash
-   LIB="$OPS_PREFIX/tecoops/libteco_ops.so"
-   strings -a "$LIB" | grep -c teco_slave_flash_attention_half_d256   # 交付库 = 7；旧 wheel 388dd710 = 0
-   nm -D "$LIB"       | grep -c teco_slave_flash_attention_half_d256  # 交付库 = 1；旧 wheel = 0
-   ```
-
-   计数 **≥1** 即交付能力在；**0** 说明解析到了旧 wheel（静默降级）。实测前后：交付库 `7` / `1`，旧 wheel `0` / `0`。
-3. **`run.sh` 启动时自动打印 provenance**（初始化期一次，零设备开销：只用 `importlib.util.find_spec` 定位路径 + 文件哈希 + 字符串探针，**不 import `tecoops`**、不进热路径、不做 sha 硬门禁）：
-
-   ```text
-   [run.sh] tecoops      = <OPS_PREFIX>/tecoops/__init__.py
-   [run.sh] libteco_ops  = <OPS_PREFIX>/tecoops/libteco_ops.so
-   [run.sh] lib sha256   = <本轮构建的 sha256>
-   [run.sh] probe teco_slave_flash_attention_half_d256: count=7 (>=1 表示交付能力在；旧 wheel 388dd710 为 0)
-   ```
+1. 当前源码 pin 是本队 teco-ops `db1597e1265a5fc3e24207b793c9d1dd94327a24`；
+   `validation/ops-artifacts.json` 同时记录该次已验证构建的 core/extension SHA256。
+2. `run.sh` 置 `SCUD_REQUIRE_OPS_BUNDLE=1`，overlay 在初始化期核验两份哈希、唯一
+   mapped core 与全部必需 API；旧 wheel、混装库或仅有同名导出的库都会被拒绝。
+   启动前可用 `tests/check_ops_capabilities.py` 运行同一门禁。
+3. 不同构建根的字节可能不同；这不允许跳过门禁。新构建须先独立完成 focused 正确性、
+   本模型 32-token 贪婪及适用稳态门禁，审阅新收据后通过 `SCUD_OPS_MANIFEST` 显式绑定。
+   `strings`/`nm` 或能力探针只证明接口存在，不能单独认定为已验证交付库。
 
 解析自证（确认 `tecoops` 与 `custom_ops` 的来源；`custom_ops` 必须落在本包 `runtime/`）：
 
@@ -258,21 +249,41 @@ curl -s http://127.0.0.1:8002/v1/chat/completions -H 'Content-Type: application/
 
 ## 2026-10-24 复现与库身份门禁
 
-`run.sh` 在进程初始化期核验 `validation/ops-artifacts.json` 所记录的 **core 与
-host extension 两份 SHA256**，并核对本模型全部必需 API（含非 RMS 路径）。同名导出
-不足以证明实现版本；旧 wheel、混装库或多份 mapped core 会在启动前非零退出。
+当前源码固定为本队 teco-ops
+`db1597e1265a5fc3e24207b793c9d1dd94327a24`，与本包
+`validation/ops-artifacts.json` 的 `source_commit` 一致。前面的 cycle-42 及更早
+SHA/收益是历史记录，不能充当本轮安装证据。
+
+`run.sh` 在进程初始化期核验该收据中的 **core 与 host extension 两份 SHA256**，
+并核对本模型全部必需 API（含非 RMS 路径）与唯一 mapped core。同名导出不足以证明
+实现版本；旧 wheel、混装库或多份 mapped core 会在启动前非零退出。
 普通 forward 不做哈希、环境查询或额外实现选择。
 
-本轮安装收据及门禁原值以 `validation/fix-20261024/` 为准；前文 cycle-42 及更早的
-SHA/收益属于历史记录，不能充当本轮安装证据。跨根重建后，必须独立复核源码 pin、
-focused/模型门禁并审阅新收据，再以 `SCUD_OPS_MANIFEST=<收据>` 显式绑定；仅计算哈希
-不能把一个未验证的旧 wheel 变成已验证产物。
+这份固定收据仅适用于当时已验证的那一对 core/extension 字节。相同源码在其它构建根
+重建后可能生成不同字节：必须独立核对源码 pin，完成对应算子的 focused 正确性测试、
+本模型固定 prompt 的 32-token 贪婪门禁，以及 attention/内存等改动所需的 5–10 分钟
+稳态验证，保存并审阅新产物哈希与原始日志，再以
+`SCUD_OPS_MANIFEST=<已审阅的新收据.json>` 显式绑定。仅将任意 wheel 的新哈希填进
+收据不会令其成为已验证产物；不得自动信任或绕过哈希不匹配。
+
+本包的实际证据文件：
+
+- `validation/ops-artifacts.json`：该次构建的源码 pin、core/extension 哈希与构建根；
+- `validation/decode-shapes-20261024.json`：本模型独立的真实 decode shape 盘点；
+- `tests/test_ops_provenance.py`：身份门禁的 focused CPU 单测；
+- `tests/check_ops_capabilities.py`：对当前安装运行同一身份与必需 API 门禁。
+
+在已加载厂商环境并前置已验证 ops 安装目录的 shell 中运行：
 
 ```bash
-/home/py312/bin/python model_adaptations/InternVL3_5SCUdoudui/tests/check_ops_capabilities.py
+export SCUD_OPS_MANIFEST="$ADAPT/validation/ops-artifacts.json"  # 仅适用于该收据对应产物
+/home/py312/bin/python "$ADAPT/tests/check_ops_capabilities.py"
 ```
 
-真实 decode shape 的可选诊断：启动前设 `SCUD_DECODE_CENSUS=<空输出目录>`，按原样
-`run.sh` 跑固定 prompt 的 32-token 贪婪生成。它仅记录真实 SDAA M=1 张量的 shape/stride，
-不记录权重值；诊断 wrapper 禁编译，故该次输出只能作 shape 证据，不能作性能成绩。
-正常验证与官方 CI 不设置此变量。
+其中 `ADAPT` 为本模型目录的绝对路径；跨根重建使用独立验收后形成的新收据路径。
+历史 cycle-42 归档仍按原日期保留，不替代本轮门禁或完整 CI。
+
+真实 decode shape 的可选诊断：启动前设 `SCUD_DECODE_CENSUS=<空输出目录>`，启动
+脚本会仅在此诊断档添加 `--enforce-eager`，然后跑固定 prompt 的 32-token 贪婪生成。
+它仅记录真实 SDAA M=1 张量的 shape/stride，不记录权重值；输出仅作 shape 证据，
+不能作性能成绩。正常验证与官方 CI 不设置此变量。

@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-24",
+  "change": "Public CI launcher initializes the Gemma evaluation-client tokenizer overlay before invoking the unchanged official runner.",
+  "interpreter": "/home/py312/bin/python",
+  "launcher": "model_adaptations/Gemma4SCUdoudui/scripts/run_ci.sh",
+  "checks": [
+    {
+      "command": "bash -n model_adaptations/Gemma4SCUdoudui/scripts/run_ci.sh",
+      "exit_code": 0
+    },
+    {
+      "command": "bash model_adaptations/Gemma4SCUdoudui/scripts/run_ci.sh --help",
+      "exit_code": 0,
+      "result": "The original run_ci.py argparse help was displayed; no service was launched."
+    },
+    {
+      "command": "/home/py312/bin/python model_adaptations/Gemma4SCUdoudui/tests/verify_eval_tokenizer.py <output.json>",
+      "exit_code": 0,
+      "result": "Six independent tokenizer.json oracle cases passed, initialization was idempotent, no vLLM module was imported, and all six watched weight/dependency files retained their SHA-256 hashes.",
+      "receipt": "eval_tokenizer_20261024.json"
+    }
+  ],
+  "protected_ci_runner": {
+    "path": "tools/ci_pipline/run_ci.py",
+    "unchanged": true,
+    "git_blob": "485e17adf5a9d7c994542c72e49f97a5686c9cfb"
+  },
+  "model_smoke_run": false,
+  "full_ci_run": false,
+  "performance_claim": false
+}

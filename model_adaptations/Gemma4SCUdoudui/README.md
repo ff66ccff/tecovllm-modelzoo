@@ -175,6 +175,40 @@ cd model_adaptations/Gemma4SCUdoudui && /home/py312/bin/python tests/test_startu
 > 使 fail-closed 真正落在进程级；设备无关对照实验（普通异常 rc=0 且打印 MAIN_REACHED；
 > `SystemExit(1)` rc=1 且不打印）见 `readme-c16/failclosed/`。
 
+## 官方 CI 复现入口
+
+先按上面的步骤准备已验证的 tecoops 安装目录，再从任意工作目录执行：
+
+```bash
+bash <repo-root>/model_adaptations/Gemma4SCUdoudui/scripts/run_ci.sh
+# 可选：官方 runner 的原生选项 --keep-service
+```
+
+此入口加载 `/opt/tecoai/setvars.sh`，固定使用 `/home/py312/bin/python`，原样调用
+`tools/ci_pipline/run_ci.py` 和本模型唯一的 `run.sh`；精度、性能脚本及固定测例均不改动。
+评测客户端通过独立的 `eval_overlay/` 启用 `GEMMA4_EVAL_TOKENIZER=1`，复用已有的
+`extra_special_tokens` 列表兼容函数。未设置此客户端环境时，预置 tokenizer 在当前
+Transformers 中会报 `AttributeError: 'list' object has no attribute 'keys'`，使性能评测
+在构造输入时失败。服务的 `run.sh` 仍优先加载自己的 `overlay/` 和 `runtime/`；客户端
+overlay 不导入 vLLM、不绑定模型算子，也不修改权重或全局依赖。
+
+仅验证入口和 tokenizer、无需启动模型的命令：
+
+```bash
+bash -n <repo-root>/model_adaptations/Gemma4SCUdoudui/scripts/run_ci.sh
+bash <repo-root>/model_adaptations/Gemma4SCUdoudui/scripts/run_ci.sh --help
+# 在已加载厂商环境的 shell 中运行；6 条文本逐 token 对照 tokenizer.json 独立 oracle。
+/home/py312/bin/python <repo-root>/model_adaptations/Gemma4SCUdoudui/tests/verify_eval_tokenizer.py \
+  /tmp/gemma-eval-tokenizer.json
+```
+
+`--help` 只解析官方 runner 参数。上述 CPU 门禁不代表模型 smoke 或完整 CI 通过；完整
+CI 结果以该入口生成的 `tools/ci_pipline/precision_result.json`、`performance_result.json`
+及原始日志为准。
+2026-10-24 已验证入口 `--help` 返回 0、tokenizer oracle 6/6 通过且六份受监控文件
+SHA-256 不变，收据见 `validation/ci_launcher_20261024.json` 与
+`validation/eval_tokenizer_20261024.json`。
+
 ## 启动推理服务
 
 ```bash

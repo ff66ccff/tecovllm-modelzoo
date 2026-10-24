@@ -1,0 +1,95 @@
+{
+  "passed": true,
+  "client_only": true,
+  "model_path": "/gpfs/model/google/gemma-4-12B-it",
+  "results": {
+    "disabled": {
+      "baseline_failed_as_expected": true,
+      "disabled_no_mutation": true,
+      "repeated_initialization": 2,
+      "error": "'list' object has no attribute 'keys'"
+    },
+    "enabled": {
+      "loaded": true,
+      "idempotent_initialization": true,
+      "repeated_initialization": 2,
+      "single_wrapper": true,
+      "cases": [
+        {
+          "text": "",
+          "ids": [],
+          "oracle_equal": true
+        },
+        {
+          "text": "Why is the sky blue?",
+          "ids": [
+            11355,
+            563,
+            506,
+            7217,
+            3730,
+            236881
+          ],
+          "oracle_equal": true
+        },
+        {
+          "text": "四川大学：可复现评测。",
+          "ids": [
+            104670,
+            18413,
+            237184,
+            237193,
+            238413,
+            237562,
+            238801,
+            238414,
+            236924
+          ],
+          "oracle_equal": true
+        },
+        {
+          "text": "line1\nline2",
+          "ids": [
+            1257,
+            236770,
+            107,
+            1257,
+            236778
+          ],
+          "oracle_equal": true
+        },
+        {
+          "text": "<|video|>",
+          "ids": [
+            258884
+          ],
+          "oracle_equal": true
+        },
+        {
+          "text": "emoji 🌍 café",
+          "ids": [
+            67906,
+            236743,
+            244906,
+            33443
+          ],
+          "oracle_equal": true
+        }
+      ],
+      "no_vllm_import": true,
+      "torch_sdaa_auto_registered": true,
+      "device_execution": false
+    }
+  },
+  "unchanged_source_sha256": {
+    "/gpfs/model/google/gemma-4-12B-it/config.json": "478c46e8d2c52d5c2d85bf67e3b3e8c90e7c9d91086cee27e3c267907e936bd9",
+    "/gpfs/model/google/gemma-4-12B-it/tokenizer_config.json": "a62f4e85a47c0c136edaaa3a4f591fd6783717299a9def47e5ad03a49f6a5eb9",
+    "/gpfs/model/google/gemma-4-12B-it/tokenizer.json": "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f",
+    "/home/py312/lib/python3.12/site-packages/transformers/tokenization_utils_base.py": "a2d62f7e5d58f908b3a2d0b24ce6329e1e52c815082cedde29a5c007a23e7e83",
+    "/home/py312/lib/python3.12/site-packages/transformers/models/gemma/tokenization_gemma_fast.py": "884266d1b7a34986f50e69976dbe94b9165a7865f448b1b5b82c79bfadb98532",
+    "/home/py312/lib/python3.12/site-packages/evalscope/perf/plugin/datasets/utils.py": "e571fcbc8240213a682dde050d31b4f1e00ad856a052aff99c166296155b0d57"
+  },
+  "model_smoke_run": false,
+  "full_ci_run": false,
+  "performance_claim": false
+}

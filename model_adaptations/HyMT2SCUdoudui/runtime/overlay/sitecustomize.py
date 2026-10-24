@@ -196,9 +196,22 @@ def install() -> None:
     print("[hy-mt2-overlay] RMSNorm and SwiGLU bindings installed", file=sys.stderr)
 
 
+import os
+import sys
+if os.environ.get("SCUD_REQUIRE_OPS_BUNDLE") == "1":
+    try:
+        from custom_ops.ops_provenance import require_ops_bundle
+        require_ops_bundle(['rms_norm', 'reshape_and_cache', 'rotary_embedding', 'linear_stream'])
+    except Exception as exc:
+        sys.stderr.write(f"FATAL: operator bundle provenance check failed: {exc}\n")
+        raise SystemExit(1) from exc
+
 try:
     install()
 except Exception as exc:
     print(f"FATAL: Hy-MT2 overlay initialization failed: {exc}", file=sys.stderr)
     # sitecustomize's ordinary exceptions are swallowed by Python startup.
     raise SystemExit(1) from exc
+
+from custom_ops.diagnostic_shapes import install_decode_census
+install_decode_census()

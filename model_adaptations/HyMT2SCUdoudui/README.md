@@ -65,11 +65,9 @@ ls -ld "$MODEL_ROOT/Tencent-Hunyuan/Hy-MT2-1.8B"
    **自证命令**（启动前执行；打印包路径、库 sha256 与必需能力项）：
 
    ```bash
-   # ⚠ `probe_tecoops_capability.py` **不在本交付包内**（本包只含 runtime/**、tests/**、
-   # validation/** 与本文档）；无该脚本时，等价自证 = 下列能力项逐项存在。
-   TORCH_DEVICE_BACKEND_AUTOLOAD=0 PYTHONPATH="$OPS_INSTALL" \
-     /home/py312/bin/python <probe_tecoops_capability.py> --json-out /tmp/cap.json
-   # 期望 verdict=CAPABLE，capabilities 中 rms_norm / rms_norm_out / rms_norm_add_out / rotary_embedding / reshape_and_cache 全为 true
+   # 包内脚本；校验本轮映射 core/extension 哈希与全部实际绑定能力。
+   /home/py312/bin/python model_adaptations/HyMT2SCUdoudui/tests/check_ops_capabilities.py
+   # 成功打印 SCUD_OPS_PROVENANCE；缺能力、旧 wheel、混合 core/extension 均非零退出。
    ```
 
    注意：只设 `PYTHONPATH` 而不设 SDK 运行库路径时，`import tecoops` 会以 `ImportError: libsdaart.so: cannot open shared object file` 失败（torch 自动加载 torch_sdaa 所致），必须先 `source /opt/tecoai/setvars.sh` 或手工把 `/opt/tecoai/lib64` 与 torch/torch_sdaa 的 `lib` 目录加进 `LD_LIBRARY_PATH`。
@@ -202,3 +200,25 @@ TTFT / TPOT：**未测**（组委会性能测例与达标线未下发）。已�
 本线自建库 sha256（跨构建根 sha 会不同，判据是能力探针，见上文「本线实测自建库身份」）：`libteco_ops.so` = `42422972ee7f9e42b2c62595a680193db49778ec33f53280351fa205c77cb5ca`，`_torch_ext*.so` = `0fbf071ae5d433d5d74bf305a610d41e484a976f14f3812857a7c142c771c377`。
 
 **cycle-42 overlay 切换（2026-10-19）**：本线 rms_norm / rms_norm_add 已从 Python `torch.library.custom_op` 切换到 C++ `TORCH_LIBRARY` 入口 `torch.ops.tecoops_ops.rms_norm_out` / `rms_norm_add_out`（`runtime/custom_ops/hy_mt2/vllm_rms_norm.py:31-39`；进程初始化期一次绑定，热路径零分支零 getenv）。证据：交付 run.sh 原样参数起服务，32-token 贪婪生成 Prompt1/Prompt2 在 3 轮臂序交替中 **32/32 token 逐位相同**；TPOT 48.502 -> 44.621 ms/step（**+8.00%**，|Δ|=3.881 > 同臂 spread 1.982 ⇒ GO）；零 traceback/OOM/CPU fallback。op 级单价 73.9-76.4 µs -> 24.2-25.1 µs（-67.2%），逐 halfword 逐位全等。
+
+
+## 2026-10-24 复现与库身份门禁
+
+`run.sh` 在进程初始化期核验 `validation/ops-artifacts.json` 所记录的 **core 与
+host extension 两份 SHA256**，并核对本模型全部必需 API（含非 RMS 路径）。同名导出
+不足以证明实现版本；旧 wheel、混装库或多份 mapped core 会在启动前非零退出。
+普通 forward 不做哈希、环境查询或额外实现选择。
+
+本轮安装收据及门禁原值以 `validation/fix-20261024/` 为准；前文 cycle-42 及更早的
+SHA/收益属于历史记录，不能充当本轮安装证据。跨根重建后，必须独立复核源码 pin、
+focused/模型门禁并审阅新收据，再以 `SCUD_OPS_MANIFEST=<收据>` 显式绑定；仅计算哈希
+不能把一个未验证的旧 wheel 变成已验证产物。
+
+```bash
+/home/py312/bin/python model_adaptations/HyMT2SCUdoudui/tests/check_ops_capabilities.py
+```
+
+真实 decode shape 的可选诊断：启动前设 `SCUD_DECODE_CENSUS=<空输出目录>`，按原样
+`run.sh` 跑固定 prompt 的 32-token 贪婪生成。它仅记录真实 SDAA M=1 张量的 shape/stride，
+不记录权重值；诊断 wrapper 禁编译，故该次输出只能作 shape 证据，不能作性能成绩。
+正常验证与官方 CI 不设置此变量。

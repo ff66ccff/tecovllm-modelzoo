@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Require both tested core and extension, including non-RMS paths, at startup.
+export SCUD_REQUIRE_OPS_BUNDLE=1
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 # 官方要求团队级 run.sh（model_adaptations/<团队名称>/run.sh）。本文件与模型目录下的 run.sh 逐字一致，

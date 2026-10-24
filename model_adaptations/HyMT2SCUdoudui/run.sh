@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Require both tested core and extension, including non-RMS paths, at startup.
+export SCUD_REQUIRE_OPS_BUNDLE=1
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 MODEL_ROOT="${MODEL_ROOT:-/gpfs/model}"

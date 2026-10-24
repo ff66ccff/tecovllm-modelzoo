@@ -1,0 +1,109 @@
+{
+  "date": "2026-10-24",
+  "model": "MiniCPM5-1B",
+  "mode": "diagnostic decode M=1 census",
+  "tag": "pr4-census-20261024",
+  "clean_container": false,
+  "source": "run_model.py --mode census with fixed greedy-32 client and SCUD_DECODE_CENSUS",
+  "ops": {
+    "source_commit": "db1597e1265a5fc3e24207b793c9d1dd94327a24",
+    "core_sha256": "531e0caf206a3c580e03f87965d067e44c0d88f8740a06a3d20abd88377574dc",
+    "extension_sha256": "82aa5455938789bc0009f85a947edfa271918a9d0b115866ad7f70bb57fbbf41"
+  },
+  "worker_files": [
+    "decode-shapes-624969.jsonl"
+  ],
+  "rows": [
+    {
+      "bias": false,
+      "dtype": "torch.float16",
+      "input_shape": [
+        1,
+        1536
+      ],
+      "layer": "MergedColumnParallelLinear",
+      "provenance": "observed SDAA M=1 forward; diagnostic process only",
+      "weight_shape": [
+        9216,
+        1536
+      ],
+      "weight_stride": [
+        1536,
+        1
+      ]
+    },
+    {
+      "bias": false,
+      "dtype": "torch.float16",
+      "input_shape": [
+        1,
+        1536
+      ],
+      "layer": "ParallelLMHead",
+      "provenance": "observed SDAA M=1 forward; diagnostic process only",
+      "weight_shape": [
+        130560,
+        1536
+      ],
+      "weight_stride": [
+        1536,
+        1
+      ]
+    },
+    {
+      "bias": false,
+      "dtype": "torch.float16",
+      "input_shape": [
+        1,
+        1536
+      ],
+      "layer": "QKVParallelLinear",
+      "provenance": "observed SDAA M=1 forward; diagnostic process only",
+      "weight_shape": [
+        2560,
+        1536
+      ],
+      "weight_stride": [
+        1536,
+        1
+      ]
+    },
+    {
+      "bias": false,
+      "dtype": "torch.float16",
+      "input_shape": [
+        1,
+        2048
+      ],
+      "layer": "RowParallelLinear",
+      "provenance": "observed SDAA M=1 forward; diagnostic process only",
+      "weight_shape": [
+        1536,
+        2048
+      ],
+      "weight_stride": [
+        2048,
+        1
+      ]
+    },
+    {
+      "bias": false,
+      "dtype": "torch.float16",
+      "input_shape": [
+        1,
+        4608
+      ],
+      "layer": "RowParallelLinear",
+      "provenance": "observed SDAA M=1 forward; diagnostic process only",
+      "weight_shape": [
+        1536,
+        4608
+      ],
+      "weight_stride": [
+        4608,
+        1
+      ]
+    }
+  ],
+  "passed": true
+}

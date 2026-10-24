@@ -425,6 +425,16 @@ def install_rotary_embedding_overlay() -> None:
     )
 
 
+import os
+import sys
+if os.environ.get("SCUD_REQUIRE_OPS_BUNDLE") == "1":
+    try:
+        from custom_ops.ops_provenance import require_ops_bundle
+        require_ops_bundle(['rms_norm', 'reshape_and_cache', 'flash_attn_varlen_func', 'rotary_embedding'])
+    except Exception as exc:
+        sys.stderr.write(f"FATAL: operator bundle provenance check failed: {exc}\n")
+        raise SystemExit(1) from exc
+
 try:
     install_llama_rms_norm_overlay()
     install_rotary_embedding_overlay()
@@ -435,3 +445,6 @@ except Exception as exc:
     # to the user entrypoint. Convert every installation error to fatal exit.
     sys.stderr.write(f"FATAL: [custom_ops] Overlay initialization failed: {exc}\n")
     raise SystemExit(1)
+
+from custom_ops.diagnostic_shapes import install_decode_census
+install_decode_census()

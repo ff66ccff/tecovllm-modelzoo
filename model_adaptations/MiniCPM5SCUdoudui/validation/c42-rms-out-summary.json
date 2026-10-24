@@ -1,0 +1,29 @@
+{
+  "model": "MiniCPM5-1B",
+  "correctness": {
+    "prompt1_matches_frozen": true,
+    "prompt1_all_identical": true,
+    "prompt2_all_identical": true,
+    "token_ids_p1": [
+      1974, 10300, 1759, 1773, 3211, 280, 14335, 2442, 304, 280, 1187, 468, 3622, 35, 1974, 52424, 1759, 1773, 2351, 374, 285, 7335, 304, 1356, 3095, 35, 1974, 45656, 1759, 1773, 1848, 310
+    ],
+    "token_ids_p2": [
+      12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930, 12930
+    ]
+  },
+  "performance": {
+    "prompt1_base_raw": [35.848, 36.379, 36.36],
+    "prompt1_base_median": 36.36,
+    "prompt1_base_spread": 0.531,
+    "prompt1_cand_raw": [32.766, 32.037, 32.784],
+    "prompt1_cand_median": 32.766,
+    "prompt1_cand_spread": 0.747,
+    "delta_ms": 3.594,
+    "pct_gain": 9.88,
+    "mean_base_median": 36.374,
+    "mean_cand_median": 32.996,
+    "mean_delta_ms": 3.378,
+    "mean_pct_gain": 9.29,
+    "verdict": "GO"
+  }
+}

@@ -242,4 +242,26 @@ scoping，不是 `rms_norm`。实测 case_4(D64) 中位 2.677600 ms、B64 两方
 **cycle-39 round-15 pin 说明（2026-10-18）**：本交付的 ops pin 由 `11cb85cbdc02470dde0a50d9777bb1e386501b9c` 前移至 **`60a40d756f85fa6c1ac9d4cb3563a5f3ffd9c7db`**——**回退** `11cb85c`（`perf(flash_attention): overlap the D512 tail V-panel staging with its PV GEMMs`）。回退依据（AGENTS 规则 7，稳定负优化）：该提交的**自身 11 例窗口 SUM = +0.153% / +0.151%（两窗，净负）**——目标例 `case_7` 确实 −3.990%/−3.920%，但其余 10 例一致回退 +0.19~0.53%（LTO 重链把 D128 段推离原位），故按逐例/求和双口径均不成立。保留 `fab1fa2`（flash_attention 首 tile rescale 跳过：D128 9 例 −0.89~−2.31%，11 例 SUM **−1.21%**，`max_error` 逐位不变）。
 **cycle-39 round-17 pin 说明（2026-10-18）**：本交付的 ops pin 由 `60a40d756f85fa6c1ac9d4cb3563a5f3ffd9c7db` 前移至 **`75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`**（`ce1a2ec` `perf(build): swap the weight_stream_gemv and gather device sections into their measured fast slots`：在纯 TU 顺序上把 `weight_stream_gemv` 与 `zz_ms_deform_attn_backward_ha`(gather) **互换**——wsg 落到实测快地址 `0x23dd4`，而 `flash_d128`/`rms_norm_fp16`/`msda_fwd`/`msda_bwd_fp32`/`memset`/`rotary`/`flatten_rays` **全部保持原址**（这是 K3 做不到的）；官方固定形态**同窗同 root 从源码构建**双臂 A/B：wsg `case_0` 0.005718→**0.003871（−32.30%）**、`case_1` −2.03%、`ms_deform_attn_backward` **−1.15%**、`ms_deform_attn_forward` **−3.66%**、`reshape_and_cache` −0.36%/−0.58%、`memset` ±0.3%、`rotary` ±0.6%；39 例 SUM 9.414836→9.412432（−0.026%）、无 >±0.8% 回退（首窗 1-rep 的 µs 级“越带”已由 3-rep 复核证否）。**说明**：`wsg 快 + gather 原址`经结构性证明不可同时满足（wsg 快地址均低于其 base，而 gather 是其直接前驱、TU 不可拆）⇒ 本折中为 13 臂枚举最优。
 
-**cycle-42 pin 说明（2026-10-19）**：本交付的 ops pin 由 `ce1a2ec00270bb5a519e235166427c255ef2af40` 前移至 **`75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`**（团队 ops main，已合入 main），含四笔：`5813b74` flash D128 `P^T->P` 16-lane 向量化（官方 39 例 SUM -9.30%，两独立窗）；`e6ec6e9` rms_norm decode 热路径 C++ `TORCH_LIBRARY` `out=` 入口（op 级 75.61->26.28 µs，逐位全等、零布局税）；`35bf8f6` 新增 `rms_norm_add_out`（带 residual，76.38->25.08 µs，39 例净零）；`75588a9` flash D128 K cache 异步双缓冲预取 + Step B/E 寄存器融合 + 全可见 tile 掩码跳过 + softmax 栈溢出消除（**长 shape prefill 2K/4K/8K/16K -14.9%~-15.5%，官方 39 例 SUM 7.5999->6.7810 ms = -10.78%**，16/16 长 shape 探针 PASSED、`max_error` 不变）。**本线可达性**：MiniCPM 的 prefill 走团队 `tecoops.flash_attn_varlen_func`（D128/ALGO0）=> 上述 flash 改动在本线真实 forward 生效。**overlay 同步切换**：本线 rms_norm / rms_norm_add 已从 Python `torch.library.custom_op` 切到 `torch.ops.tecoops_ops.rms_norm_out` / `rms_norm_add_out`（进程初始化期一次绑定）；证据：交付 run.sh 原样参数、32-token 贪婪 Prompt1/Prompt2 × 3 轮臂序交替 **32/32 token 逐位相同**，TPOT 36.360 -> 32.766 ms/step（**+9.88%**；3 次原值 base `35.848 / 36.379 / 36.360`、cand `32.766 / 32.037 / 32.784` ms，取中位；同臂 spread base **0.531** / cand **0.747** ms，|Δ| = **3.594** ms ≈ 6.8× base spread ⇒ **GO**；原件在队内账本仓 `.c42/modeladopt/minicpm/summary.json`，**不在本包**），零 traceback/OOM/CPU fallback。**哈希表口径**：本文件上方 `libteco_ops.so` / `_torch_ext` 的 sha256 仍是**旧 pin** 的构建产物，必须按本 pin 从源码重建后重新记录（本轮未重建，不得引用旧值作交付证据）。
+**cycle-42 pin 说明（2026-10-19）**：本交付的 ops pin 由 `ce1a2ec00270bb5a519e235166427c255ef2af40` 前移至 **`75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`**（团队 ops main，已合入 main），含四笔：`5813b74` flash D128 `P^T->P` 16-lane 向量化（官方 39 例 SUM -9.30%，两独立窗）；`e6ec6e9` rms_norm decode 热路径 C++ `TORCH_LIBRARY` `out=` 入口（op 级 75.61->26.28 µs，逐位全等、零布局税）；`35bf8f6` 新增 `rms_norm_add_out`（带 residual，76.38->25.08 µs，39 例净零）；`75588a9` flash D128 K cache 异步双缓冲预取 + Step B/E 寄存器融合 + 全可见 tile 掩码跳过 + softmax 栈溢出消除（**长 shape prefill 2K/4K/8K/16K -14.9%~-15.5%，官方 39 例 SUM 7.5999->6.7810 ms = -10.78%**，16/16 长 shape 探针 PASSED、`max_error` 不变）。**本线可达性**：MiniCPM 的 prefill 走团队 `tecoops.flash_attn_varlen_func`（D128/ALGO0）=> 上述 flash 改动在本线真实 forward 生效。**overlay 同步切换**：本线 rms_norm / rms_norm_add 已从 Python `torch.library.custom_op` 切到 `torch.ops.tecoops_ops.rms_norm_out` / `rms_norm_add_out`（进程初始化期一次绑定）；证据：交付 run.sh 原样参数、32-token 贪婪 Prompt1/Prompt2 × 3 轮臂序交替 **32/32 token 逐位相同**，TPOT 36.360 -> 32.766 ms/step（**+9.88%**；3 次原值 base `35.848 / 36.379 / 36.360`、cand `32.766 / 32.037 / 32.784` ms，取中位；同臂 spread base **0.531** / cand **0.747** ms，|Δ| = **3.594** ms ≈ 6.8× base spread ⇒ **GO**；原件现已随包保存在 `validation/c42-rms-out-summary.json`，来源路径与 SHA256 见同目录 `.provenance.json`（历史归档，不冒充本轮重测）），零 traceback/OOM/CPU fallback。**哈希表口径**：本文件上方 `libteco_ops.so` / `_torch_ext` 的 sha256 仍是**旧 pin** 的构建产物，必须按本 pin 从源码重建后重新记录（本轮未重建，不得引用旧值作交付证据）。
+
+
+## 2026-10-24 复现与库身份门禁
+
+`run.sh` 在进程初始化期核验 `validation/ops-artifacts.json` 所记录的 **core 与
+host extension 两份 SHA256**，并核对本模型全部必需 API（含非 RMS 路径）。同名导出
+不足以证明实现版本；旧 wheel、混装库或多份 mapped core 会在启动前非零退出。
+普通 forward 不做哈希、环境查询或额外实现选择。
+
+本轮安装收据及门禁原值以 `validation/fix-20261024/` 为准；前文 cycle-42 及更早的
+SHA/收益属于历史记录，不能充当本轮安装证据。跨根重建后，必须独立复核源码 pin、
+focused/模型门禁并审阅新收据，再以 `SCUD_OPS_MANIFEST=<收据>` 显式绑定；仅计算哈希
+不能把一个未验证的旧 wheel 变成已验证产物。
+
+```bash
+/home/py312/bin/python model_adaptations/MiniCPM5SCUdoudui/tests/check_ops_capabilities.py
+```
+
+真实 decode shape 的可选诊断：启动前设 `SCUD_DECODE_CENSUS=<空输出目录>`，按原样
+`run.sh` 跑固定 prompt 的 32-token 贪婪生成。它仅记录真实 SDAA M=1 张量的 shape/stride，
+不记录权重值；诊断 wrapper 禁编译，故该次输出只能作 shape 证据，不能作性能成绩。
+正常验证与官方 CI 不设置此变量。

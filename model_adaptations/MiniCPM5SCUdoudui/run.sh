@@ -1,6 +1,8 @@
 #!/bin/bash
 # SCUdoudui MiniCPM5-1B official launch script
 set -euo pipefail
+# Require both tested core and extension, including non-RMS paths, at startup.
+export SCUD_REQUIRE_OPS_BUNDLE=1
 # Launch contract for tools/ci_pipline/run_ci.py
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)

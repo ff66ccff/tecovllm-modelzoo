@@ -47,7 +47,9 @@ def install_decode_census():
     root.mkdir(parents=True,exist_ok=True)
     output=root / ("decode-shapes-%d.jsonl" % os.getpid())
 
-    @torch._dynamo.disable
+    # Keep this diagnostic call opaque to the compiler without introducing a
+    # graph-break (the latter aborts vLLM worker initialization on SDAA).
+    @torch._dynamo.allow_in_graph
     def census(layer,x,weight,bias=None):
         if x.device.type=="sdaa" and x.ndim>=2 and x.numel()//x.shape[-1]==1:
             row=dict(input_shape=list(x.shape), weight_shape=list(weight.shape),

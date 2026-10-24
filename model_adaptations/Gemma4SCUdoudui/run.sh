@@ -66,6 +66,9 @@ vllm() {
         echo "ERROR: ${python_entry} lacks the required capability (import torch + torch_sdaa + torch.sdaa.is_available()); source /opt/tecoai/setvars.sh, and for py3.11 install the matching tecoops/torch_sdaa assets (docs/bootstrap-py311.md)" >&2
         return 1
     fi
+    if [ -n "${SCUD_DECODE_CENSUS:-}" ]; then
+        task_argv+=(--enforce-eager)
+    fi
     exec "${python_entry}" -m vllm.entrypoints.cli.main "${task_argv[@]}"
 
 }

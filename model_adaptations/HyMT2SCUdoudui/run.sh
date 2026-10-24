@@ -58,6 +58,9 @@ vllm() {
         return 64
     fi
 
+    if [[ -n "${SCUD_DECODE_CENSUS:-}" ]]; then
+        serve_args+=(--enforce-eager)
+    fi
     exec /home/py312/bin/python -m vllm.entrypoints.cli.main serve "${serve_args[@]}"
 }
 

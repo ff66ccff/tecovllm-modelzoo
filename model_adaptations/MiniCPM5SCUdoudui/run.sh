@@ -102,6 +102,9 @@ vllm() {
         serve_args=("${fast_args[@]}" --no-enable-chunked-prefill --no-enable-prefix-caching --max-num-seqs 1)
     fi
 
+    if [[ -n "${SCUD_DECODE_CENSUS:-}" ]]; then
+        serve_args+=(--enforce-eager)
+    fi
     exec /home/py312/bin/python -m vllm.entrypoints.cli.main serve "${serve_args[@]}"
 }
 

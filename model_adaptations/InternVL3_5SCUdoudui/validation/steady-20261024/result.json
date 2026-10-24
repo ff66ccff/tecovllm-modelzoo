@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "pr": 6,
+  "mode": "gate",
+  "tag": "pr6-steady-20261024",
+  "clean_container": false,
+  "pid": 655135,
+  "startup_seconds": 120.05255693895742,
+  "exit_code": 0,
+  "wall_seconds": 425.9853826169856,
+  "protected_scripts_unchanged": true
+}

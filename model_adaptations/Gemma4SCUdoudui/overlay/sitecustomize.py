@@ -252,6 +252,16 @@ def install_linear_stream_overlay() -> None:
           file=sys.stderr)
 
 
+import os
+import sys
+if os.environ.get("SCUD_REQUIRE_OPS_BUNDLE") == "1":
+    try:
+        from custom_ops.ops_provenance import require_ops_bundle
+        require_ops_bundle(['rms_norm', 'rms_norm_compat', 'reshape_and_cache', 'flash_attn_varlen_func', 'weight_stream_gemv', 'linear_stream'])
+    except Exception as exc:
+        sys.stderr.write(f"FATAL: operator bundle provenance check failed: {exc}\n")
+        raise SystemExit(1) from exc
+
 if os.environ.get("GEMMA4_OVERLAY") == "1":
     try:
         import gemma4_shim
@@ -277,3 +287,6 @@ if os.environ.get("GEMMA4_OVERLAY") == "1":
         # 设备无关实测（readme-c16/failclosed/）：普通异常 rc=0 且 MAIN_REACHED；
         # `raise SystemExit(1)` rc=1 且不打印 MAIN_REACHED。故此处显式退出进程。
         raise SystemExit(1)
+
+from custom_ops.diagnostic_shapes import install_decode_census
+install_decode_census()

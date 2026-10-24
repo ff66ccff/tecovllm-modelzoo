@@ -346,3 +346,25 @@ curl -s http://127.0.0.1:8003/v1/completions -H 'Content-Type: application/json'
 3. `35bf8f6`：新增 `rms_norm_add_out`（带 residual 的 `out=` 入口），host 派发 76.38→25.08 µs（−67.2%），7 个真实 shape 36 352 halfword 逐位全等，两窗 39 例 SUM 净零，无布局税；
 4. `75588a9`：`zzz_flash_attention_d128.scpp` K cache 异步双缓冲预取 + Step B/E 寄存器融合 + 全可见 tile 掩码跳过 + softmax 栈溢出消除，长 shape 探针 16/16 PASSED（prefill 2K/4K/8K/16K 由 14.42/55.84/219.77/872.02 → 12.27/47.34/185.93/737.10 ms，**−14.9%~−15.5%**），官方 39 例 SUM 7.5999 → 6.7810 ms（**−10.78%**），41 探针×3 rep×2 臂独立复核 −10.744% 且 246/246 PASSED。
 本线本轮**附加 overlay 切换**：已将 `model_adaptations/Gemma4SCUdoudui/runtime/custom_ops/rms_norm/op.py` 中原 Python `custom_op` 注册的 `rms_norm_whole` 与 `rms_norm_whole_add` 切换为 C++ `torch.ops.tecoops_ops.rms_norm_out` 与 `rms_norm_add_out` 入口（337 处站点/step）。模型级验证（3 轮交替 B-C，各 32 tokens）：Prompt 1 与 Prompt 2 生成与冻结基线 **32/32 token 逐位全同**；TPOT 251.123 → 246.048 ms/step（+2.02%），因 `|Δ|` (5.075) < spread (7.274) 依规则 4 判决为不可分辨（如实不主张模型级提速）。本线自建库 sha256：`libteco_ops.so` = `d9370c807f9bb82379199bda93fcc96d7022659b98be7cb943294769610a63b3`，`_torch_ext*.so` = `a55951872e9787630973c9dfd7402072f0e8df3c2e5d9d1d35c737cf17a03d8e`。
+
+
+## 2026-10-24 复现与库身份门禁
+
+`run.sh` 在进程初始化期核验 `validation/ops-artifacts.json` 所记录的 **core 与
+host extension 两份 SHA256**，并核对本模型全部必需 API（含非 RMS 路径）。同名导出
+不足以证明实现版本；旧 wheel、混装库或多份 mapped core 会在启动前非零退出。
+普通 forward 不做哈希、环境查询或额外实现选择。
+
+本轮安装收据及门禁原值以 `validation/fix-20261024/` 为准；前文 cycle-42 及更早的
+SHA/收益属于历史记录，不能充当本轮安装证据。跨根重建后，必须独立复核源码 pin、
+focused/模型门禁并审阅新收据，再以 `SCUD_OPS_MANIFEST=<收据>` 显式绑定；仅计算哈希
+不能把一个未验证的旧 wheel 变成已验证产物。
+
+```bash
+/home/py312/bin/python model_adaptations/Gemma4SCUdoudui/tests/check_ops_capabilities.py
+```
+
+真实 decode shape 的可选诊断：启动前设 `SCUD_DECODE_CENSUS=<空输出目录>`，按原样
+`run.sh` 跑固定 prompt 的 32-token 贪婪生成。它仅记录真实 SDAA M=1 张量的 shape/stride，
+不记录权重值；诊断 wrapper 禁编译，故该次输出只能作 shape 证据，不能作性能成绩。
+正常验证与官方 CI 不设置此变量。

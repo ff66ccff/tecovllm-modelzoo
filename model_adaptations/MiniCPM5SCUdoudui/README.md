@@ -285,3 +285,14 @@ export SCUD_OPS_MANIFEST="$ADAPT/validation/ops-artifacts.json"  # 仅适用于�
 脚本会仅在此诊断档添加 `--enforce-eager`，然后跑固定 prompt 的 32-token 贪婪生成。
 它仅记录真实 SDAA M=1 张量的 shape/stride，不记录权重值；输出仅作 shape 证据，
 不能作性能成绩。正常验证与官方 CI 不设置此变量。
+
+
+### 2026-10-24 五分钟模型稳态结果（2026-10-25 归档）
+
+使用本节固定的 ops pin db1597e 及 validation/ops-artifacts.json 对应的
+core/extension，按本模型原样启动参数运行固定 prompt、greedy-32：
+**273 请求 / 300.953 s，全部 32 tokens 且逐位一致，0 请求错误，外层 rc=0**。
+所有请求也与随包冻结 token IDs 一致。
+原件随包在 validation/steady-20261024/，包含每次 token IDs、结果、启动配置及
+受保护官方脚本前后相同的 SHA256。该窗口为现有服务器上的隔离安装验证，
+不是干净容器或完整官方 CI，不新增性能提升主张。

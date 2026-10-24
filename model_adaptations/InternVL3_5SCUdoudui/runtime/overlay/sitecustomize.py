@@ -141,6 +141,16 @@ def install_all_overlays() -> None:
     install_linear_stream_overlay()
 
 
+import os
+import sys
+if os.environ.get("SCUD_REQUIRE_OPS_BUNDLE") == "1":
+    try:
+        from custom_ops.ops_provenance import require_ops_bundle
+        require_ops_bundle(['rms_norm', 'reshape_and_cache', 'flash_attn_varlen_func', 'rotary_embedding', 'linear_stream'])
+    except Exception as exc:
+        sys.stderr.write(f"FATAL: operator bundle provenance check failed: {exc}\n")
+        raise SystemExit(1) from exc
+
 try:
     install_all_overlays()
 except SystemExit:
@@ -152,3 +162,6 @@ except BaseException as exc:  # noqa: BLE001 -- deliberate: site.py swallows pla
         "site.execsitecustomize() cannot swallow it (silent-degradation guard).\n"
     )
     raise SystemExit(1) from exc
+
+from custom_ops.diagnostic_shapes import install_decode_census
+install_decode_census()

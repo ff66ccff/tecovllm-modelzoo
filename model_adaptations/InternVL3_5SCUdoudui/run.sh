@@ -130,6 +130,9 @@ vllm() {
                 ;;
         esac
     done
+    if [[ -n "${SCUD_DECODE_CENSUS:-}" ]]; then
+        args+=(--enforce-eager)
+    fi
     exec "$PYTHON" -m vllm.entrypoints.openai.api_server "${args[@]}"
 }
 

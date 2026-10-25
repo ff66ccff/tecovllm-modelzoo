@@ -298,3 +298,22 @@ core/extension，按本模型原样启动参数运行固定 prompt、greedy-32�
 原件随包在 validation/steady-20261024/，包含每次 token IDs、结果、启动配置及
 受保护官方脚本前后相同的 SHA256。该窗口为现有服务器上的隔离安装验证，
 不是干净容器或完整官方 CI，不新增性能提升主张。
+
+## 2026-10-25 单条启动命令复核
+
+本模型专属与团队入口各保留一条可执行 serve 命令。默认路径以裸字面量供官方
+解析器读取，初始化 shim 在 exec 前绑定实际权重路径、host/port；服务参数未改。
+本模型独立收据见 `validation/launcher-single-serve-20261025.json`：2 个入口、
+8 个场景使用真实 Bash 执行基线和修订脚本，完整 argv、退出码及选定环境逐字节
+一致，原版 `parse_run_sh()` 的解析字典也一致。收据含各场景原始 argv、脚本和
+解析器 SHA256；整个测试将 Python 能力探针与最终 exec 换为桩，不导入设备栈。
+
+本模型专属的新单条命令入口另完成真实 SDAA 固定 prompt 贪婪短生成：2 次请求各
+32 tokens，与本模型 2026-10-24 冻结输出逐 token 相同；runner rc=0，受保护
+CI 脚本前后哈希相同。原始 result/model-gate/run-configuration/protected 收据、
+冻结 row0 比对和 runtime/core 身份见 `validation/launcher-single-serve-20261025/`。
+实际使用 ops 源码 pin 为 `db1597e`，core SHA256 `531e0caf…77574dc`，
+extension `82aa5455…fbbf41`；完整哈希及启动日志原文见收据。
+
+团队共享入口仅做上述无设备 argv 等价验证，未另起设备服务。本次不是干净容器
+复现或完整官方 CI，未重跑精度套件或性能测试，不作速度收益主张。

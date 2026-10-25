@@ -1,0 +1,28 @@
+{
+  "kind": "Read-only source snapshot after completed gate, not an instrumented per-forward trace",
+  "remote_pr_root": "/root/tmpwork/fix-20261024/models/pr6",
+  "files": {
+    "model_adaptations/InternVL3_5SCUdoudui/run.sh": "d9a693acb86689e34dd971c6614c2e2c1a9f627d2237576f2dffd3d148efc75d",
+    "model_adaptations/SCUdoudui/run.sh": "9743ecb8b9228e8da75e4784080e06846f07e3a059c3bd07c9001931591bcc31",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/__init__.py": "46b713a9a5a053e9a58a10662fa1c3c751ea998296f9fa15c4da9c4f3983dd96",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/block_attention/__init__.py": "6dcf946ec6dc494ca947ba1ddc6d511523a5131a1f4d60ce643d61e4cf6be939",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/block_attention/op.py": "ef313cddd38c9a760eabec18c761ff5e753a692455ab861b6189a08ea862d710",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/diagnostic_shapes.py": "b3cfb56ee45b33d0db1830352fdd00feac15c8f0a6218c3c6359b61c478936c1",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/flash_attn_varlen/__init__.py": "f415fbe8a92c93bd755b91b834bb865ca8238da4f1d39c2024e2eeac040ffe4d",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/flash_attn_varlen/op.py": "91ad6a16359591258ce91e94ef54c915896ff80dee07c3d14ab22a3c5435bbca",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/linear_stream/__init__.py": "3ce6c30f871e262076e2e40dcf2f3cbb08e47497b4e9a9616113e97a2b589b41",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/linear_stream/op.py": "92cd4a36c66d531ca468d5959dfa68c110a22181373f672ef0065cc0cc559771",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/ops_provenance.py": "eec2d5cfde2824b12d523cf7938ddf9ef8f88ecb1135379665d5cf96417cca4c",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/peak_probe.py": "69320bc5ec10a40f73d9d5e5de221ee4ef8e6995dc64e4259086bfdca0189356",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/prefill_attention/__init__.py": "daf371462eae012e5b63bb3aa120f7f9a2ef0372bfc7502b11f64a6c6023127a",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/prefill_attention/op.py": "31645f11708b50535476b3b5ec4ea01ea6578ea00f3fe7d82765041b94af2201",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/receipt.py": "0bfd2455d0e549f33b404f9d598b62c6f6d693d355f17c1121e941846edc2845",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/reshape_and_cache/__init__.py": "d3e389e757dce9fc699343c2b6e6e87ab159dae6b602eb12eec22dc90e0a97a3",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/reshape_and_cache/op.py": "5e2cc27c610ace16bb8c3fd5644cdf49942facb7ec4edd320ee0d1c14e3f9021",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/rms_norm/__init__.py": "994768a52a79ef6bd2b08fea7f87146e3f6438d6e9eb188e79b990d26a2e3eb1",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/rms_norm/op.py": "5c6a59e6908f571ae1bbb28c749a9ab9db9184cd48a2b4f143ccfc84b6c26c0d",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/rotary/__init__.py": "12989820ea051f1bf73036685b6188e3c5f4f09af7c96b186ba460db38fdb728",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/custom_ops/rotary/op.py": "de939610862d9d16666e8a3157f51e14115ffa95c3d801108f9a51b4163dbcb5",
+    "model_adaptations/InternVL3_5SCUdoudui/runtime/overlay/sitecustomize.py": "8426bb8fe6d470ee7a3803177af778a1091d9838271514650c7848a53109de41"
+  }
+}

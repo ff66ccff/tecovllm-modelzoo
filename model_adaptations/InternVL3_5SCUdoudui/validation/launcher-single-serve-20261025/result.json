@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "pr": 6,
+  "mode": "gate",
+  "tag": "pr6-one-serve-gate-20261025",
+  "clean_container": false,
+  "pid": 678220,
+  "startup_seconds": 120.04847370483913,
+  "exit_code": 0,
+  "wall_seconds": 130.5828380198218,
+  "protected_scripts_unchanged": true
+}

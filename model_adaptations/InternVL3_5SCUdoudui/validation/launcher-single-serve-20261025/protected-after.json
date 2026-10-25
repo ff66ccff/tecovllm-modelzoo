@@ -1,0 +1,7 @@
+{
+  "tools/ci_pipline/run_ci.py": "f2fd8f527f675fb6313bf6ed4954586ff8d5ca3aef83da6b8208e1ab8f594215",
+  "tools/ci_pipline/prec.sh": "5ed6727de08d50141a02bbacd29544fc558912ac3bef52bddec93f377c6bd4e3",
+  "tools/ci_pipline/speed.sh": "a3d9e4730678373b3db56fcea0e0a930724962f4e15a72c51b8fa79c80e1791e",
+  "tools/ci_pipline/precision_baseline.json": "72eb1b6cb545047528bd08e62faeebec527b221e2a00b05218e81c345970afc8",
+  "tools/ci_pipline/result_analyse.py": "de1a6769b2660fb692e9eb3677708f446a6b032ba988efe334f16d328bcaf66c"
+}

@@ -454,3 +454,16 @@ git show 5ef46901612efe5e77f0ab4bbc53c92907374501:model_adaptations/Gemma4SCUdou
 /home/py312/bin/python model_adaptations/Gemma4SCUdoudui/tests/verify_softmax_workspace.py --baseline /tmp/gemma-prefill-baseline.py --device sdaa --output /tmp/softmax-default.json
 /home/py312/bin/python model_adaptations/Gemma4SCUdoudui/tests/verify_softmax_workspace.py --baseline /tmp/gemma-prefill-baseline.py --device sdaa --non-default-stream --output /tmp/softmax-stream.json
 ```
+
+## 2026-10-25 单条启动命令复核
+
+本模型专属与团队入口各保留一条可执行 serve 命令。默认路径以裸字面量供官方
+解析器读取，初始化 shim 在 exec 前绑定实际权重路径、host/port；服务参数未改。
+本模型独立收据见 `validation/launcher-single-serve-20261025.json`：2 个入口、
+8 个场景使用真实 Bash 执行基线和修订脚本，完整 argv、退出码及选定环境逐字节
+一致，原版 `parse_run_sh()` 的解析字典也一致。收据含各场景原始 argv、脚本和
+解析器 SHA256；整个测试将 Python 能力探针与最终 exec 换为桩，不导入设备栈。
+
+这些结果只验证启动参数与解析契约，未运行模型 smoke、完整官方 CI 或性能测试。
+完整 CI 正在用当前新入口运行，结果另行登记，不能用本收据替代。手动环境覆盖不改变官方解析器
+读取的默认 tokenizer 路径；官方评测仍须保证该默认路径可解析。

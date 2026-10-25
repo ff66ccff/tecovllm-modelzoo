@@ -1,0 +1,22 @@
+{
+  "current": "/root/tmpwork/fix-20261024/models/runs/pr5-one-serve-gate-20261025/model-gate.json",
+  "frozen": "/root/tmpwork/fix-20261024/models/runs/pr5-steady-20261024/model-gate.json",
+  "current_sha256": "a1350303041cf71eb56974397dfd2d808c4d7ff4ab3cfb373aa5c4be286df783",
+  "frozen_sha256": "3b24bf6202bb3b510b3550a8e9f68d1978d533a6124486f01fc1417aa0ec884f",
+  "prompt_identical": true,
+  "greedy": true,
+  "rows": [
+    {
+      "index": 0,
+      "tokens": 32,
+      "frozen_token_ids_identical": true
+    },
+    {
+      "index": 1,
+      "tokens": 32,
+      "frozen_token_ids_identical": true
+    }
+  ],
+  "passed": true,
+  "performance_claim": false
+}

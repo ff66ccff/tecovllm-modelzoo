@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "pr": 5,
+  "mode": "gate",
+  "tag": "pr5-one-serve-gate-20261025",
+  "clean_container": false,
+  "pid": 677429,
+  "startup_seconds": 60.0335680230055,
+  "exit_code": 0,
+  "wall_seconds": 68.23590938304551,
+  "protected_scripts_unchanged": true
+}

@@ -1,0 +1,22 @@
+{
+  "kind": "Read-only source snapshot after completed gate, not an instrumented per-forward trace",
+  "remote_pr_root": "/root/tmpwork/fix-20261024/models/pr5",
+  "files": {
+    "model_adaptations/HyMT2SCUdoudui/run.sh": "77aa16e6e420899b5752584635912ffd18ea95327dab2e2f89473ae349447dcd",
+    "model_adaptations/SCUdoudui/run.sh": "de2661da5b7731cfadd870fd44c94cf4a0f2dda7136ecb496c9e658da4a18b8f",
+    "model_adaptations/HyMT2SCUdoudui/runtime/custom_ops/__init__.py": "d6815bccd514d03fd38bf2eb1c7d4eeb0c96fae100aad29c4954c7d4a53f3dc9",
+    "model_adaptations/HyMT2SCUdoudui/runtime/custom_ops/diagnostic_shapes.py": "b3cfb56ee45b33d0db1830352fdd00feac15c8f0a6218c3c6359b61c478936c1",
+    "model_adaptations/HyMT2SCUdoudui/runtime/custom_ops/hy_mt2/__init__.py": "4dc7c4138c0c4f94074feeda365315117fb2a0608be09082fb0cf3d6da221e3b",
+    "model_adaptations/HyMT2SCUdoudui/runtime/custom_ops/hy_mt2/linear_stream.py": "7385113cb63ef93dc365302918b94ef1e3c8511e4874c248e6e2bec7e21e3f3c",
+    "model_adaptations/HyMT2SCUdoudui/runtime/custom_ops/hy_mt2/rmsnorm_fused.py": "8458b210d25aa83c48e89417cbf07c1cf8266073556b0489f25963377328684d",
+    "model_adaptations/HyMT2SCUdoudui/runtime/custom_ops/hy_mt2/rotary_fused.py": "703c2ddd872216b2e1b44ceceea7c86fca2f90e89b168d1fcda5ef662fe39f1b",
+    "model_adaptations/HyMT2SCUdoudui/runtime/custom_ops/hy_mt2/swiglu_fused.py": "db4dcaddbd31cde40fec611dad66cfe5b6188a917143b501c5c616b85019e062",
+    "model_adaptations/HyMT2SCUdoudui/runtime/custom_ops/hy_mt2/test_rmsnorm_fused.py": "bd411c2049fee9ecb79fcb7892090248bf1176b189acb7ae1ffd47756f3e9b49",
+    "model_adaptations/HyMT2SCUdoudui/runtime/custom_ops/hy_mt2/test_swiglu_fused.py": "09f0f632878fb35ab586a7271fcd7c6c691e04add7d14eac598079be64087dd7",
+    "model_adaptations/HyMT2SCUdoudui/runtime/custom_ops/hy_mt2/vllm_attention.py": "52887849488b0b64fbc9cf78aade256b287f15cbc5b5043f538a92ed0ae472c6",
+    "model_adaptations/HyMT2SCUdoudui/runtime/custom_ops/hy_mt2/vllm_rms_norm.py": "688dae19b34811bff6ff38ab69eed8182e3b7fd48c5bb22e7278e1c78b1c0d65",
+    "model_adaptations/HyMT2SCUdoudui/runtime/custom_ops/hy_mt2/vllm_swiglu.py": "94e8e64d5d5a643255f29c1f705909b999b79dc761836d7671f816df9096cb75",
+    "model_adaptations/HyMT2SCUdoudui/runtime/custom_ops/ops_provenance.py": "eec2d5cfde2824b12d523cf7938ddf9ef8f88ecb1135379665d5cf96417cca4c",
+    "model_adaptations/HyMT2SCUdoudui/runtime/overlay/sitecustomize.py": "def9927faa0c468ce586f6675a3b65ac214ce36d2e66c1714f0293475da03a77"
+  }
+}

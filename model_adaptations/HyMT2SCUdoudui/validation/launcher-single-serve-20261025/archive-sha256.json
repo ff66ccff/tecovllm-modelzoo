@@ -1,0 +1,11 @@
+{
+  "core-extension-provenance.json": "6278b3183768a2e5411cecc6a69b81a9ae4052664f1d11ddecf83f674b572797",
+  "frozen-baseline-row0.json": "a2fdf76f5c00b77dbd9400215027ea20f3fd8584ff352de71806507af071cb61",
+  "frozen-comparison.json": "4a1b95d178c2cf068139e6a2d4ce66954856aa24a44d933f67ceb430a2fa8770",
+  "model-gate.json": "a1350303041cf71eb56974397dfd2d808c4d7ff4ab3cfb373aa5c4be286df783",
+  "protected-after.json": "caa01c15f58bd9eeb2d224f452aece06c6b2e852b353443e5d27f8add93a1614",
+  "protected-before.json": "caa01c15f58bd9eeb2d224f452aece06c6b2e852b353443e5d27f8add93a1614",
+  "result.json": "f9774edd9015f42d71ed3cdab7ace905b88342067c096a4fa32e5d036153eae1",
+  "run-configuration.json": "080d49785d53678ba61a999db12519a50c6e6204d661b63d2881d4f5a95d6bad",
+  "runtime-source-identity.json": "b788352b767eb7cb59f7e72c9650664a38af709f3d98723f894b604623d8146b"
+}

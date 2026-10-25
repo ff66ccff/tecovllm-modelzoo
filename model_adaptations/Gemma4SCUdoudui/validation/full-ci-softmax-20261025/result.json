@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "pr": 3,
+  "mode": "ci",
+  "tag": "pr3-ci-softmax-out-20261025",
+  "clean_container": false,
+  "pid": 679552,
+  "exit_code": 0,
+  "wall_seconds": 10542.848522973014,
+  "protected_scripts_unchanged": true
+}

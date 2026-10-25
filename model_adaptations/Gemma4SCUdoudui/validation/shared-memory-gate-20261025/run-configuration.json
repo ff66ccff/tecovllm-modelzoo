@@ -1,0 +1,20 @@
+{
+  "pr": 3,
+  "mode": "gate",
+  "served_model_name": "gemma-4-12B-it",
+  "port": 8003,
+  "visible_devices": "0,1",
+  "ops_install": "/root/tmpwork/fix-20261024/team/src/install",
+  "public": "/root/tmpwork/fix-20261024/models/pr3/model_adaptations/Gemma4SCUdoudui",
+  "entry": "/root/tmpwork/fix-20261024/models/pr3/model_adaptations/SCUdoudui/run.sh",
+  "source_manifest": {
+    "schema": 1,
+    "source_commit": "db1597e1265a5fc3e24207b793c9d1dd94327a24",
+    "core_sha256": "531e0caf206a3c580e03f87965d067e44c0d88f8740a06a3d20abd88377574dc",
+    "extension_sha256": "82aa5455938789bc0009f85a947edfa271918a9d0b115866ad7f70bb57fbbf41",
+    "built_root": "/root/tmpwork/fix-20261024/team/src",
+    "verified_at": "2026-10-24T06:44:36Z",
+    "note": "Team integration bundle; core and extension loaded from this install tree during focused tests."
+  },
+  "clean_container": false
+}

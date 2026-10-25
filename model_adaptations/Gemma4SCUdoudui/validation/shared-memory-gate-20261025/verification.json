@@ -1,0 +1,23 @@
+{
+  "passed": true,
+  "start_time": 1792915052.6629446,
+  "performance_claim": false,
+  "tag": "pr3-shared-memory-gate-20261025",
+  "source_sha256": "ac2a3b35d264110b87de2c5c5a6c1b33bb8a985c88d2ab79dd8a42545b86664d",
+  "frozen_token_ids_identical": true,
+  "memory": {
+    "command": [
+      "teco-smi",
+      "-q",
+      "-d",
+      "MEMORY,PIDS"
+    ],
+    "valid_samples": 46,
+    "raw_sha256": "2434c2687762ec6a6abbd44923e71caedc25956f24e92d9d740af063ba9dcc8d",
+    "maximum_sampled_card_used_vendor_MB": 28456,
+    "maximum_sampled_process_used_vendor_MB": 14228,
+    "scope": "Native vendor-reported sampled peak during this shared-entry startup and greedy32 gate only; not allocator high-water mark or complete CI peak",
+    "original_ci_query": "--query-device=memory.used returned empty output; no peak inferred from those old samples"
+  },
+  "finish_time": 1792915205.4161837
+}

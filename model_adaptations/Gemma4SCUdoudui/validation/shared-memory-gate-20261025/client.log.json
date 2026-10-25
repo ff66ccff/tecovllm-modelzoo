@@ -1,0 +1,6 @@
+{
+  "format": "Verbatim UTF-8 bytes encoded as JSON string; decode raw_utf8 to restore",
+  "sha256": "601069736671036eb333e7ca087fee8a8aff2ec01be63fc58230023320b0036e",
+  "original_filename": "client.log",
+  "raw_utf8": "{\"index\": 0, \"seconds\": 7.774877056945115, \"tokens\": 32, \"same\": true}\n{\"index\": 1, \"seconds\": 7.69195993989706, \"tokens\": 32, \"same\": true}\nMODEL_GATE_PASSED\n"
+}

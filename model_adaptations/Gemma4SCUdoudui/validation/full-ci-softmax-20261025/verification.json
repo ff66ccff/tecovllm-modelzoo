@@ -1,0 +1,84 @@
+{
+  "passed": true,
+  "clean_container": false,
+  "performance_claim": false,
+  "result": {
+    "passed": true,
+    "pr": 3,
+    "mode": "ci",
+    "tag": "pr3-ci-softmax-out-20261025",
+    "clean_container": false,
+    "pid": 679552,
+    "exit_code": 0,
+    "wall_seconds": 10542.848522973014,
+    "protected_scripts_unchanged": true
+  },
+  "protected_scripts_unchanged": true,
+  "runtime_matches": true,
+  "parser_sha256": "de1a6769b2660fb692e9eb3677708f446a6b032ba988efe334f16d328bcaf66c",
+  "precision_configuration": {
+    "dataset": "mmlu_pro",
+    "subset": "computer science",
+    "limit": 200,
+    "eval_batch_size": 8,
+    "do_sample": true,
+    "temperature": 1.0,
+    "max_tokens": 1024,
+    "scope": "Original protected prec.sh, distinct from greedy32 gate"
+  },
+  "installed_artifacts_after_ci": {
+    "core_sha256": "531e0caf206a3c580e03f87965d067e44c0d88f8740a06a3d20abd88377574dc",
+    "extension_sha256": "82aa5455938789bc0009f85a947edfa271918a9d0b115866ad7f70bb57fbbf41"
+  },
+  "precision_directory": "/root/tmpwork/fix-20261024/models/pr3/tools/ci_pipline/prec_logs/gemma-4-12B-it_20261025_050405",
+  "speed_directory": "/root/tmpwork/fix-20261024/models/pr3/tools/ci_pipline/speed_logs/gemma-4-12B-it_20261025_072813",
+  "precision": {
+    "mmlu_pro": 0.835
+  },
+  "performance": {
+    "T1_2K_b1": {
+      "ttft_ms": 3239.39,
+      "tpot_ms": 232.12
+    },
+    "T2_4K_b1": {
+      "ttft_ms": 7112.15,
+      "tpot_ms": 233.12
+    },
+    "T3_8K_b1": {
+      "ttft_ms": 15107.93,
+      "tpot_ms": 235.37
+    },
+    "T4_16K_b1": {
+      "ttft_ms": 31986.31,
+      "tpot_ms": 260.94
+    }
+  },
+  "completed_precision_questions": 200,
+  "raw_total_success_failed": {
+    "warmup": [
+      1,
+      1,
+      0
+    ],
+    "T1_2K_b1": [
+      10,
+      10,
+      0
+    ],
+    "T2_4K_b1": [
+      10,
+      10,
+      0
+    ],
+    "T3_8K_b1": [
+      10,
+      10,
+      0
+    ],
+    "T4_16K_b1": [
+      10,
+      10,
+      0
+    ]
+  }
+}

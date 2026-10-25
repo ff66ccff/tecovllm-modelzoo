@@ -224,9 +224,10 @@ bash model_adaptations/Gemma4SCUdoudui/run.sh
 | `<模型路径>` | `$GEMMA_PATH`（默认 `$MODEL_ROOT/google/gemma-4-12B-it`） | 只读引用预置权重 |
 | `--served-model-name` | `gemma-4-12B-it` | 官方 CI 支持的模型名 |
 | `--tensor-parallel-size` | `2`（`GEMMA_TP_SIZE`） | 该 checkpoint 需 TP2 才能放进单卡显存 |
-| `--gpu-memory-utilization` | `0.92`（`GEMMA_UTIL`） | |
+| `--gpu-memory-utilization` | `0.90`（`GEMMA_UTIL`） | 当前交付默认值；历史 0.92 测试按其日期保留 |
 | `--max-model-len` | `16640`（`GEMMA_MAX_MODEL_LEN`） | 覆盖官方**固定性能用例** T1 2048 / T2 4096 / T3 8192 / T4 16384（各 +100 输出）。`4352` 会让 T3/T4 被服务端 **400 拒绝**，而 `run_ci.py::parse_performance` 要求每例 `Failed==0`（否则 CI FAILED） |
 | `--max-num-batched-tokens` | `512`（`GEMMA_MAX_BATCHED_TOKENS`） | |
+| `--max-num-seqs` | `8`（`GEMMA_MAX_NUM_SEQS`） | 与当前脚本默认值一致 |
 | `--trust-remote-code` | 开 | 需要 checkpoint 自带实现 |
 | `--no-enable-prefix-caching` | 开 | 官方 CI 强制要求 |
 | `--enable-chunked-prefill` | 开 | |
@@ -252,8 +253,8 @@ curl -s http://127.0.0.1:8003/v1/completions -H 'Content-Type: application/json'
 
 ## 精度验证
 
-> **组委会标准测例与精度达标线尚未下发，因此当前只能给出"临时回归通过"，不是最终精度结论。**
-> 待测例下发后补正式精度表。
+> **2026-10-25 状态：本页末尾记录当前 runtime 的原版 200 题 MMLU-Pro 与四档速度完整本地 CI；维护方对应 head 的官方 CI 与干净容器结果仍需单独确认。**
+> 下表及其 selected-D512 记录为原日期的回归证据，不能替代本页末尾当前 runtime 的完整本地结果。
 
 | 项目 | 口径 | 结果 | 证据 |
 |------|------|------|------|
@@ -269,10 +270,10 @@ curl -s http://127.0.0.1:8003/v1/completions -H 'Content-Type: application/json'
 与 evaluator 最终回执 `files[".jsonl"]` 记录逐字相同）。**该次运行是 selected-D512 档（设了 `GEMMA_D512_*`）**，
 与组委会 CI 的默认档不同；**它不是组委会标准测例**，故本表不列分数、也不作为精度结论（**临时回归、非 CP2**）。
 
-**未执行/未验证**：组委会标准测例、多模态输入、当前 owner CI。
+**当前边界**：多模态输入、当前 head 的维护方官方 CI 与干净容器未由本地结果认证。
 **T3/T4（8K/16K）容量与边界已于 2026-10-13 在交付默认档实测**（每例 `Total==Success==10`、`Failed==0`、completion 恰 100；
 16640 接受、16641 = 400）—— 详见本文件「性能验证」段的容量档收据与 `docs/competition/c22-gemma.md` §八；
-**精度**（mmlu_pro 等）仍未在默认档做满量验证。
+该段属于 2026-10-13 的历史容量窗口；2026-10-25 当前默认档完整本地 MMLU-Pro 结果见页末。
 
 ## 性能验证
 
@@ -319,7 +320,7 @@ curl -s http://127.0.0.1:8003/v1/completions -H 'Content-Type: application/json'
 
 ### 已知限制
 
-1. 组委会标准测例与精度达标线**尚未下发**，CP2 未勾选，本文件的精度部分是**临时回归通过**。
+1. 当前 runtime 的原版 200 题 MMLU-Pro 与四档速度完整本地 CI 结果见页末；维护方官方 CI 与干净容器未由此认证，不据此自动完成全部交付检查点。
 2. 官方 CI 脚本 `tools/ci_pipline/run_ci.py` 用 `re.search(r"vllm\s+serve\s+(\S+)")` 从 `run.sh`
    **字面**读取模型路径（`run_ci.py:50`），并作为 `speed.sh --tokenizer-path`（`run_ci.py:196`）。
    `run.sh` 的唯一可执行 serve 命令使用裸字面默认路径供解析器读取；初始化 shim 在 exec 前把模型参数改写为 `$GEMMA_PATH`，因此 `MODEL_ROOT` / `GEMMA_PATH` 覆盖仍生效。手动迁址不改变官方解析器看到的 tokenizer 路径，官方评测时须让默认字面路径可解析。
@@ -336,8 +337,8 @@ curl -s http://127.0.0.1:8003/v1/completions -H 'Content-Type: application/json'
    `runtime/custom_ops/`，**根副本不执行**。此后一切指向仓库根 `custom_ops/**` 的引用都不代表交付行为。
 4. 多模态（vision/audio）为 No-Go：该 checkpoint 只有 `vision_embedder.*` 而没有与 vLLM
    `vision_tower.*` 对齐的塔权重，overlay 无法补出权重。
-5. 当前默认档的 TTFT/TPOT 未重测；T3/T4、graph capture、当前 owner CI 未执行。
-6. `run.sh` 的模型路径参数是 `"$GEMMA_PATH"`，但官方解析器需要字面量：若权重迁移，请让
+5. 当前默认档 TTFT/TPOT 与 T3/T4 已在本次完整本地 CI 测得，原值见页末；graph capture、当前 head 维护方官方 CI 和干净容器结果未由此建立。
+6. 唯一 serve 命令以默认裸字面路径供官方解析器读取，初始化 shim 将实际权重参数绑定为 `$GEMMA_PATH`；若迁址，请让
    `/gpfs/model` 可解析（见第 2 条）。
 7. **许可证口径**：本队对**本交付目录**的改动以 **Apache-2.0** 提交；仓库根 `LICENSE` 是**上游继承的 BSD-3**
    （blob 与上游同值，**不改**）。该差异**待向组委会确认**。
@@ -444,7 +445,7 @@ SDAA shape 的原始比较结果，以及本模型独立的 32-token 贪婪稳�
 原始速度日志按 UTF-8 字符串存入同目录的 `*.log.json`，保留原始字节 SHA256，
 解码 `raw_utf8` 即可逐字节还原，避免终端进度条空白影响源码检查。
 该预检未跑 200 题精度，**不等同于完整 CI 通过或干净容器复现**。
-新的完整 CI 使用原版 200 题与四档速度测试，结果另行登记。
+新的完整 CI 已使用原版 200 题与四档速度测试完成，结果见下节。
 serve 参数、只读权重和已验收 core/extension 均未更改。
 
 复核微测试时，先从修复前提交导出不可变基线，再在厂商环境执行：
@@ -465,5 +466,35 @@ git show 5ef46901612efe5e77f0ab4bbc53c92907374501:model_adaptations/Gemma4SCUdou
 解析器 SHA256；整个测试将 Python 能力探针与最终 exec 换为桩，不导入设备栈。
 
 这些结果只验证启动参数与解析契约，未运行模型 smoke、完整官方 CI 或性能测试。
-完整 CI 正在用当前新入口运行，结果另行登记，不能用本收据替代。手动环境覆盖不改变官方解析器
+当前新入口的完整本地 CI 已完成，结果见下一节；不能用本条 host 收据替代该结果。手动环境覆盖不改变官方解析器
 读取的默认 tokenizer 路径；官方评测仍须保证该默认路径可解析。
+
+## 2026-10-25 完整本地 CI 结果
+
+原版 `run_ci.py` 经模型专属 `scripts/run_ci.sh` 启动（只为评测客户端启用
+tokenizer 兼容 overlay）：200/200 题 MMLU-Pro 的 computer science 子集 = **0.835**，基线 0.83、
+区间 0.73–0.93，精度通过；四档速度各 10 成功0失败，原版结果解析器通过。
+整体退出 **0**，墙钟 **10542.849 秒**。保护脚本前后 SHA 相同，runtime SHA256
+`ac2a3b35d264110b87de2c5c5a6c1b33bb8a985c88d2ab79dd8a42545b86664d`；
+core/extension 仍为已验收的 531e0caf…/82aa5455…，末尾实际字节哈希再次核对。
+证据见 `validation/full-ci-softmax-20261025/`。这是当前源码的完整**本地** CI，
+不冒称维护方官方 CI 或干净容器通过；更早失败的整轮记录不改称成功。
+
+以下按原版解析器取 1% 列，单位 ms；不是总墙钟除以请求数，也不是速度 A/B：
+
+| 原始用例 | TTFT | TPOT | Total / Success / Failed |
+| --- | ---: | ---: | --- |
+| T1_2K_b1 | 3239.39 | 232.12 | 10 / 10 / 0 |
+| T2_4K_b1 | 7112.15 | 233.12 | 10 / 10 / 0 |
+| T3_8K_b1 | 15107.93 | 235.37 | 10 / 10 / 0 |
+| T4_16K_b1 | 31986.31 | 260.94 | 10 / 10 / 0 |
+
+共享入口随后独立完成固定 prompt 2×32-token 贪婪生成，与本模型冻结 ID 相同。
+原监视器的 `--query-device=memory.used` 在本机 teco-smi 1.15.0 返回空文本，
+故不从那些空输出推断完整 CI 峰值。后继共享入口门禁采用原生
+`teco-smi -q -d MEMORY,PIDS`，有效采样 46 份，
+设备级采样峰值 **28456 MB**，
+厂商报告的单进程采样峰值 **14228 MB**。
+这只覆盖该次共享入口启动与 greedy32 窗口，是设备采样量，非分配器高水位或完整 CI
+峰值；原始采样和收据见 `validation/shared-memory-gate-20261025/`。
+本次不主张新的速度收益、参数提速或新增 C++ 算子得分。

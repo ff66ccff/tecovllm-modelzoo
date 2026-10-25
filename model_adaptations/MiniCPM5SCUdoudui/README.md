@@ -113,7 +113,7 @@ bash "$b/run.sh"
 - 默认 host `0.0.0.0`、port `8000`；可用 `MINICPM_HOST` / `MINICPM_PORT` 覆盖（启动 shim 会把 host/port 替换为这两个变量的值）；
 - `MODEL_ROOT` / `MINICPM5_MODEL` 决定模型路径（启动命令使用变量，已做覆盖验证）；
 - 官方评测入口：`/home/py312/bin/python tools/ci_pipline/run_ci.py "$b/run.sh"`；
-- **CI 解析器约束**：`tools/ci_pipline/run_ci.py:parse_run_sh()` 会剥掉注释行后取**第一个** `vllm serve <token>` 作为模型路径（并作为 `speed.sh` 的 `--tokenizer-path`）。因此 `run.sh` 里保留一个**不可达**的裸字面量块 `if false; then vllm serve /gpfs/model/...; fi`，真正执行的是 `vllm serve "$MODEL_PATH"`（本地 `vllm()` shim 在 exec 前把 argv[1] 改写成 `$MODEL_PATH`）。不要把那行改成带引号的变量，也不要把它挪到注释里。
+- **CI 解析器约束**：`parse_run_sh()` 读取唯一可执行 serve 命令中的裸字面默认路径，作为 `speed.sh --tokenizer-path`。初始化 `vllm()` shim 在 exec 前绑定实际模型路径与 host/port，故环境覆盖仍生效。脚本仅保留这一条命令；官方评测仍须让默认字面 tokenizer 路径可解析。
 
 ## 精度验证
 

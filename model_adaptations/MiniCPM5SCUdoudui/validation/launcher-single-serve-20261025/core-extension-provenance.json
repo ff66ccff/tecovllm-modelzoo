@@ -1,0 +1,37 @@
+{
+  "serve_log": "/root/tmpwork/fix-20261024/models/runs/pr4-one-serve-gate-20261025/serve.log",
+  "serve_log_sha256": "a4cba94d079faf3e95085aa9438a0a31424e26ec7c4bd8442fa8c498adfeec2a",
+  "raw_startup_lines": [
+    "SCUD_OPS_PROVENANCE {\"core\": \"/root/tmpwork/fix-20261024/team/src/install/tecoops/libteco_ops.so\", \"core_sha256\": \"531e0caf206a3c580e03f87965d067e44c0d88f8740a06a3d20abd88377574dc\", \"extension\": \"/root/tmpwork/fix-20261024/team/src/install/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so\", \"extension_sha256\": \"82aa5455938789bc0009f85a947edfa271918a9d0b115866ad7f70bb57fbbf41\", \"manifest\": \"/root/tmpwork/fix-20261024/models/pr4/model_adaptations/MiniCPM5SCUdoudui/validation/ops-artifacts.json\", \"source_commit\": \"db1597e1265a5fc3e24207b793c9d1dd94327a24\"}",
+    "SCUD_OPS_PROVENANCE {\"core\": \"/root/tmpwork/fix-20261024/team/src/install/tecoops/libteco_ops.so\", \"core_sha256\": \"531e0caf206a3c580e03f87965d067e44c0d88f8740a06a3d20abd88377574dc\", \"extension\": \"/root/tmpwork/fix-20261024/team/src/install/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so\", \"extension_sha256\": \"82aa5455938789bc0009f85a947edfa271918a9d0b115866ad7f70bb57fbbf41\", \"manifest\": \"/root/tmpwork/fix-20261024/models/pr4/model_adaptations/MiniCPM5SCUdoudui/validation/ops-artifacts.json\", \"source_commit\": \"db1597e1265a5fc3e24207b793c9d1dd94327a24\"}",
+    "SCUD_OPS_PROVENANCE {\"core\": \"/root/tmpwork/fix-20261024/team/src/install/tecoops/libteco_ops.so\", \"core_sha256\": \"531e0caf206a3c580e03f87965d067e44c0d88f8740a06a3d20abd88377574dc\", \"extension\": \"/root/tmpwork/fix-20261024/team/src/install/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so\", \"extension_sha256\": \"82aa5455938789bc0009f85a947edfa271918a9d0b115866ad7f70bb57fbbf41\", \"manifest\": \"/root/tmpwork/fix-20261024/models/pr4/model_adaptations/MiniCPM5SCUdoudui/validation/ops-artifacts.json\", \"source_commit\": \"db1597e1265a5fc3e24207b793c9d1dd94327a24\"}"
+  ],
+  "startup_records": [
+    {
+      "core": "/root/tmpwork/fix-20261024/team/src/install/tecoops/libteco_ops.so",
+      "core_sha256": "531e0caf206a3c580e03f87965d067e44c0d88f8740a06a3d20abd88377574dc",
+      "extension": "/root/tmpwork/fix-20261024/team/src/install/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+      "extension_sha256": "82aa5455938789bc0009f85a947edfa271918a9d0b115866ad7f70bb57fbbf41",
+      "manifest": "/root/tmpwork/fix-20261024/models/pr4/model_adaptations/MiniCPM5SCUdoudui/validation/ops-artifacts.json",
+      "source_commit": "db1597e1265a5fc3e24207b793c9d1dd94327a24"
+    },
+    {
+      "core": "/root/tmpwork/fix-20261024/team/src/install/tecoops/libteco_ops.so",
+      "core_sha256": "531e0caf206a3c580e03f87965d067e44c0d88f8740a06a3d20abd88377574dc",
+      "extension": "/root/tmpwork/fix-20261024/team/src/install/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+      "extension_sha256": "82aa5455938789bc0009f85a947edfa271918a9d0b115866ad7f70bb57fbbf41",
+      "manifest": "/root/tmpwork/fix-20261024/models/pr4/model_adaptations/MiniCPM5SCUdoudui/validation/ops-artifacts.json",
+      "source_commit": "db1597e1265a5fc3e24207b793c9d1dd94327a24"
+    },
+    {
+      "core": "/root/tmpwork/fix-20261024/team/src/install/tecoops/libteco_ops.so",
+      "core_sha256": "531e0caf206a3c580e03f87965d067e44c0d88f8740a06a3d20abd88377574dc",
+      "extension": "/root/tmpwork/fix-20261024/team/src/install/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+      "extension_sha256": "82aa5455938789bc0009f85a947edfa271918a9d0b115866ad7f70bb57fbbf41",
+      "manifest": "/root/tmpwork/fix-20261024/models/pr4/model_adaptations/MiniCPM5SCUdoudui/validation/ops-artifacts.json",
+      "source_commit": "db1597e1265a5fc3e24207b793c9d1dd94327a24"
+    }
+  ],
+  "installed_bytes_still_match_startup_hashes": true,
+  "scope": "Startup provenance guard plus post-run installed-byte hash verification. Not a new kernel benchmark."
+}

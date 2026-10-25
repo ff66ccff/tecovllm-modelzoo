@@ -1,0 +1,26 @@
+{
+  "kind": "Read-only source snapshot after completed gate, not an instrumented per-forward trace",
+  "remote_pr_root": "/root/tmpwork/fix-20261024/models/pr4",
+  "files": {
+    "model_adaptations/MiniCPM5SCUdoudui/run.sh": "a70c56b8963f3c327af856e995799adb0e9870edc264b81f5ff5869323804308",
+    "model_adaptations/SCUdoudui/run.sh": "3a30f9a4bbe3fda29dcccdb30afa92897d7ddb0a9c93d9651530c241c2cde96d",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/__init__.py": "dd131e04e1d2d7ee1cc337108664abce72921fa3fa22aa035680b6f847698d63",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/block_attention/__init__.py": "23e9948acd5c9190fb61ba6469f7ee62cffa9d2bfc4e8960e166444ea11f285c",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/block_attention/op.py": "d0e2ff3f9679cf59038cb5b46883c72bd2c9eef116d0ca62be0de3cc0197835c",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/compile_safe.py": "82e54df549549706ae712892240c8abfcadb7029aed5aa515219e68d772b7b9e",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/diagnostic_shapes.py": "b3cfb56ee45b33d0db1830352fdd00feac15c8f0a6218c3c6359b61c478936c1",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/flash_attn_varlen/__init__.py": "9c8ea8f58281023c9807d207da67be15511e289eeb1bbf29511b3a34328f1935",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/flash_attn_varlen/op.py": "81d912edb6519c0de28c9e50637f53bfe04556bb5e2869c15505c0b0ad273c3d",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/ops_provenance.py": "eec2d5cfde2824b12d523cf7938ddf9ef8f88ecb1135379665d5cf96417cca4c",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/receipt.py": "a9fe01d4b571eb219289ba618e23fb8ccf69d3b9be9d6a4ee304421f1b35b0a9",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/reshape_and_cache/__init__.py": "ca4deb4ff9ccdfa708a1daec6d69c7fded3bfe1910010535942cabc58618885b",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/reshape_and_cache/op.py": "9df4535a4f270670bc600cc6da4cf2544a3783f97abfa1af9786435cf28fe70d",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/rms_norm/__init__.py": "a9e2b7aa6e79b817410e6d2820d818f47bc0b9fb90ed672757d5bfe64a7c984d",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/rms_norm/op.py": "5ab4a5b555bbca49783dfbb6eee76f328758505ede5140bd9973dd451571f7e0",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/rotary_embedding/__init__.py": "2047959d178924f820a790a3f727e8a048536ddc6596432d21f61ec1a6d582cd",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/rotary_embedding/op.py": "396406b76bf9eae2a8c2187e07187c80f8b73cef11736216d97376499e6c87b5",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/silu_mul/__init__.py": "26b6b0e397049dce8397b6a617a5875be104c16761c38f876e14b047c26c4280",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/custom_ops/silu_mul/op.py": "8c544edea7311e6dc2728a945b49ede3096ce6f2a54be99188f5c609beeb3869",
+    "model_adaptations/MiniCPM5SCUdoudui/runtime/overlay/sitecustomize.py": "6a7ab4b892512c34f7cfdb61ab4c64dbc5836c1778461cf079a165b81f2882a1"
+  }
+}

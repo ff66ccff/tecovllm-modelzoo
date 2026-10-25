@@ -322,9 +322,7 @@ curl -s http://127.0.0.1:8003/v1/completions -H 'Content-Type: application/json'
 1. 组委会标准测例与精度达标线**尚未下发**，CP2 未勾选，本文件的精度部分是**临时回归通过**。
 2. 官方 CI 脚本 `tools/ci_pipline/run_ci.py` 用 `re.search(r"vllm\s+serve\s+(\S+)")` 从 `run.sh`
    **字面**读取模型路径（`run_ci.py:50`），并作为 `speed.sh --tokenizer-path`（`run_ci.py:196`）。
-   因此 `run.sh` 中保留了一个**不执行**的字面默认路径（`if false; then vllm serve /gpfs/model/...; fi`）：
-   若把该位置写成变量，解析器会抓到字符串 `"$GEMMA_PATH"` 而使官方性能步骤失败。权重迁址时请让该
-   字面路径可解析。
+   `run.sh` 的唯一可执行 serve 命令使用裸字面默认路径供解析器读取；初始化 shim 在 exec 前把模型参数改写为 `$GEMMA_PATH`，因此 `MODEL_ROOT` / `GEMMA_PATH` 覆盖仍生效。手动迁址不改变官方解析器看到的 tokenizer 路径，官方评测时须让默认字面路径可解析。
 3. D512 global decode 的官方隔离 kernel 为可选组件（`GEMMA_D512_OFFICIAL_EXTENSION`），
    默认走 math。**滑动窗口在默认档由 overlay 的 math 路径施加**（prefill 与 decode 都施加，
    见**交付实际执行的** `runtime/custom_ops/prefill_attention/op.py` 的

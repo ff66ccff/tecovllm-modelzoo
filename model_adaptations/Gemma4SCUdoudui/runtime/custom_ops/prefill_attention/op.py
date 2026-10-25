@@ -188,6 +188,18 @@ def sdpa_prefill_attention(
     return out
 
 
+def _softmax_fp32_workspace(scores):
+    """Reuse one owned FP32 inference buffer without changing softmax shape.
+
+    The out= variant writes probabilities over the temporary FP32 logits;
+    caller-owned Q/K/V and the FP16 scores are not modified. This removes a
+    second full FP32 allocation while preserving the QK/softmax/PV shapes.
+    """
+    workspace = scores.to(torch.float32)
+    torch.softmax(workspace, dim=-1, out=workspace)
+    return workspace.to(scores.dtype)
+
+
 def _attend_math(q_i, k_i, v_i, causal, scale, enable_gqa, window_size=None):
     """显式 matmul+softmax 注意力，不经过厂商 flash SDP，支持任意 head_dim。"""
     if enable_gqa and q_i.shape[1] != k_i.shape[1] and k_i.shape[1] != 1:
@@ -201,7 +213,7 @@ def _attend_math(q_i, k_i, v_i, causal, scale, enable_gqa, window_size=None):
     # Decode/global calls have no mask after their KV range is normalized by the
     # caller.  Avoid constructing a full [Lq,Lk] boolean tensor on that path.
     if not causal and window_size is None:
-        probs = torch.softmax(scores.to(torch.float32), dim=-1).to(q_i.dtype)
+        probs = _softmax_fp32_workspace(scores)
         return torch.matmul(probs, v_i)
     # Right-aligned causal positions: for chunked/decode Q, the last Q token
     # corresponds to KV position ``lk - 1``.  This also gives the exact
@@ -214,7 +226,7 @@ def _attend_math(q_i, k_i, v_i, causal, scale, enable_gqa, window_size=None):
     if window_size is not None:
         mask |= k_pos.unsqueeze(0) < (q_pos.unsqueeze(1) - int(window_size) + 1)
     scores = scores.masked_fill(mask.unsqueeze(0).unsqueeze(0), float("-inf"))
-    probs = torch.softmax(scores.to(torch.float32), dim=-1).to(q_i.dtype)
+    probs = _softmax_fp32_workspace(scores)
     return torch.matmul(probs, v_i)
 
 

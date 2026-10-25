@@ -1,0 +1,30 @@
+{
+  "passed": true,
+  "performance_claim": false,
+  "clean_container": false,
+  "source_sha256": "ac2a3b35d264110b87de2c5c5a6c1b33bb8a985c88d2ab79dd8a42545b86664d",
+  "service_pid": 673750,
+  "steady_exit_code": 0,
+  "speed_exit_code": 0,
+  "speed_directory": "/root/tmpwork/fix-20261024/models/pr3/tools/ci_pipline/speed_logs/gemma-4-12B-it_20261025_042826",
+  "official_speed_results": {
+    "T1_2K_b1": {
+      "ttft_ms": 3241.91,
+      "tpot_ms": 227.96
+    },
+    "T2_4K_b1": {
+      "ttft_ms": 7129.49,
+      "tpot_ms": 230.42
+    },
+    "T3_8K_b1": {
+      "ttft_ms": 15186.78,
+      "tpot_ms": 234.86
+    },
+    "T4_16K_b1": {
+      "ttft_ms": 32166.9,
+      "tpot_ms": 261.11
+    }
+  },
+  "wall_seconds": 2187.297332843067,
+  "protected_scripts_unchanged": true
+}

@@ -1,0 +1,154 @@
+{
+  "passed": true,
+  "device": "sdaa",
+  "cases": [
+    {
+      "rows": 1,
+      "keys": 33,
+      "dim": 512,
+      "kvheads": 1,
+      "causal": false,
+      "window": null,
+      "bit_mismatches": 0,
+      "base_peak_extra_bytes": 10240,
+      "candidate_peak_extra_bytes": 10240
+    },
+    {
+      "rows": 32,
+      "keys": 63,
+      "dim": 256,
+      "kvheads": 4,
+      "causal": true,
+      "window": 1024,
+      "bit_mismatches": 0,
+      "base_peak_extra_bytes": 714752,
+      "candidate_peak_extra_bytes": 714752
+    },
+    {
+      "rows": 63,
+      "keys": 129,
+      "dim": 256,
+      "kvheads": 4,
+      "causal": true,
+      "window": 1024,
+      "bit_mismatches": 0,
+      "base_peak_extra_bytes": 1717248,
+      "candidate_peak_extra_bytes": 1587200
+    },
+    {
+      "rows": 64,
+      "keys": 65,
+      "dim": 512,
+      "kvheads": 1,
+      "causal": true,
+      "window": null,
+      "bit_mismatches": 0,
+      "base_peak_extra_bytes": 663552,
+      "candidate_peak_extra_bytes": 663552
+    },
+    {
+      "rows": 65,
+      "keys": 129,
+      "dim": 256,
+      "kvheads": 4,
+      "causal": true,
+      "window": 1024,
+      "bit_mismatches": 0,
+      "base_peak_extra_bytes": 1740288,
+      "candidate_peak_extra_bytes": 1606144
+    },
+    {
+      "rows": 127,
+      "keys": 257,
+      "dim": 512,
+      "kvheads": 1,
+      "causal": true,
+      "window": null,
+      "bit_mismatches": 0,
+      "base_peak_extra_bytes": 2647552,
+      "candidate_peak_extra_bytes": 2125312
+    },
+    {
+      "rows": 128,
+      "keys": 257,
+      "dim": 512,
+      "kvheads": 1,
+      "causal": true,
+      "window": null,
+      "bit_mismatches": 0,
+      "base_peak_extra_bytes": 2668544,
+      "candidate_peak_extra_bytes": 2142208
+    },
+    {
+      "rows": 129,
+      "keys": 1057,
+      "dim": 256,
+      "kvheads": 4,
+      "causal": true,
+      "window": 1024,
+      "bit_mismatches": 0,
+      "base_peak_extra_bytes": 19715584,
+      "candidate_peak_extra_bytes": 17533952
+    },
+    {
+      "rows": 257,
+      "keys": 4352,
+      "dim": 512,
+      "kvheads": 1,
+      "causal": true,
+      "window": null,
+      "bit_mismatches": 0,
+      "base_peak_extra_bytes": 90633216,
+      "candidate_peak_extra_bytes": 73716736
+    },
+    {
+      "rows": 512,
+      "keys": 14848,
+      "dim": 512,
+      "kvheads": 1,
+      "causal": true,
+      "window": null,
+      "bit_mismatches": 0,
+      "base_peak_extra_bytes": 615899136,
+      "candidate_peak_extra_bytes": 494264320
+    },
+    {
+      "rows": 512,
+      "keys": 16384,
+      "dim": 512,
+      "kvheads": 1,
+      "causal": true,
+      "window": null,
+      "bit_mismatches": 0,
+      "base_peak_extra_bytes": 679612416,
+      "candidate_peak_extra_bytes": 545394688
+    },
+    {
+      "rows": 512,
+      "keys": 16384,
+      "dim": 512,
+      "kvheads": 1,
+      "causal": false,
+      "window": null,
+      "bit_mismatches": 0,
+      "base_peak_extra_bytes": 671088640,
+      "candidate_peak_extra_bytes": 536870912
+    },
+    {
+      "rows": 512,
+      "keys": 1535,
+      "dim": 256,
+      "kvheads": 4,
+      "causal": true,
+      "window": 1024,
+      "bit_mismatches": 0,
+      "base_peak_extra_bytes": 76250624,
+      "candidate_peak_extra_bytes": 63700480
+    }
+  ],
+  "performance_claim": false,
+  "baseline_sha256": "248a96904bd1331f764574a8fbfdcc0a71266e146e5fde3de9097314e6f148e7",
+  "candidate_sha256": "ac2a3b35d264110b87de2c5c5a6c1b33bb8a985c88d2ab79dd8a42545b86664d",
+  "softmax_calls": 13,
+  "softmax_out_alias_verified": true
+}

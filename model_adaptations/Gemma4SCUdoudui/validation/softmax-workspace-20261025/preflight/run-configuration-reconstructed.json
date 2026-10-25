@@ -1,0 +1,26 @@
+{
+  "scope": "Reconstructed launch configuration from the preserved run_preflight.py and actual service provenance lines. The original preflight runner did not create a run-configuration.json.",
+  "original_launcher": "../run_preflight.py",
+  "original_launcher_sha256": "ace119dedf703cec756170ed84cb8ae493962a588c4430742dca2d0c3b638baf",
+  "interpreter": "/home/py312/bin/python",
+  "visible_devices": "0,1",
+  "served_model_name": "gemma-4-12B-it",
+  "served_port": 8003,
+  "source_runtime_sha256": "ac2a3b35d264110b87de2c5c5a6c1b33bb8a985c88d2ab79dd8a42545b86664d",
+  "ops_provenance_from_service": {
+    "core": "/root/tmpwork/fix-20261024/team/src/install/tecoops/libteco_ops.so",
+    "core_sha256": "531e0caf206a3c580e03f87965d067e44c0d88f8740a06a3d20abd88377574dc",
+    "extension": "/root/tmpwork/fix-20261024/team/src/install/tecoops/_torch_ext.cpython-312-loongarch64-linux-gnu.so",
+    "extension_sha256": "82aa5455938789bc0009f85a947edfa271918a9d0b115866ad7f70bb57fbbf41",
+    "manifest": "/root/tmpwork/fix-20261024/models/pr3/model_adaptations/Gemma4SCUdoudui/validation/ops-artifacts.json",
+    "source_commit": "db1597e1265a5fc3e24207b793c9d1dd94327a24"
+  },
+  "sample_counts": {
+    "speed_each_case": 10,
+    "speed_parallel": 1,
+    "official_speed_script_unchanged": true,
+    "greedy_steady_seconds": 300
+  },
+  "clean_container": false,
+  "full_ci_run": false
+}

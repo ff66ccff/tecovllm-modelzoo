@@ -421,3 +421,36 @@ export SCUD_OPS_MANIFEST="$ADAPT/validation/ops-artifacts.json"  # 仅适用于�
 脚本会仅在此诊断档添加 `--enforce-eager`，然后跑固定 prompt 的 32-token 贪婪生成。
 它仅记录真实 SDAA M=1 张量的 shape/stride，不记录权重值；输出仅作 shape 证据，
 不能作性能成绩。正常验证与官方 CI 不设置此变量。
+
+## 2026-10-25：16K softmax 临时显存修复
+
+原提交 `5ef46901612efe5e77f0ab4bbc53c92907374501` 在完整官方 CI 中
+MMLU-Pro 200 题得分 0.83，但 16K 速度档发生 FP32 softmax 分配 OOM，
+因此该次完整 CI **失败**。原始失败与新运行分开归档。
+
+本次仅将既有 math attention 的 FP32 softmax 结果写回其私有 FP32 logits
+缓冲；Q/K/V、QK/softmax/PV 形状、掩码和精度转换顺序保持不变。它是已有路径
+的显存兼容性修复，不计入本队 C++ 算子交付，也不主张性能得分提升。
+曾尝试的 64 行分块 softmax 存在逐位差，已否决，未提交该实现。
+
+`validation/softmax-workspace-20261025/` 保存当前候选源码 SHA、两流各 13 个
+SDAA shape 的原始比较结果，以及本模型独立的 32-token 贪婪稳态结果：
+41 请求、306.95 秒，全部 token IDs 与修复前冻结输出一致。
+13 个 shape 全部 FP16 逐位一致；16K 因果探针的额外峰值分配从
+679612416 降到 545394688 字节（648→520 MiB）。这是分配量测量，非速度成绩。
+
+原版 `speed.sh` 和 `result_analyse.py` 的速度预检通过，四档均按原始
+`--number 10` 完成，保护脚本哈希不变；预检 TTFT/TPOT 原值见收据。
+原始速度日志按 UTF-8 字符串存入同目录的 `*.log.json`，保留原始字节 SHA256，
+解码 `raw_utf8` 即可逐字节还原，避免终端进度条空白影响源码检查。
+该预检未跑 200 题精度，**不等同于完整 CI 通过或干净容器复现**。
+新的完整 CI 使用原版 200 题与四档速度测试，结果另行登记。
+serve 参数、只读权重和已验收 core/extension 均未更改。
+
+复核微测试时，先从修复前提交导出不可变基线，再在厂商环境执行：
+
+```bash
+git show 5ef46901612efe5e77f0ab4bbc53c92907374501:model_adaptations/Gemma4SCUdoudui/runtime/custom_ops/prefill_attention/op.py > /tmp/gemma-prefill-baseline.py
+/home/py312/bin/python model_adaptations/Gemma4SCUdoudui/tests/verify_softmax_workspace.py --baseline /tmp/gemma-prefill-baseline.py --device sdaa --output /tmp/softmax-default.json
+/home/py312/bin/python model_adaptations/Gemma4SCUdoudui/tests/verify_softmax_workspace.py --baseline /tmp/gemma-prefill-baseline.py --device sdaa --non-default-stream --output /tmp/softmax-stream.json
+```

@@ -136,8 +136,8 @@ MODEL_ROOT=/gpfs/model bash model_adaptations/InternVL3_5SCUdoudui/run.sh
 - `--no-enable-chunked-prefill` 是**必需**的：SDAA 上分块 prefill（`1 < q_len < kv_len`）的因果掩码路径会掉 math 回退。
 - 设备可见性由 `SDAA_VISIBLE_DEVICES`（默认 `0,1`）决定；`VLLM_DISABLE_COMPILE_CACHE=1` 避免复用上一次算子绑定产生的图。
 - 覆盖项一律用环境变量（`MODEL_ROOT`、`INTERNVL_MODEL`、`INTERNVL_HOST`、`INTERNVL_PORT`、`INTERNVL_TP_SIZE`、`INTERNVL_UTIL`、`INTERNVL_MAX_MODEL_LEN`、`PYTHON`），不改脚本内参数。
-- **官方 CI 解析器契约**：`tools/ci_pipline/run_ci.py::parse_run_sh()` 会剥掉 `#` 注释行后取**文件里第一个** `vllm serve <路径>` 的**裸字面量**当 `model_path`（`speed.sh` 还拿它当 `--tokenizer-path`）。因此 `run.sh` 在真正执行行之前保留了一个**非注释行、不可达**（`if false; then … fi`）的 `vllm serve /gpfs/model/OpenGVLab/InternVL3_5-8B …`，其 `--served-model-name`/`--host`/`--port` 与执行行一致；真正执行的是 `vllm serve "$MODEL_PATH"`，故 `MODEL_ROOT`/`INTERNVL_MODEL` 仍然生效。
-- 路径解析 + CI 契约自检（零卡、不需设备、不复制权重）：`bash model_adaptations/InternVL3_5SCUdoudui/tests/verify_runsh_model_root.sh`。它把解释器换成打印 argv 的桩观测 shim exec 出的最终 `--model`（默认 / `MODEL_ROOT=<别名>` / `INTERNVL_MODEL` 三种），并**直接导入官方 `parse_run_sh`** 断言 `model_path == "/gpfs/model/OpenGVLab/InternVL3_5-8B"` 且 `os.path.exists()` 为真。原先那行 `vllm serve /gpfs/model/...` 的字面量是 shim 改写前的**死文本**（latent/误导性硬编码，行为本就正确），清理见 commit `a5e82ae`（serve 参数逐字节不变）。
+- **CI 解析器约束**：`parse_run_sh()` 读取唯一可执行 serve 命令中的裸字面默认路径，作为 `speed.sh --tokenizer-path`。初始化 `vllm()` shim 在 exec 前绑定实际模型路径与 host/port，故环境覆盖仍生效。脚本仅保留这一条命令；官方评测仍须让默认字面 tokenizer 路径可解析。
+- 路径解析与 CI 契约由真实 Bash argv 截取及官方 `parse_run_sh()` 对比验证；唯一命令的默认字面路径由初始化 shim 改写为环境选择的权重路径，serve 参数不变。
 
 服务就绪后的最简冒烟：
 

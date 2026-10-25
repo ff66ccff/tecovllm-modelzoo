@@ -140,18 +140,10 @@ vllm() {
 echo "[run.sh] model=${MODEL_PATH}" >&2
 echo "[run.sh] MODEL_ROOT=${MODEL_ROOT} INTERNVL_MODEL=${INTERNVL_MODEL:-<unset>}" >&2
 
-# 官方 CI 解析器契约（tools/ci_pipline/run_ci.py::parse_run_sh）：它先剥掉 `#` 注释行，再取
-# **文件里第一个** `vllm serve <路径>` 的裸字面量当 model_path（speed.sh 还会拿它当
-# --tokenizer-path）。所以这里必须保留一个**非注释行、且位置在真正执行行之前**的裸字面量；
-# 该块不可达，只给解析器看，真正执行的是下面用 $MODEL_PATH 的调用（MODEL_ROOT 因此生效）。
-if false; then
-    vllm serve /gpfs/model/OpenGVLab/InternVL3_5-8B \
-        --served-model-name InternVL3_5-8B \
-        --host 0.0.0.0 \
-        --port 8002
-fi
+# The sole executable serve command keeps the literal default path for the official CI parser.
+# The initialization shim binds the actual model path and host/port overrides before exec.
 
-vllm serve "$MODEL_PATH" \
+vllm serve /gpfs/model/OpenGVLab/InternVL3_5-8B \
     --served-model-name InternVL3_5-8B \
     --dtype float16 \
     --tensor-parallel-size "${INTERNVL_TP_SIZE:-2}" \

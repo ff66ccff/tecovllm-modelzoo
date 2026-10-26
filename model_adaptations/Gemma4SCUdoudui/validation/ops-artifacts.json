@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "source_commit": "db1597e1265a5fc3e24207b793c9d1dd94327a24",
-  "core_sha256": "531e0caf206a3c580e03f87965d067e44c0d88f8740a06a3d20abd88377574dc",
-  "extension_sha256": "82aa5455938789bc0009f85a947edfa271918a9d0b115866ad7f70bb57fbbf41",
-  "built_root": "/root/tmpwork/fix-20261024/team/src",
-  "verified_at": "2026-10-24T06:44:36Z",
-  "note": "Team integration bundle; core and extension loaded from this install tree during focused tests."
+  "source_commit": "d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d",
+  "core_sha256": "d43a93e7e42b355643153b425986f660ee4821f0ef5adb5fe946c0f44955b013",
+  "extension_sha256": "79ccee58dcaeeb8c5a7e52816da3d39561bcdc8e9d3ce327e099a3b994ea8681",
+  "built_root": "/root/tmpwork/c55/verify/src",
+  "verified_at": "2026-10-26T04:20:00Z",
+  "note": "cycle-55 pin: clean-tree wheel build of the team ops main d28ce49 (WITH_TORCH=ON, WITH_INFERENCE_PLUGIN=OFF); core and extension loaded from this install tree during the official two-stage run (mmlu_pro actual=0.8300 baseline=0.8300 range=[0.7300, 0.93] PASS (= baseline, margin vs floor +13.7%)). Previous pin: db1597e1265a5fc3e24207b793c9d1dd94327a24."
 }

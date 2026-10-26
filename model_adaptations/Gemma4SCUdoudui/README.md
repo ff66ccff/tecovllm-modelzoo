@@ -61,7 +61,7 @@ export PATH=/home/py312/bin:$PATH          # 厂商 Python 3.12
 ```bash
 set +u; source /opt/tecoai/setvars.sh; set -u   # 提供 /opt/tecoai/lib64（libsdaart.so 等）
 cd <teco-ops-repo>
-git checkout db1597e1265a5fc3e24207b793c9d1dd94327a24   # 当前复现源码 pin；构建后仍须独立验证产物
+git checkout d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d   # 当前复现源码 pin；构建后仍须独立验证产物
 export WITH_TORCH=ON WITH_INFERENCE_PLUGIN=OFF
 /home/py312/bin/python setup.py build_ext --inplace
 # 产物：build/teco/lib/libteco_ops.so 与 api/tecoops/_torch_ext*.so
@@ -78,7 +78,7 @@ TORCH_DEVICE_BACKEND_AUTOLOAD=0 /home/py312/bin/python \
 > **必需步骤**：先按上面 build + 把本队 ops 安装目录前置到 `PYTHONPATH`（或 `pip install
 > --target`），再跑 `run.sh`。交付包**不含** `tecoops`；缺包/缺符号时 overlay 刻意
 > **fail-closed**（`SystemExit(1)`，不是崩溃）。当前 ops 源码 pin：`teco-ops` 队内
-> `db1597e1265a5fc3e24207b793c9d1dd94327a24`（对应本包 `validation/ops-artifacts.json`）。
+> `d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d`（对应本包 `validation/ops-artifacts.json`）。
 > 历史库身份与实测口径见 `model_adaptations/Gemma4SCUdoudui/validation/rmsnorm_whole_chain_20261012.json`
 > （本线实测自建库 sha256：`libteco_ops.so` = `d9370c807f9bb82379199bda93fcc96d7022659b98be7cb943294769610a63b3`，
 > `_torch_ext*.so` = `a55951872e9787630973c9dfd7402072f0e8df3c2e5d9d1d35c737cf17a03d8e`；
@@ -385,7 +385,7 @@ curl -s http://127.0.0.1:8003/v1/completions -H 'Content-Type: application/json'
 ## 2026-10-24 复现与库身份门禁
 
 当前源码固定为本队 teco-ops
-`db1597e1265a5fc3e24207b793c9d1dd94327a24`，与本包
+`d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d`，与本包
 `validation/ops-artifacts.json` 的 `source_commit` 一致。前面的 cycle-42 及更早
 SHA/收益是历史记录，不能充当本轮安装证据。
 
@@ -498,3 +498,5 @@ core/extension 仍为已验收的 531e0caf…/82aa5455…，末尾实际字节�
 这只覆盖该次共享入口启动与 greedy32 窗口，是设备采样量，非分配器高水位或完整 CI
 峰值；原始采样和收据见 `validation/shared-memory-gate-20261025/`。
 本次不主张新的速度收益、参数提速或新增 C++ 算子得分。
+
+> **pin 前移记录（2026-10-26）**：上一版 pin 为 db1597e1265a5fc3e24207b793c9d1dd94327a24（2026-10-24），本次前移至 d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d（队内 ops main = cycle-55 收口 + 三笔工具/CI 修复；区间 db1597e..d28ce49 共 19 个提交）。与算子侧相关的是 cycle-55 六笔 kernel 改动（D128 双 pane、多项式 exp、D256/D512 exp、PV 双缓冲、四阶 Chebyshev exp、内联 32x32 butterfly）与三笔工具/CI 修复（get_op.py 语法、自测进 CI、cwd 解析）。本线用新 bundle 跑**官方两阶段 CI**（官方 run_ci.py + 官方 run.sh/prec.sh/speed.sh）：mmlu_pro actual=0.8300 baseline=0.8300 range=[0.7300, 0.93] PASS (= baseline, margin vs floor +13.7%)。本机 speed 阶段被 evalscope 客户端分词器环境问题阻塞（transformers 4.57.6 vs 模型目录 tokenizer_config.json 的 extra_special_tokens 列表形式），属环境问题、非算子或模型代码；D256/D512 算子级边界扫描另测 33/33 PASS。 已验证 bundle：libteco_ops.so sha256 = d43a93e7e42b355643153b425986f660ee4821f0ef5adb5fe946c0f44955b013，_torch_ext*.so sha256 = 79ccee58dcaeeb8c5a7e52816da3d39561bcdc8e9d3ce327e099a3b994ea8681（见 validation/ops-artifacts.json 与 validation/ops-pin-d28ce49-20261026.json）。**上一版报文的数字属历史记录，不能充当本次安装证据。**

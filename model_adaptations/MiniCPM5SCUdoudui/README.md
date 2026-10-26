@@ -54,9 +54,9 @@ ls -ld "$MODEL_ROOT/OpenBMB/MiniCPM5-1B"
 
 ```bash
 # 1) 取得本队算子仓库（另行提交的「自定义算子仓库」）源码
-#    当前源码 commit: db1597e1265a5fc3e24207b793c9d1dd94327a24（队内 ops main，含 rotary_embedding kernel）
+#    当前源码 commit: d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d（队内 ops main，含 rotary_embedding kernel）
 git clone https://github.com/tecorigin-caet/teco-ops-SCUdoudui.git /tmp/teco-ops
-cd /tmp/teco-ops && git checkout db1597e1265a5fc3e24207b793c9d1dd94327a24
+cd /tmp/teco-ops && git checkout d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d
 
 # 2) 用厂商 Python 构建 torch-linked 交付产物
 #    注意：不要用 bash build.sh —— 它是 WITH_TORCH=OFF 变体，且没有 set -e
@@ -71,7 +71,7 @@ export PYTHONPATH=/tmp/teco-ops/api:${PYTHONPATH:-}
 
 > cycle-42 历史 pin 为 **`75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`**（自 `4adfd05e` 起依次落地：`79941c5f` ms_deform_attn forward plane → `d84f34f` flash_attention D256 `BM==64` → `54a1d65` rms_norm epilogue 二级展开 → `98e18ca` rotary_embedding CI 修复同步 → `e4e691d` flash_attention `BM==128` NT-form + 转置域 softmax → `beebae2` weight_stream_gemv host 谓词 `n % 256 == 0` → `n % 64 == 0`（按引擎 DMA 校验器实测的 4 B 要求），使 TP 分片的 lm_head 也走上 M=1 快路径 → `1145625` causal_conv1d 32-SPE×16-lane SIMD 重写 → `8ef0a5f` weight_stream_gemv ILP4 → `0371909` flash_attention ALGO0（head_dim 128/64）V 面板打包异步（算子级 `case_2` 1.829900 → 1.804300 ms，+1.3990%；模型级无可测加速）→ `9f11b33`/`0132061`/`2a1716d`（cycle-36）→ `0d6bd5a`（flash P 直出）→ `7ea7e84`（掩码向量跳过 softmax）→ `37f89d1`/`542a2a1`/`785a784`（cycle-37）→ `3f98d68`/`f748d0a`（cycle-38）→ `9fda597` → `20c245a`（段序 pin）→ `79470cb`/`12271c1`/`fab1fa2`（cycle-39）→ `11cb85c`（已回退）/`60a40d7` → `ce1a2ec`（wsg/gather 段互换）→ `514f800`/`be4eb88`/`731d3d0`/`21dd896`（cycle-40/41）→ `5813b74`/`e6ec6e9`/`35bf8f6`/`75588a9`（cycle-42）。逐笔数字见文末 cycle-36…cycle-42 pin 说明）。**照旧 pin（`4adfd05e`）复现得到的库不含上述改动**，该历史窗口对应 `75588a996c3c1ac6f5239d5bd328bd8d5ea8c97e`；当前复现采用文末 2026-10-24 pin 与独立收据。
 
-**版本口径**：pin 写成「**源码 commit + 同配方重建**」（当前源码 tip 为 `db1597e1265a5fc3e24207b793c9d1dd94327a24`），**不是**某个 `libteco_ops.so` 的字节
+**版本口径**：pin 写成「**源码 commit + 同配方重建**」（当前源码 tip 为 `d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d`），**不是**某个 `libteco_ops.so` 的字节
 ——同一个 commit 在不同 build root / 配方下可能产出不同字节的 `.so`。下列能力探针只证明接口存在；
 当前启动还强制核验 core/extension 的已验证收据，跨根重建须按文末门禁独立验收。
 
@@ -248,7 +248,7 @@ scoping，不是 `rms_norm`。实测 case_4(D64) 中位 2.677600 ms、B64 两方
 ## 2026-10-24 复现与库身份门禁
 
 当前源码固定为本队 teco-ops
-`db1597e1265a5fc3e24207b793c9d1dd94327a24`，与本包
+`d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d`，与本包
 `validation/ops-artifacts.json` 的 `source_commit` 一致。前面的 cycle-42 及更早
 SHA/收益是历史记录，不能充当本轮安装证据。
 
@@ -289,7 +289,7 @@ export SCUD_OPS_MANIFEST="$ADAPT/validation/ops-artifacts.json"  # 仅适用于�
 
 ### 2026-10-24 五分钟模型稳态结果（2026-10-25 归档）
 
-使用本节固定的 ops pin db1597e 及 validation/ops-artifacts.json 对应的
+使用本节固定的 ops pin db1597e（**历史记录**：该测量发生在 2026-10-24，当时 pin 为 db1597e；当前 pin 见文末前移记录）及 validation/ops-artifacts.json 对应的
 core/extension，按本模型原样启动参数运行固定 prompt、greedy-32：
 **273 请求 / 300.953 s，全部 32 tokens 且逐位一致，0 请求错误，外层 rc=0**。
 所有请求也与随包冻结 token IDs 一致。
@@ -310,8 +310,10 @@ core/extension，按本模型原样启动参数运行固定 prompt、greedy-32�
 32 tokens，与本模型 2026-10-24 冻结输出逐 token 相同；runner rc=0，受保护
 CI 脚本前后哈希相同。原始 result/model-gate/run-configuration/protected 收据、
 冻结 row0 比对和 runtime/core 身份见 `validation/launcher-single-serve-20261025/`。
-实际使用 ops 源码 pin 为 `db1597e`，core SHA256 `531e0caf…77574dc`，
+（**历史记录**：该次 2026-10-25 复核时的 pin）实际使用 ops 源码 pin 为 `db1597e`，core SHA256 `531e0caf…77574dc`，
 extension `82aa5455…fbbf41`；完整哈希及启动日志原文见收据。
 
 团队共享入口仅做上述无设备 argv 等价验证，未另起设备服务。本次不是干净容器
 复现或完整官方 CI，未重跑精度套件或性能测试，不作速度收益主张。
+
+> **pin 前移记录（2026-10-26）**：上一版 pin 为 db1597e1265a5fc3e24207b793c9d1dd94327a24（2026-10-24），本次前移至 d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d（队内 ops main = cycle-55 收口 + 三笔工具/CI 修复；区间 db1597e..d28ce49 共 19 个提交）。与本线相关的是 cycle-55 六笔算子改动（D128 双 pane、多项式 exp、D256/D512 exp、PV 双缓冲、四阶 Chebyshev exp、内联 32×32 butterfly）与三笔工具/CI 修复（get_op.py 语法、自测进 CI、cwd 解析）。本线用新 bundle 跑**官方两阶段 CI**（官方 run_ci.py + 官方 run.sh/prec.sh/speed.sh，200 样本 mmlu_pro）：精度 actual=0.3450 baseline=0.3450 range=[0.2450, 0.445] PASS；TTFT T1–T4 = 396.63 / 1031.91 / 3160.21 / 10838.54 ms，TPOT 32.94 / 33.12 / 33.37 / 34.36 ms。算子级证据：61 例全表 61/61 PASSED（AHT SUM 5.625283 ms），cycle-55 累计 58 例子集 −28.10%。已验证 bundle：libteco_ops.so sha256 = d43a93e7e42b355643153b425986f660ee4821f0ef5adb5fe946c0f44955b013，_torch_ext*.so sha256 = 79ccee58dcaeeb8c5a7e52816da3d39561bcdc8e9d3ce327e099a3b994ea8681（见 validation/ops-artifacts.json 与 validation/ops-pin-d28ce49-20261026.json）。**上一版报文的数字属历史记录，不能充当本次安装证据。**

@@ -1,5 +1,8 @@
 # Gemma-4-12B-it（SCU 都队）
 
+> **算子 bundle 随包提供（2026-10-26）**：`ops_bundle/tecoops/` 即本包验证过的 `libteco_ops.so` / `_torch_ext*.so`，源码 commit `d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d`；`run.sh` 自动优先加载并做字节级校验（见 `validation/ops-artifacts.json` 与 `ops_bundle/tecoops/BUNDLE.json`）。自建包请按上一段说明同步 manifest。
+
+
 ## 模型概述
 
 Gemma-4-12B-it 是 Google 的文本生成大模型，约 12B 参数（fp16 权重约 23.9 GB），48 层解码器：40 层

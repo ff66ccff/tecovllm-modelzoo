@@ -1,0 +1,4 @@
+
+# Operator bundles ship as exact bytes; never apply EOL conversion to them.
+model_adaptations/*/ops_bundle/tecoops/*.so binary
+model_adaptations/*/ops_bundle/tecoops/*.json text

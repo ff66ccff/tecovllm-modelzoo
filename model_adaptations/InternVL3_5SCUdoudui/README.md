@@ -1,5 +1,8 @@
 # InternVL3_5-8B
 
+> **算子 bundle 随包提供（2026-10-26）**：`ops_bundle/tecoops/` 即本包验证过的 `libteco_ops.so` / `_torch_ext*.so`，源码 commit `d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d`；`run.sh` 自动优先加载并做字节级校验（见 `validation/ops-artifacts.json` 与 `ops_bundle/tecoops/BUNDLE.json`）。自建包请按上一段说明同步 manifest。
+
+
 ## 模型概述
 
 InternVL3.5-8B（`OpenGVLab/InternVL3_5-8B`）是上海 AI Lab InternVL3.5 系列的 8B 多模态模型：InternViT 视觉编码器 + Qwen3-8B 语言塔，支持图像-文本交错输入与中英文对话。组委会给出的适配难度系数为 **0.7**。

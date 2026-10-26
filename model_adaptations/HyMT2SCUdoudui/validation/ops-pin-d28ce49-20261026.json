@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "kind": "ops-pin-bump",
+  "line": "Hy-MT2-1.8B",
+  "previous_pin": "db1597e1265a5fc3e24207b793c9d1dd94327a24",
+  "source_commit": "d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d",
+  "source_commit_subject": "fix(tools): resolve public operators from the repository, not the current directory",
+  "delta_commits": 19,
+  "bundle": {
+    "core_sha256": "d43a93e7e42b355643153b425986f660ee4821f0ef5adb5fe946c0f44955b013",
+    "extension_sha256": "79ccee58dcaeeb8c5a7e52816da3d39561bcdc8e9d3ce327e099a3b994ea8681",
+    "built_root": "/root/tmpwork/c55/verify/src"
+  },
+  "op_level_evidence": {
+    "official_zoo": "61/61 PASSED, AHT SUM 5.625283 ms",
+    "cycle55_cumulative_58_case_subset": "7.607800 -> 5.470201 ms (-28.10%), 16K prefill 734.55 -> 382.90 ms (-47.87%)"
+  },
+  "model_level_evidence": {
+    "harness": "official tools/ci_pipline/run_ci.py + official run.sh/prec.sh/speed.sh",
+    "precision": {
+      "dataset": "wmt24pp",
+      "samples": 200,
+      "actual": 0.8515,
+      "baseline": 0.8486,
+      "range": [
+        0.8386,
+        0.8586
+      ],
+      "verdict": "PASS"
+    },
+    "speed_T1_T4_ttft_ms": [
+      517.44,
+      1040.02,
+      2452.73,
+      8976.17
+    ],
+    "speed_tpot_ms": [
+      43.79,
+      43.66,
+      43.86,
+      43.67
+    ]
+  },
+  "verified_at": "2026-10-26T04:20:00Z",
+  "note": "Bundle hashes are those of the clean-tree build actually mapped by the run.sh under test (checked via /proc/<pid>/maps)."
+}

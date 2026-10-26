@@ -40,13 +40,13 @@ ls -ld "$MODEL_ROOT/Tencent-Hunyuan/Hy-MT2-1.8B"
 
    本模型的 overlay 依赖本队算子库的四个能力：`rms_norm`（含 `+add`；cycle-42 起经 C++ `TORCH_LIBRARY` 的 `torch.ops.tecoops_ops.rms_norm_out` / `rms_norm_add_out` 入口绑定）、`rotary_embedding`、`reshape_and_cache`、`linear_stream`（= `weight_stream_gemv`，默认开启）；SwiGLU 走厂商 `torch.ops.sdaa.swiglu`。镜像**预装**的 wheel（`/home/py312/lib/python3.12/site-packages/tecoops`，其 `libteco_ops.so` sha256 = `388dd710a8357ee9294ccada17fa3f4003a9bc5aa107bec744184fa008cbbcc0`）**不含 `rotary_embedding`**；而本线 overlay 在 cycle-42 之后还硬要求 `torch.ops.tecoops_ops.rms_norm_out` / `rms_norm_add_out`（`runtime/custom_ops/hy_mt2/vllm_rms_norm.py:31-39`，缺失即 `RuntimeError`）⇒ 直接 `bash run.sh` 会被 overlay 的 fail-closed 拦住并以 `SystemExit(1)` 退出（**这是刻意行为，不是崩溃**——宁可拒绝启动，也不静默回退到未适配路径）。本线代码**不使用** `rms_norm_compat`。
 
-   服务库必须来自**本队 ops 仓**（当前源 commit `db1597e1265a5fc3e24207b793c9d1dd94327a24`；历史上自 `4adfd05e` 起已依次落地 `79941c5f` / `d84f34f` / `54a1d65` / `98e18ca` / `e4e691d`，见下方 provenance 句）：
+   服务库必须来自**本队 ops 仓**（当前源 commit `d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d`；历史上自 `4adfd05e` 起已依次落地 `79941c5f` / `d84f34f` / `54a1d65` / `98e18ca` / `e4e691d`，见下方 provenance 句）：
 
    ```bash
    source /opt/tecoai/setvars.sh            # 提供 libsdaart.so / libsddev.so 等运行库路径
-   TEAM_OPS=<本队 teco-ops 检出>             # 内容 = commit db1597e1265a5fc3e24207b793c9d1dd94327a24
+   TEAM_OPS=<本队 teco-ops 检出>             # 内容 = commit d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d
    OPS_INSTALL=<隔离安装目录>               # 任意可写目录（交付包不自带），下面自检用它
-   git -C "$TEAM_OPS" checkout db1597e1265a5fc3e24207b793c9d1dd94327a24
+   git -C "$TEAM_OPS" checkout d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d
    bash "$TEAM_OPS/build.sh" --build teco   # 构建 core：build/teco/lib/libteco_ops.so
    cd "$TEAM_OPS" && /home/py312/bin/python setup.py bdist_wheel
    /home/py312/bin/python -m pip install --no-deps --no-compile \
@@ -73,7 +73,7 @@ ls -ld "$MODEL_ROOT/Tencent-Hunyuan/Hy-MT2-1.8B"
 
    注意：只设 `PYTHONPATH` 而不设 SDK 运行库路径时，`import tecoops` 会以 `ImportError: libsdaart.so: cannot open shared object file` 失败（torch 自动加载 torch_sdaa 所致），必须先 `source /opt/tecoai/setvars.sh` 或手工把 `/opt/tecoai/lib64` 与 torch/torch_sdaa 的 `lib` 目录加进 `LD_LIBRARY_PATH`。
 
-   **官方 PR #48 的 wheel 不可单独充当本模型的服务库**：该 PR 从上游 `main`（`de27305e`）发出，只含上游那版 `rms_norm` 与本队 rope 算子（实测其 `libteco_ops.so` sha256 = `d2c8e046147df63b0ae142e176fe1ac151537761f2eb968f3de00b60e1337424`，能力探针判 `NOT_CAPABLE`；本线判据是 `tecoops.rms_norm` / `tecoops.rotary_embedding` / `tecoops.reshape_and_cache` 与 cycle-42 的 `torch.ops.tecoops_ops.rms_norm_out` / `rms_norm_add_out` 入口，**不使用** `rms_norm_compat`）；本模型需要的 `rms_norm`（PR37 / H3a 形态）只存在于本队 ops 仓，必须按上面的 build + install 步骤取自本队 `main`（**当前 pin `db1597e1265a5fc3e24207b793c9d1dd94327a24`**；`0371909` 及其之前的 `8ef0a5f` / `dda33c5b` / `4adfd05e` / `beebae2` 均已被前移取代，见上方 provenance 句与文末 cycle-31…cycle-42 pin 说明）。
+   **官方 PR #48 的 wheel 不可单独充当本模型的服务库**：该 PR 从上游 `main`（`de27305e`）发出，只含上游那版 `rms_norm` 与本队 rope 算子（实测其 `libteco_ops.so` sha256 = `d2c8e046147df63b0ae142e176fe1ac151537761f2eb968f3de00b60e1337424`，能力探针判 `NOT_CAPABLE`；本线判据是 `tecoops.rms_norm` / `tecoops.rotary_embedding` / `tecoops.reshape_and_cache` 与 cycle-42 的 `torch.ops.tecoops_ops.rms_norm_out` / `rms_norm_add_out` 入口，**不使用** `rms_norm_compat`）；本模型需要的 `rms_norm`（PR37 / H3a 形态）只存在于本队 ops 仓，必须按上面的 build + install 步骤取自本队 `main`（**当前 pin `d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d`**；`0371909` 及其之前的 `8ef0a5f` / `dda33c5b` / `4adfd05e` / `beebae2` 均已被前移取代，见上方 provenance 句与文末 cycle-31…cycle-42 pin 说明）。
 
 3. 算子绑定全部在进程初始化期完成（`runtime/overlay/sitecustomize.py`）：注册 opaque `torch.library` 算子并绑定 RMSNorm、SwiGLU、attention、`RotaryEmbedding` 与 M=1 decode 线性层（`tecoops.linear_stream`）；缺接口或绑定身份校验失败即 **fail-closed 终止启动**（`SystemExit(1)`），不会静默回退到未适配路径；
 4. **CI 解析器约束**：`parse_run_sh()` 读取唯一可执行 serve 命令中的裸字面默认路径，作为 `speed.sh --tokenizer-path`。初始化 `vllm()` shim 在 exec 前绑定实际模型路径与 host/port，故环境覆盖仍生效。脚本仅保留这一条命令；官方评测仍须让默认字面 tokenizer 路径可解析。
@@ -206,7 +206,7 @@ TTFT / TPOT：**未测**（组委会性能测例与达标线未下发）。已�
 ## 2026-10-24 复现与库身份门禁
 
 当前源码固定为本队 teco-ops
-`db1597e1265a5fc3e24207b793c9d1dd94327a24`，与本包
+`d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d`，与本包
 `validation/ops-artifacts.json` 的 `source_commit` 一致。前面的 cycle-42 及更早
 SHA/收益是历史记录，不能充当本轮安装证据。
 
@@ -247,7 +247,7 @@ export SCUD_OPS_MANIFEST="$ADAPT/validation/ops-artifacts.json"  # 仅适用于�
 
 ### 2026-10-24 五分钟模型稳态结果（2026-10-25 归档）
 
-使用本节固定的 ops pin db1597e 及 validation/ops-artifacts.json 对应的
+使用本节固定的 ops pin db1597e（**历史记录**：该测量发生在 2026-10-24，当时 pin 为 db1597e；当前 pin 见文末前移记录） 及 validation/ops-artifacts.json 对应的
 core/extension，按本模型原样启动参数运行固定 prompt、greedy-32：
 **196 请求 / 300.614 s，全部 32 tokens 且逐位一致，0 请求错误，外层 rc=0**。
 一致性判据为与该窗口首个请求逐 token 相同；本窗口不另作官方精度主张。
@@ -268,8 +268,10 @@ core/extension，按本模型原样启动参数运行固定 prompt、greedy-32�
 32 tokens，与本模型 2026-10-24 冻结输出逐 token 相同；runner rc=0，受保护
 CI 脚本前后哈希相同。原始 result/model-gate/run-configuration/protected 收据、
 冻结 row0 比对和 runtime/core 身份见 `validation/launcher-single-serve-20261025/`。
-实际使用 ops 源码 pin 为 `db1597e`，core SHA256 `531e0caf…77574dc`，
+（**历史记录**：该次复核时的 pin）实际使用 ops 源码 pin 为 `db1597e`，core SHA256 `531e0caf…77574dc`，
 extension `82aa5455…fbbf41`；完整哈希及启动日志原文见收据。
 
 团队共享入口仅做上述无设备 argv 等价验证，未另起设备服务。本次不是干净容器
 复现或完整官方 CI，未重跑精度套件或性能测试，不作速度收益主张。
+
+> **pin 前移记录（2026-10-26）**：上一版 pin 为 db1597e1265a5fc3e24207b793c9d1dd94327a24（2026-10-24），本次前移至 d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d（队内 ops main = cycle-55 收口 + 三笔工具/CI 修复；区间 db1597e..d28ce49 共 19 个提交）。与算子侧相关的是 cycle-55 六笔 kernel 改动（D128 双 pane、多项式 exp、D256/D512 exp、PV 双缓冲、四阶 Chebyshev exp、内联 32x32 butterfly）与三笔工具/CI 修复（get_op.py 语法、自测进 CI、cwd 解析）。本线用新 bundle 跑**官方两阶段 CI**（官方 run_ci.py + 官方 run.sh/prec.sh/speed.sh）：wmt24pp actual=0.8515 baseline=0.8486 range=[0.8386, 0.8586] PASS (margin vs floor +1.54%)。 TTFT T1-T4 = 517.44 / 1040.02 / 2452.73 / 8976.17 ms；TPOT 43.79 / 43.66 / 43.86 / 43.67 ms。本线 attention 不走团队 flash（仅 rms_norm/rac 受影响），故该组数字同时充当无回归对照：TTFT 与旧库基本持平。 已验证 bundle：libteco_ops.so sha256 = d43a93e7e42b355643153b425986f660ee4821f0ef5adb5fe946c0f44955b013，_torch_ext*.so sha256 = 79ccee58dcaeeb8c5a7e52816da3d39561bcdc8e9d3ce327e099a3b994ea8681（见 validation/ops-artifacts.json 与 validation/ops-pin-d28ce49-20261026.json）。**上一版报文的数字属历史记录，不能充当本次安装证据。**

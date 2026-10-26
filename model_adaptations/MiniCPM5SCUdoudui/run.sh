@@ -19,6 +19,17 @@ case "$MINICPM_OP_PROFILE" in
 esac
 export VLLM_DISABLE_COMPILE_CACHE=1
 export PYTHONPATH="${SCRIPT_DIR}/runtime/overlay:${SCRIPT_DIR}/runtime:${PYTHONPATH:-}"
+
+# Shipped, verified operator bundle (see ops_bundle/tecoops/BUNDLE.json).
+# The bytes travel with the package because a rebuild on another path changes them and the
+# fail-closed manifest check in validation/ops-artifacts.json would reject the result.
+OPS_BUNDLE="${SCRIPT_DIR}/ops_bundle"
+if [ ! -f "${OPS_BUNDLE}/tecoops/libteco_ops.so" ] || [ ! -f "${OPS_BUNDLE}/tecoops/BUNDLE.json" ]; then
+    echo "FATAL: shipped operator bundle missing under ${OPS_BUNDLE}/tecoops" >&2
+    exit 1
+fi
+export PYTHONPATH="${OPS_BUNDLE}:${PYTHONPATH:-}"
+export LD_LIBRARY_PATH="${OPS_BUNDLE}/tecoops:${LD_LIBRARY_PATH:-}"
 # Official kernels are registered as opaque torch.library operations.
 # Leave vLLM default compilation enabled.
 

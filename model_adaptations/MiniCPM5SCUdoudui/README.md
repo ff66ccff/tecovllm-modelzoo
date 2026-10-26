@@ -1,5 +1,8 @@
 # MiniCPM5-1B
 
+> **算子 bundle 随包提供（2026-10-26）**：`ops_bundle/tecoops/` 即本包验证过的 `libteco_ops.so` / `_torch_ext*.so`，源码 commit `d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d`；`run.sh` 自动优先加载并做字节级校验（见 `validation/ops-artifacts.json` 与 `ops_bundle/tecoops/BUNDLE.json`）。自建包请按上一段说明同步 manifest。
+
+
 ## 模型概述
 
 MiniCPM5-1B 是面壁智能 MiniCPM5 系列的小尺寸稠密语言模型。本目录是 SCU 都队在太初（SDAA）平台上的推理适配，基于 TecovLLM（vLLM 0.20.2）与自研 `tecoops` 算子库：通过**进程初始化期的 overlay** 把算子绑定进模型，不修改任何 site-packages / torch / vLLM 文件，权重按只读方式引用。
@@ -50,7 +53,7 @@ ls -ld "$MODEL_ROOT/OpenBMB/MiniCPM5-1B"
 > `rotary_embedding`**，直接跑 `run.sh` 会被 overlay **刻意 fail-closed**（`rc=1`、`main`
 > 不可达、stderr 打印 `FATAL: [custom_ops] tecoops.rotary_embedding is unavailable`）——
 > 这是**设计行为**（缺接口宁可停进程也不静默回退到未适配路径），**不是崩溃**；
-> 本交付包**不含** `tecoops`，必须先构建并安装本队算子库。
+> 本交付包**随包提供已验证算子 bundle**（`ops_bundle/tecoops/`：`libteco_ops.so` + `_torch_ext*.so` + `__init__.py` + `BUNDLE.json`），`run.sh` 会把它置于 `PYTHONPATH`/`LD_LIBRARY_PATH` 最前，缺失时 fail-closed 退出。bundle 源码 commit `d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d`，`libteco_ops.so` sha256 = `d43a93e7e42b355643153b425986f660ee4821f0ef5adb5fe946c0f44955b013`，`_torch_ext*.so` sha256 = `79ccee58dcaeeb8c5a7e52816da3d39561bcdc8e9d3ce327e099a3b994ea8681`。若选择**自行重建**：二进制字节与构建路径相关，重建后必须同步更新 `validation/ops-artifacts.json` 的 `core_sha256`/`extension_sha256`（或用 `SCUD_OPS_MANIFEST=<你的 manifest>` 覆盖），否则 fail-closed 会拒绝启动。
 
 ```bash
 # 1) 取得本队算子仓库（另行提交的「自定义算子仓库」）源码

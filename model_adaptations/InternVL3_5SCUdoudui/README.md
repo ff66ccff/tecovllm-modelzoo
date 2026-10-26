@@ -48,7 +48,7 @@ OPS_SRC=<teco-ops 检出目录>                       # 本队算子库源码（
 OPS_PREFIX=<交付算子库安装目录>                    # 例：$HOME/ivl-tecoops；不要写只在某台机器成立的绝对路径
 
 # 1) 从本队 teco-ops 仓构建 wheel（teco-hal 等依赖见该仓 README）
-git -C "$OPS_SRC" checkout db1597e1265a5fc3e24207b793c9d1dd94327a24   # 本队 ops main（pin 口径 = 源码 commit）
+git -C "$OPS_SRC" checkout d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d   # 本队 ops main（pin 口径 = 源码 commit）
 "$PYTHON" "$OPS_SRC/setup.py" bdist_wheel --dist-dir "$OPS_SRC/dist"
 
 # 2) 隔离安装到独立目录（不覆盖全局 site-packages），并记录本轮 wheel 的 sha256
@@ -68,7 +68,7 @@ MODEL_ROOT=/gpfs/model bash "$ADAPT/run.sh"
 
 ### 怎么判定"这次跑的是不是交付库"
 
-1. 当前源码 pin 是本队 teco-ops `db1597e1265a5fc3e24207b793c9d1dd94327a24`；
+1. 当前源码 pin 是本队 teco-ops `d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d`；
    `validation/ops-artifacts.json` 同时记录该次已验证构建的 core/extension SHA256。
 2. `run.sh` 置 `SCUD_REQUIRE_OPS_BUNDLE=1`，overlay 在初始化期核验两份哈希、唯一
    mapped core 与全部必需 API；旧 wheel、混装库或仅有同名导出的库都会被拒绝。
@@ -250,7 +250,7 @@ curl -s http://127.0.0.1:8002/v1/chat/completions -H 'Content-Type: application/
 ## 2026-10-24 复现与库身份门禁
 
 当前源码固定为本队 teco-ops
-`db1597e1265a5fc3e24207b793c9d1dd94327a24`，与本包
+`d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d`，与本包
 `validation/ops-artifacts.json` 的 `source_commit` 一致。前面的 cycle-42 及更早
 SHA/收益是历史记录，不能充当本轮安装证据。
 
@@ -291,7 +291,7 @@ export SCUD_OPS_MANIFEST="$ADAPT/validation/ops-artifacts.json"  # 仅适用于�
 
 ### 2026-10-24 五分钟模型稳态结果（2026-10-25 归档）
 
-使用本节固定的 ops pin db1597e 及 validation/ops-artifacts.json 对应的
+使用本节固定的 ops pin db1597e（**历史记录**：该测量发生在 2026-10-24，当时 pin 为 db1597e；当前 pin 见文末前移记录） 及 validation/ops-artifacts.json 对应的
 core/extension，按本模型原样启动参数运行固定 prompt、greedy-32：
 **117 请求 / 300.822 s，全部 32 tokens 且逐位一致，0 请求错误，外层 rc=0**。
 一致性判据为与该窗口首个请求逐 token 相同；本窗口不另作官方精度主张。
@@ -312,8 +312,10 @@ core/extension，按本模型原样启动参数运行固定 prompt、greedy-32�
 32 tokens，与本模型 2026-10-24 冻结输出逐 token 相同；runner rc=0，受保护
 CI 脚本前后哈希相同。原始 result/model-gate/run-configuration/protected 收据、
 冻结 row0 比对和 runtime/core 身份见 `validation/launcher-single-serve-20261025/`。
-实际使用 ops 源码 pin 为 `db1597e`，core SHA256 `531e0caf…77574dc`，
+（**历史记录**：该次复核时的 pin）实际使用 ops 源码 pin 为 `db1597e`，core SHA256 `531e0caf…77574dc`，
 extension `82aa5455…fbbf41`；完整哈希及启动日志原文见收据。
 
 团队共享入口仅做上述无设备 argv 等价验证，未另起设备服务。本次不是干净容器
 复现或完整官方 CI，未重跑精度套件或性能测试，不作速度收益主张。
+
+> **pin 前移记录（2026-10-26）**：上一版 pin 为 db1597e1265a5fc3e24207b793c9d1dd94327a24（2026-10-24），本次前移至 d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d（队内 ops main = cycle-55 收口 + 三笔工具/CI 修复；区间 db1597e..d28ce49 共 19 个提交）。与算子侧相关的是 cycle-55 六笔 kernel 改动（D128 双 pane、多项式 exp、D256/D512 exp、PV 双缓冲、四阶 Chebyshev exp、内联 32x32 butterfly）与三笔工具/CI 修复（get_op.py 语法、自测进 CI、cwd 解析）。本线用新 bundle 跑**官方两阶段 CI**（官方 run_ci.py + 官方 run.sh/prec.sh/speed.sh）：mmlu_pro actual=0.7050 baseline=0.6900 range=[0.5900, 0.79] PASS (margin vs floor +19.5%, above baseline +0.015)。 TTFT T1-T4 = 862.77 / 2029.68 / 5600.68 / 19761.5 ms；TPOT 77.54 / 78.23 / 79.85 / 82.99 ms。本线为 D128/Hq32 几何，是 cycle-55 flash 改动的主要受益面（16K TTFT 由 39.24 s 降至 19.76 s）。 已验证 bundle：libteco_ops.so sha256 = d43a93e7e42b355643153b425986f660ee4821f0ef5adb5fe946c0f44955b013，_torch_ext*.so sha256 = 79ccee58dcaeeb8c5a7e52816da3d39561bcdc8e9d3ce327e099a3b994ea8681（见 validation/ops-artifacts.json 与 validation/ops-pin-d28ce49-20261026.json）。**上一版报文的数字属历史记录，不能充当本次安装证据。**

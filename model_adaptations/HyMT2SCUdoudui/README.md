@@ -1,5 +1,8 @@
 # Hy-MT2-1.8B
 
+> **算子 bundle 随包提供（2026-10-26）**：`ops_bundle/tecoops/` 即本包验证过的 `libteco_ops.so` / `_torch_ext*.so`，源码 commit `d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d`；`run.sh` 自动优先加载并做字节级校验（见 `validation/ops-artifacts.json` 与 `ops_bundle/tecoops/BUNDLE.json`）。自建包请按上一段说明同步 manifest。
+
+
 ## 模型概述
 
 Hy-MT2-1.8B 是腾讯混元系列的稠密翻译语言模型（`HunYuanDenseV1ForCausalLM`）。本目录是 SCU 都队在太初（SDAA）平台上的推理适配，基于 TecovLLM（vLLM 0.20.2）与自研 `tecoops` 算子库：通过**进程初始化期的 overlay** 把算子绑定进模型，不修改任何 site-packages / torch / vLLM 文件，权重按只读方式引用。

@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "kind": "ops-bundle",
+  "shipped_by": "team delivery package (SCUdoudui)",
+  "source_repo": "https://github.com/tecorigin-caet/teco-ops-SCUdoudui",
+  "source_commit": "d28ce49ed2febaac9cfb4d4d9cda661c2bfe150d",
+  "source_commit_subject": "fix(tools): resolve public operators from the repository, not the current directory",
+  "build_recipe": "bash build.sh --build teco && WITH_TORCH=ON WITH_INFERENCE_PLUGIN=OFF /home/py312/bin/python setup.py bdist_wheel",
+  "built_root": "/root/tmpwork/c55/verify/src",
+  "verified_at": "2026-10-26T04:20:00Z",
+  "files": {
+    "libteco_ops.so": "d43a93e7e42b355643153b425986f660ee4821f0ef5adb5fe946c0f44955b013",
+    "_torch_ext.cpython-312-loongarch64-linux-gnu.so": "79ccee58dcaeeb8c5a7e52816da3d39561bcdc8e9d3ce327e099a3b994ea8681",
+    "__init__.py": "python API shim copied verbatim from the same ops commit (api/tecoops/__init__.py)"
+  },
+  "verification": "official two-stage run per line with this bundle: precision PASS on all four lines (0.3450 / 0.8515 / 0.7050 / 0.8300); 61-case zoo 61/61 PASSED; fail-closed provenance gate and run.sh startup re-verified for every line on 2026-10-26.",
+  "note": "Shipped so the tested bytes travel with the package: a rebuild on another path changes the bytes (path-embedded strings) and the fail-closed manifest check would reject it."
+}
